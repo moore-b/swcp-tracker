@@ -117,7 +117,7 @@
 
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
-            background-color: rgba(192, 192, 192, 0.5) !important; /* Grey tint with 40% opacity, !important to ensure it applies */
+            background-color: rgba(192, 192, 192, 0.5) !important; /* Grey tint (192,192,192) with 50% opacity */
             backdrop-filter: blur(5px); /* Adjusted blur amount to 5px for more distinctness */
             -webkit-backdrop-filter: blur(5px); /* For Safari compatibility */
             box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.2), 0 6px 10px -2px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
@@ -269,7 +269,7 @@
 
     <div id="app-background"></div>
 
-    <div id="initial-loading-screen" class="fixed inset-0 flex items-center justify-center bg-gray-200 z-[9999]">
+    <div id="initial-loading-screen" class="fixed inset-0 flex items-center justify-center bg-gray-200 z-[9999] hidden">
         <div class="loader mr-3"></div> <span class="text-gray-500">Loading application...</span>
     </div>
 
@@ -298,8 +298,8 @@
                 <div id="strava-user-info" class="text-right"></div>
             </div>
             <div class="mb-6">
+                <p class="text-sm text-gray-700">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
                 <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
-                <p class="text-sm text-gray-500" style="color: #4A4A4A;">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
                 <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
             </div>
             <div class="text-right mt-2"><button id="reset-button" class="text-sm btn-danger">Reset All Progress</button></div>
@@ -431,7 +431,7 @@
                 return;
             }
             const now = new Date().toLocaleTimeString();
-            UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-800')}">${message}</span></p>`;
+            UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-900')}">${message}</span></p>`; /* Changed to text-gray-900 for default info */
             UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
             if (type === 'error') console.error(message);
         };
@@ -449,7 +449,7 @@
 
             if (isMobile) {
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
-                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
+                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto'; /* 5 rows */
 
                 UIElements.headerSection.style.gridColumn = '1';
                 UIElements.headerSection.style.gridRow = '1';
@@ -477,7 +477,6 @@
                 UIElements.statusLogSectionContainer.style.overflowY = 'visible';
                 UIElements.statusLogSectionContainer.style.padding = '1rem';
 
-                // Ensure elements are displayed correctly on mobile as grid items
                 UIElements.headerSection.style.display = 'block';
                 UIElements.progressSummarySection.style.display = 'block';
                 UIElements.mapSection.style.display = 'block';
@@ -514,7 +513,6 @@
                 UIElements.activitiesSection.style.overflowY = 'auto';
                 UIElements.activitiesSection.style.padding = '1.5rem';
 
-                // Ensure elements are displayed correctly on desktop as grid items
                 UIElements.headerSection.style.display = 'block';
                 UIElements.progressSummarySection.style.display = 'block';
                 UIElements.mapSection.style.display = 'block';
@@ -553,7 +551,7 @@
                 const data = await response.json();
                 if (data.access_token) {
                     log('Success! Access Token received.', 'success');
-                    sessionStorage.setItem('stravaAccessToken', JSON.stringify(data.access_token)); // Store as string
+                    sessionStorage.setItem('stravaAccessToken', JSON.stringify(data.access_token));
                     sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
                     window.location.href = window.location.pathname;
                 } else { log(`Error getting access token: ${data.message}`, 'error'); }
@@ -1157,6 +1155,7 @@
             log('App initialized.');
 
             // Show initial loading screen immediately
+            // This is now explicitly handled here and hidden only after full content is ready
             if (UIElements.initialLoadingScreen) {
                 UIElements.initialLoadingScreen.style.display = 'flex';
             }
@@ -1165,27 +1164,26 @@
             const bgImage = new Image();
             bgImage.src = BACKGROUND_IMAGE_PATH;
 
-            bgImage.onload = async () => {
-                // Background image loaded, now apply it and proceed
-                if (UIElements.appBackground) {
-                    UIElements.appBackground.style.backgroundImage = `url('${BACKGROUND_IMAGE_PATH}')`;
-                }
-                log('Background image loaded successfully.', 'success');
-                proceedWithAppInitFlow();
-            };
-
-            bgImage.onerror = () => {
-                log('Error loading background image. Proceeding without it.', 'error');
-                // Proceed without background image if it fails to load
-                proceedWithAppInitFlow();
-            };
+            let backgroundLoadedPromise = new Promise((resolve, reject) => {
+                bgImage.onload = () => {
+                    if (UIElements.appBackground) {
+                        UIElements.appBackground.style.backgroundImage = `url('${BACKGROUND_IMAGE_PATH}')`;
+                    }
+                    log('Background image loaded successfully.', 'success');
+                    resolve();
+                };
+                bgImage.onerror = () => {
+                    log('Error loading background image. Proceeding without it.', 'error');
+                    reject(new Error("Background image failed to load"));
+                };
+            });
 
             // This function encapsulates the main app initialization flow that starts after background loads
             async function proceedWithAppInitFlow() {
-                // Add event listeners (now that UIElements are populated and before OAuth checks)
+                // Add event listeners (now that UIElements are populated)
                 if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
                 if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
-                if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava); // Listener attached here
+                if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
                 if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
                 if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
                 if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
@@ -1193,22 +1191,26 @@
                
                 if (UIElements.clientId) UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
                 if (UIElements.clientSecret) UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
-                checkInputs(); // Initial check of button state
+                checkInputs();
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
                 if (authCode) {
                     await getAccessToken(authCode);
+                    // Note: getAccessToken reloads the page. The subsequent flow will start from init() again.
+                    // This means the remaining code in this specific proceedWithAppInitFlow instance won't execute.
+                    return; // Exit here if redirecting
                 } else if (sessionStorage.getItem('stravaAccessToken')) {
                     await showMainApp();
                 } else {
+                    // Show login screen, hide main app container
                     if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
                     if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
                     log('Please connect to Strava.');
                 }
                
-                // Hide initial loading screen once everything is ready to display
+                // Hide initial loading screen only AFTER everything (login screen or main app) is prepared and shown
                 if (UIElements.initialLoadingScreen) {
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
@@ -1217,6 +1219,12 @@
                 updateGridLayout();
                 window.addEventListener('resize', updateGridLayout);
             }
+           
+            // Wait for background image to load (or fail) before proceeding with app flow
+            backgroundLoadedPromise.catch(() => {}).then(() => {
+                // This ensures proceedWithAppInitFlow is called regardless of background image success
+                // but the overall init flow only completes after background is ready.
+            });
         };
 
         // Call init when the DOM is fully loaded
