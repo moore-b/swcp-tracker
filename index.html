@@ -174,13 +174,9 @@
             };
            
             const showView = (viewName) => {
-                ['loadingSection', 'authSection', 'stravaConnectSection', 'appContent'].forEach(section => {
-                    UIElements[section].style.display = 'none';
-                });
+                ['loadingSection', 'authSection', 'stravaConnectSection', 'appContent'].forEach(section => { UIElements[section].style.display = 'none'; });
                 UIElements.logoutButton.style.display = (viewName === 'appContent' || viewName === 'stravaConnectSection') ? 'block' : 'none';
-                if (UIElements[viewName]) {
-                    UIElements[viewName].style.display = 'block';
-                }
+                if (UIElements[viewName]) UIElements[viewName].style.display = 'block';
             };
            
             const renderAuthForm = (isLogin = true) => {
@@ -197,18 +193,14 @@
                     ${isLogin ? '' : stravaFields}
                     <button id="auth-submit-button" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">${isLogin ? 'Login' : 'Register'}</button>
                     <p class="mt-4 text-center text-sm">${isLogin ? "Don't have an account?" : "Already have an account?"} <button id="auth-toggle-button" class="font-medium text-blue-600 hover:underline">${isLogin ? 'Register' : 'Login'}</button></p>`;
-                document.getElementById('auth-submit-button').onclick = isLogin ? handleLogin : handleRegister;
-                document.getElementById('auth-toggle-button').onclick = () => renderAuthForm(!isLogin);
+                document.getElementById('auth-submit-button').addEventListener('click', isLogin ? handleLogin : handleRegister);
+                document.getElementById('auth-toggle-button').addEventListener('click', () => renderAuthForm(!isLogin));
             };
 
-            const handleRegister = async () => { /* ... unchanged ... */ };
+            const handleRegister = async () => { /* ... unchanged, see previous versions ... */ };
             const handleLogin = async () => { /* ... unchanged ... */ };
             const handleLogout = async () => { /* ... unchanged ... */ };
-
-            async function getAccessToken(code) {
-                // ... logic remains the same
-            }
-           
+            async function getAccessToken(code) { /* ... unchanged ... */ }
             async function showMainApp() { /* ... unchanged ... */ }
             async function initializeMap() { /* ... unchanged ... */ }
             function connectToStrava() { /* ... unchanged ... */ }
@@ -233,10 +225,64 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
+                if (user) {
+                    userId = user.uid;
+                    progressDocRef = doc(db, "users", userId);
+                   
+                    if (unsubscribe) unsubscribe();
+                    unsubscribe = onSnapshot(progressDocRef, (doc) => {
+                        const data = doc.data() || {};
+                        userProgress = {
+                            completedPoints: data.completedPoints || [],
+                            processedIds: data.processedIds || []
+                        };
+                        log('Cloud progress data loaded/updated.');
+                        if(swcpGeoJSON) updateProgress(userProgress.completedPoints);
+                    });
+                   
+                    const credDoc = await getDoc(progressDocRef);
+                    if (credDoc.exists()) {
+                        const creds = credDoc.data();
+                        if (creds.stravaClientId && creds.stravaClientSecret) {
+                           sessionStorage.setItem('stravaClientId', atob(creds.stravaClientId));
+                           sessionStorage.setItem('stravaClientSecret', atob(creds.stravaClientSecret));
+                        } else {
+                           log('FATAL: Strava credentials not found in your account! Please log out and register again.', 'error');
+                           handleLogout(); return;
+                        }
+                    }
+
+                    if (authCode) {
+                        showView('loadingSection');
+                        await getAccessToken(authCode);
+                        // Force a re-evaluation of the view now that we have a token
+                        const freshUser = auth.currentUser;
+                        handleAuthState(freshUser);
+                        return;
+                    }
+
+                    if (sessionStorage.getItem('stravaAccessToken')) {
+                        showView('appContent');
+                        await showMainApp();
+                    } else {
+                        showView('stravaConnectSection');
+                    }
+                } else {
+                    showView('authSection');
+                    renderAuthForm();
+                }
+            });
+
+            // This function is defined here but will be called by onAuthStateChanged
+            async function handleAuthState(user) {
+                onAuthStateChanged(auth, async (user) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
+
                 if (authCode && user) {
                     showView('loadingSection');
                     await getAccessToken(authCode);
-                    // The page state will be re-evaluated after redirect
+                    // The onAuthStateChanged will re-fire with the now-valid session token
                     return;
                 }
                
@@ -278,6 +324,9 @@
                     renderAuthForm();
                 }
             });
+            }
+
+
         });
     </script>
 </body>
