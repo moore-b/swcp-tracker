@@ -467,6 +467,9 @@
             // Show map loading overlay
             if (UIElements.mapLoadingOverlay) {
                 UIElements.mapLoadingOverlay.style.display = 'flex';
+                log('Map loading overlay shown.', 'info');
+                // Add a very small delay to allow browser to render the display:flex change
+                await sleep(50); // Pause briefly
             }
 
             // Ensure map element exists before trying to create map
@@ -517,6 +520,7 @@
                 // Ensure overlay is hidden even on error
                 if (UIElements.mapLoadingOverlay) {
                     UIElements.mapLoadingOverlay.style.display = 'none';
+                    log('Map loading overlay hidden.', 'info'); // New log
                 }
             }
         }
@@ -730,7 +734,7 @@
             let updatedDescription;
 
             if (existingDescription.trim().length > 0) {
-                updatedDescription = existingDescription + '\n\n' + newDescriptionText; // Add as new paragraph
+                updatedDescription = newDescriptionText + '\n\n' + existingDescription; // New: Prepend
             } else {
                 updatedDescription = newDescriptionText;
             }
