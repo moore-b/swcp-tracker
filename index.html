@@ -46,7 +46,7 @@
             display: grid;
             /* Default on small screens: Status Log (fixed) + Main Content (flex) */
             grid-template-columns: 250px 1fr;
-            gap: 0.5rem; /* Narrower gap */
+            gap: 0.25rem; /* Narrower gap applied universally */
             min-height: 100vh;
         }
 
@@ -130,7 +130,7 @@
 
         <div id="left-column" class="sticky top-0 h-screen overflow-y-auto bg-gray-900 text-white font-mono text-sm">
             <details open id="status-log-details" class="h-full flex flex-col">
-                <summary class="text-xl font-semibold p-4">Status Log</summary>
+                <summary class="text-xl font-semibold p-4 sticky top-0 bg-gray-900 z-10">Status Log</summary>
                 <div id="status-log" class="flex-grow p-4 overflow-y-auto"></div>
             </details>
         </div>
@@ -244,7 +244,7 @@
             // Define column widths for responsiveness and state
             const statusLogWidthOpen = '250px';
             const statusLogWidthClosed = '0px'; // For fully hidden
-            const activityListWidth = '300px';
+            const activityListWidth = '300px'; // Activities column width
 
             const log = (message, type = 'info') => {
                 const now = new Date().toLocaleTimeString();
@@ -297,16 +297,21 @@
 
                 let columns;
                 if (isMobile) {
+                    // On mobile, only two columns: status log and main content
                     columns = isStatusLogOpen ? `${statusLogWidthOpen} 1fr` : `${statusLogWidthClosed} 1fr`;
+                    // Ensure right column is always hidden on mobile
+                    UIElements.rightColumn.style.display = 'none';
                 } else { // Desktop layout
+                    // 3 columns: status log, main content (map), activities
                     columns = isStatusLogOpen
                         ? `${statusLogWidthOpen} 1fr ${activityListWidth}`
                         : `${statusLogWidthClosed} 1fr ${activityListWidth}`;
+                    // Ensure right column is visible on desktop
+                    UIElements.rightColumn.style.display = 'block';
                 }
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = columns;
 
-                // Adjust display of left column if it's set to 0px width
-                // This is needed because grid-template-columns: 0px might still leave some visual artifacts
+                // Adjust display of left column if its width is 0px
                 UIElements.leftColumn.style.display = isStatusLogOpen ? 'block' : 'none';
             }
 
