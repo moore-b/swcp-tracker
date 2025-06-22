@@ -180,10 +180,7 @@
     <div id="main-layout-container" class="hidden">
 
         <div id="center-column" class="bg-white p-6 rounded-lg shadow-md">
-            <header class="text-center mb-8">
-                <img src="header_logo.png" alt="South West Coast Path Tracker Logo" class="mx-auto h-24 mb-2">
-                <p class="mt-2 text-lg text-gray-600">Log your progress on the 630-mile journey.</p>
-            </header>
+            <header class="text-center"> <img src="header_logo.png" alt="South West Coast Path Tracker Logo" class="mx-auto h-36"> </header>
 
             <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
                 <div class="flex justify-between items-center mb-4 border-b pb-3">
@@ -216,6 +213,9 @@
                         <button data-filter="all" class="filter-btn active">All</button>
                         <button data-filter="Hike" class="filter-btn">Hikes</button>
                     </div>
+                </div>
+                <div id="activities-loading-spinner" class="flex justify-center items-center h-32">
+                    <div class="loader mr-3"></div> <span class="text-gray-500">Loading activities...</span>
                 </div>
                 <div id="activity-list-container" class="space-y-4"></div>
             </div>
@@ -282,14 +282,12 @@
             statusLogDetails: null, // Will be set in init
             leftColumn: null, // Will be set in init
             rightColumn: null, // Will be set in init
-            centerColumn: null // Will be set in init
+            centerColumn: null, // Will be set in init
+            activitiesLoadingSpinner: null // New: Activities loading spinner
         };
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
        
-        // Define column widths for responsiveness and state
-        const activityListWidth = '300px';
-
         // Log function
         const log = (message, type = 'info') => {
             // Ensure UIElements.statusLog is available before trying to use it
@@ -313,19 +311,35 @@
                 return;
             }
 
-            const isStatusLogOpen = UIElements.statusLogDetails.open;
-            const isMobile = window.innerWidth < 768;
+            const isMobile = window.innerWidth < 767; // Corrected breakpoint to match CSS @media (max-width: 767px)
 
             let columns;
             if (isMobile) {
                 columns = '1fr'; // Single column for mobile
-                UIElements.rightColumn.style.display = 'block'; // Ensure right column visible but stacked
-                UIElements.leftColumn.style.display = 'block'; // Ensure left column visible but stacked
+                // Ensure right and left columns are displayed as blocks and not sticky/h-screen on mobile
+                UIElements.rightColumn.style.display = 'block';
+                UIElements.leftColumn.style.display = 'block';
+                UIElements.rightColumn.style.position = 'static';
+                UIElements.rightColumn.style.height = 'auto';
+                UIElements.rightColumn.style.overflowY = 'visible';
+
+                UIElements.leftColumn.style.position = 'static';
+                UIElements.leftColumn.style.height = 'auto';
+                UIElements.leftColumn.style.overflowY = 'visible';
+
             } else { // Desktop layout
                 // 2 columns: left (map/log stack) and right (activities)
                 columns = `2fr 1fr`;
-                UIElements.rightColumn.style.display = 'block'; // Ensure right column visible
-                UIElements.leftColumn.style.display = 'block'; // Ensure left column visible
+                // Ensure right and left columns are displayed as grid items and sticky on desktop
+                UIElements.rightColumn.style.display = 'block'; // Or 'initial' if it was flex before
+                UIElements.leftColumn.style.display = 'block'; // Or 'initial'
+                UIElements.rightColumn.style.position = 'sticky';
+                UIElements.rightColumn.style.height = '100vh';
+                UIElements.rightColumn.style.overflowY = 'auto';
+
+                UIElements.leftColumn.style.position = 'sticky';
+                UIElements.leftColumn.style.height = '100vh'; // The flex-grow within it handles internal height
+                UIElements.leftColumn.style.overflowY = 'auto';
             }
             UIElements.mainLayoutContainer.style.gridTemplateColumns = columns;
         }
@@ -388,7 +402,20 @@
                 loadProgressFromStorage();
                 log('Progress loaded from storage.');
                
+                // Show loading spinner for activities before fetching
+                if (UIElements.activitiesLoadingSpinner) {
+                    UIElements.activitiesLoadingSpinner.style.display = 'flex'; // Show spinner
+                    UIElements.activityListContainer.style.display = 'none'; // Hide activity list while loading
+                }
+
                 allFetchedActivities = await fetchAllActivities();
+               
+                // Hide loading spinner after fetching
+                if (UIElements.activitiesLoadingSpinner) {
+                    UIElements.activitiesLoadingSpinner.style.display = 'none'; // Hide spinner
+                    UIElements.activityListContainer.style.display = 'block'; // Show activity list
+                }
+
                 if (allFetchedActivities) {
                     renderActivityList(allFetchedActivities);
                     log('Activities rendered.');
@@ -451,7 +478,7 @@
                 mainMap.fitBounds(leafletGeoJson.getBounds());
                 UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
                 log('Master map loaded.', 'success');
-            } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); throw e; } // Re-throw to propagate error
+            } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); throw e; }
         }
        
         // Load Progress From Storage function
@@ -817,6 +844,7 @@
             UIElements.leftColumn = document.getElementById('left-column');
             UIElements.rightColumn = document.getElementById('right-column');
             UIElements.centerColumn = document.getElementById('center-column');
+            UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
 
             log('App initialized.');
 
@@ -846,8 +874,13 @@
 
             // Status log details toggle listener (can be added here as statusLogDetails is guaranteed to exist now)
             UIElements.statusLogDetails.addEventListener('toggle', () => {
-                // mainMap.invalidateSize() is handled in showMainApp's resize listener if map exists
+                // mainMap.invalidateSize() is handled by the window resize listener now
             });
+           
+            // Initial call to updateGridLayout on load to set correct mobile/desktop state
+            updateGridLayout();
+            // Add resize listener to window for responsive layout updates
+            window.addEventListener('resize', updateGridLayout);
         };
 
         // Call init when the DOM is fully loaded
