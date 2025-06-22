@@ -575,7 +575,6 @@
                 if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.display = 'block';
                 if (UIElements.activitiesSection) UIElements.activitiesSection.style.display = 'block';
 
-                // Old elements that are now inside new sections:
                 if (UIElements.progressSection) UIElements.progressSection.style.display = 'block';
                 if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block';
                
@@ -1200,7 +1199,7 @@
 
                 if (authCode) {
                     await getAccessToken(authCode);
-                    // getAccessToken reloads the page. This means the current execution context will be destroyed.
+                    // Note: getAccessToken reloads the page. This means the current execution context will be destroyed.
                     // The initialLoadingScreen will show again because init() runs from scratch on the new page load.
                     // The goal is for the *new* init() call to properly transition.
                     return; // Crucially, exit this function, init() will re-run on the next page load.
