@@ -22,7 +22,30 @@
         }
         .activity-map { height: 200px; width: 100%; border-radius: 0.5rem; background-color: #f3f4f6; }
        
-        /* Specific Button Styles (colors) - Base classes now handle common visual effects */
+        /* Unified Button Styling */
+        .btn-base {
+            font-weight: 700 !important; /* Equivalent to font-bold */
+            padding: 0.5rem 0.75rem !important; /* py-2 px-3 */
+            border-radius: 0.5rem !important; /* rounded-lg */
+            outline: none !important; /* Remove default outline */
+            border: none !important; /* Remove default border */
+            cursor: pointer !important; /* Ensure cursor is pointer */
+           
+            /* All transformations, transitions, and shadows for consistent behavior */
+            transform-origin: center !important; /* Swell from center */
+            transition-property: all !important; /* Apply transition to all changing properties */
+            transition-duration: 300ms !important; /* Equivalent to Tailwind's duration-300 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important; /* Equivalent to Tailwind's ease-in-out */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; /* Equivalent to Tailwind's shadow-md */
+        }
+        .btn-base:hover {
+            transform: scale(1.05) !important; /* Equivalent to Tailwind's hover:scale-105 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important; /* Equivalent to Tailwind's hover:shadow-lg */
+        }
+        .btn-base:disabled {
+            background-color: #d1d5db !important; /* Equivalent to Tailwind's disabled:bg-gray-300 */
+        }
+
         .btn-strava {
             background-color: #FC5200; /* Strava Orange */
             color: white;
