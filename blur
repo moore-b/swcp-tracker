@@ -117,11 +117,12 @@
 
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
-            background-color: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
-            backdrop-filter: blur(3px); /* Adjusted blur amount to 3px */
-            -webkit-backdrop-filter: blur(3px); /* For Safari compatibility */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
-        }
+    background-color: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
+    backdrop-filter: blur(10px); /* Increase the blur amount */
+    -webkit-backdrop-filter: blur(10px); /* For Safari compatibility */
+    box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+    border: 1px solid rgba(255, 255, 255, 0.3); /* Optional: Add a subtle border */
+}
 
         /* --- CSS Grid Layout --- */
         #main-layout-container {
