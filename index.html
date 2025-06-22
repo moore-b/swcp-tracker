@@ -8,7 +8,6 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
    
-    <!-- ** FIX ** Added 'defer' to ensure scripts load before they are used -->
     <!-- Leaflet.js for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
@@ -109,368 +108,283 @@
     </div>
 
     <script>
-        // --- CONFIGURATION & CONSTANTS ---
-        // ** FIX ** Updated to match your new filename.
-        const SWCP_GPX_URL = 'swcp.gpx';
-        const DISTANCE_THRESHOLD_METERS = 100;
-        const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
-        const COMPLETED_POINTS_KEY = 'swcp_completed_points';
-       
-        // --- DOM ELEMENTS (declared early) ---
-        let clientIdInput, clientSecretInput, connectButton, configSection, progressSection, analyzeButton,
-            analyzeButtonText, resetButton, statusLog, stravaUserInfo, progressBar,
-            progressPercentage, completedDistanceEl, totalDistanceEl;
+        // ** FINAL FIX ** Wrap all code in a DOMContentLoaded listener
+        // This ensures all HTML elements and deferred scripts are loaded before our code runs.
+        document.addEventListener('DOMContentLoaded', () => {
 
-        // --- GLOBAL STATE ---
-        let map;
-        let swcpGeoJSON;
-        let swcpTotalDistance = 0;
-        let completedSegmentsLayer;
-
-        // --- HELPER FUNCTIONS ---
-        const log = (message, type = 'info') => {
-            if (!statusLog) return;
-            const now = new Date().toLocaleTimeString();
-            const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-300');
-            statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${color}">${message}</span></p>`;
-            statusLog.scrollTop = statusLog.scrollHeight;
-        };
-        const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-
-        // --- CORE LOGIC ---
-        window.onload = async () => {
-            // Assign DOM elements now that the document is loaded
-            clientIdInput = document.getElementById('clientId');
-            clientSecretInput = document.getElementById('clientSecret');
-            connectButton = document.getElementById('connect-button');
-            configSection = document.getElementById('config-section');
-            progressSection = document.getElementById('progress-section');
-            analyzeButton = document.getElementById('analyze-button');
-            analyzeButtonText = document.getElementById('analyze-button-text');
-            resetButton = document.getElementById('reset-button');
-            statusLog = document.getElementById('status-log');
-            stravaUserInfo = document.getElementById('strava-user-info');
-            progressBar = document.getElementById('progress-bar');
-            progressPercentage = document.getElementById('progress-percentage');
-            completedDistanceEl = document.getElementById('completed-distance');
-            totalDistanceEl = document.getElementById('total-distance');
-
-            try {
-                log('Page loaded. Initializing...');
-               
-                // Set up event listeners
-                clientIdInput.addEventListener('input', checkInputs);
-                clientSecretInput.addEventListener('input', checkInputs);
-                connectButton.addEventListener('click', connectToStrava);
-                resetButton.addEventListener('click', resetProgress);
-                analyzeButton.addEventListener('click', analyzeAllActivities);
-               
-                // Continue with initialization
-                clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
-                clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
-                checkInputs();
-
-                const urlParams = new URLSearchParams(window.location.search);
-                const authCode = urlParams.get('code');
-
-                if (authCode) {
-                    log('Authorization code found. Getting access token...');
-                    await getAccessToken(authCode);
-                }
-               
-                if (sessionStorage.getItem('stravaAccessToken')) {
-                    log('Access token found. Showing progress section.', 'success');
-                    await showProgressSection();
-                } else {
-                    log('No access token. Please connect to Strava.');
-                }
-            } catch (e) {
-                log(`A critical error occurred on page load: ${e.message}`, 'error');
-                console.error(e);
-            }
-        };
-
-        function checkInputs() {
-            if (connectButton) {
-                connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
-            }
-        }
-       
-        // --- STRAVA AUTHENTICATION ---
-        function connectToStrava() {
-            log('Connect button clicked! Preparing to redirect...');
-            try {
-                sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
-                sessionStorage.setItem('stravaClientSecret', clientSecretInput.value.trim());
-                const redirectUri = window.location.origin + window.location.pathname;
-                const scope = 'read,activity:read_all,activity:write';
-                const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientIdInput.value.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
-                window.location.href = authUrl;
-            } catch (e) {
-                log(`An error occurred in the connect function: ${e.message}`, 'error');
-            }
-        }
-
-        async function getAccessToken(code) {
-            try {
-                const response = await fetch('https://www.strava.com/oauth/token', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        client_id: sessionStorage.getItem('stravaClientId'),
-                        client_secret: sessionStorage.getItem('stravaClientSecret'),
-                        code: code,
-                        grant_type: 'authorization_code',
-                    }),
-                });
-                const data = await response.json();
-                if (data.access_token) {
-                    log('Success! Access Token received.', 'success');
-                    sessionStorage.setItem('stravaAccessToken', data.access_token);
-                    sessionStorage.setItem('stravaRefreshToken', data.refresh_token);
-                    sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                    window.location.href = window.location.pathname;
-                } else {
-                    log(`Error getting access token: ${data.message}`, 'error');
-                }
-            } catch (error) {
-                log(`Network error during token exchange: ${error.message}`, 'error');
-            }
-        }
-       
-        // --- UI AND MAP LOGIC ---
-        async function showProgressSection() {
-            configSection.style.display = 'none';
-            progressSection.style.display = 'block';
-
-            const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete'));
-            if(athlete) {
-                stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-            }
-            await initializeMap();
-            loadProgressFromStorage();
-        }
-
-        async function initializeMap() {
-            log('Initializing map...');
-            map = L.map('map').setView([50.5, -4.0], 8);
-            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-            }).addTo(map);
-
-            completedSegmentsLayer = L.layerGroup().addTo(map);
-
-            log('Fetching SWCP route data from local file...');
-            try {
-                const response = await fetch(SWCP_GPX_URL);
-                if (!response.ok) throw new Error(`HTTP error! Could not find GPX file. Did you upload it with the correct name? Status: ${response.status}`);
-                const gpxData = await response.text();
-                log('Route data received. Parsing GPX file...', 'success');
-               
-                return new Promise((resolve, reject) => {
-                    // Check if gpxParse is available
-                    if (typeof gpxParse === 'undefined') {
-                        return reject(new Error('GPX parsing library failed to load.'));
-                    }
-                    gpxParse.parseGpx(gpxData, (error, data) => {
-                        if (error) {
-                            reject(new Error(`GPX Parse Error: ${error}`));
-                            return;
-                        }
-                       
-                        const points = data.tracks[0].segments[0].map(p => [p.lon, p.lat]);
-                        swcpGeoJSON = turf.lineString(points);
-                        swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
-                        totalDistanceEl.textContent = swcpTotalDistance.toFixed(2);
-                       
-                        const leafletPoints = points.map(p => [p[1], p[0]]);
-                        const swcpPolyline = L.polyline(leafletPoints, { color: 'blue', weight: 3, opacity: 0.7 }).addTo(map);
-                        map.fitBounds(swcpPolyline.getBounds());
-                        log('Path data loaded successfully.', 'success');
-                        resolve();
-                    });
-                });
-            } catch(e) {
-                log(e.message, 'error');
-                console.error(e);
-            }
-        }
-       
-        // --- DATA PERSISTENCE ---
-        function loadProgressFromStorage() {
-            const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-            log(`Loaded ${completedPoints.length} completed points from storage.`);
-            updateProgress(completedPoints, false);
-        }
-       
-        function resetProgress() {
-            localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
-            localStorage.removeItem(COMPLETED_POINTS_KEY);
-            log('Progress has been reset. All activities will be re-analyzed on the next run.', 'success');
-            updateProgress([], false);
-        }
-
-        // --- MAIN ANALYSIS LOGIC ---
-        async function analyzeAllActivities() {
-            log('Analysis started...');
-            setLoading(true);
+            // --- CONFIGURATION & CONSTANTS ---
+            const SWCP_GPX_URL = 'swcp.gpx';
+            const DISTANCE_THRESHOLD_METERS = 100;
+            const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
+            const COMPLETED_POINTS_KEY = 'swcp_completed_points';
            
-            const processedIds = JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]');
-            log(`Found ${processedIds.length} previously processed activities.`);
+            // --- DOM ELEMENTS ---
+            const clientIdInput = document.getElementById('clientId');
+            const clientSecretInput = document.getElementById('clientSecret');
+            const connectButton = document.getElementById('connect-button');
+            const configSection = document.getElementById('config-section');
+            const progressSection = document.getElementById('progress-section');
+            const analyzeButton = document.getElementById('analyze-button');
+            const analyzeButtonText = document.getElementById('analyze-button-text');
+            const resetButton = document.getElementById('reset-button');
+            const statusLog = document.getElementById('status-log');
+            const stravaUserInfo = document.getElementById('strava-user-info');
+            const progressBar = document.getElementById('progress-bar');
+            const progressPercentage = document.getElementById('progress-percentage');
+            const completedDistanceEl = document.getElementById('completed-distance');
+            const totalDistanceEl = document.getElementById('total-distance');
 
-            const activities = await fetchAllActivities();
-            if (!activities) {
-                setLoading(false);
-                return;
-            }
+            // --- GLOBAL STATE ---
+            let map;
+            let swcpGeoJSON;
+            let swcpTotalDistance = 0;
+            let completedSegmentsLayer;
 
-            const newActivities = activities.filter(a => !processedIds.includes(a.id));
-            if (newActivities.length === 0) {
-                log('No new walks or hikes found to analyze.', 'info');
-                setLoading(false);
-                return;
-            }
-
-            log(`Found ${newActivities.length} new activities to analyze...`);
-            let newlyCompletedPoints = [];
-            let newProcessedIds = [...processedIds];
-
-            for (const activity of newActivities) {
-                log(`Analyzing: "${activity.name}" (ID: ${activity.id})`);
-                await sleep(500);
-                const stream = await getActivityStream(activity.id);
-                if (stream) {
-                    const activityPoints = stream.map(p => [p[1], p[0]]);
-                    const activityLine = turf.lineString(activityPoints);
-                    const matchedPoints = findOverlappingPoints(activityLine);
-                    if (matchedPoints.length > 0) {
-                        log(`-> Found ${matchedPoints.length} matching points in this activity.`, 'success');
-                        newlyCompletedPoints.push(...matchedPoints);
-                    }
-                }
-                newProcessedIds.push(activity.id);
-            }
+            // --- HELPER FUNCTIONS ---
+            const log = (message, type = 'info') => {
+                if (!statusLog) return;
+                const now = new Date().toLocaleTimeString();
+                const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-300');
+                statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${color}">${message}</span></p>`;
+                statusLog.scrollTop = statusLog.scrollHeight;
+            };
+            const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
            
-            const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-            const allCompletedPoints = oldCompletedPoints.concat(newlyCompletedPoints);
-
-            localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
-            localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(newProcessedIds));
-
-            log('Analysis complete. Updating map and progress.', 'success');
-            updateProgress(allCompletedPoints, true);
-            setLoading(false);
-        }
-
-        function setLoading(isLoading) {
-             if (isLoading) {
-                analyzeButton.disabled = true;
-                analyzeButtonText.innerHTML = '<span class="loader"></span>Analyzing...';
-            } else {
-                analyzeButton.disabled = false;
-                analyzeButtonText.innerHTML = 'Analyze New Activities';
-            }
-        }
-
-        async function fetchAllActivities() {
-            const accessToken = sessionStorage.getItem('stravaAccessToken');
-            let allActivities = [];
-            let page = 1;
-            const perPage = 100;
-           
-            while(true) {
+            // --- INITIALIZATION ---
+            const init = async () => {
                 try {
-                    log(`Fetching activities page ${page}...`);
-                    const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, {
-                        headers: { 'Authorization': `Bearer ${accessToken}` }
-                    });
-                    if (!response.ok) throw new Error(await response.text());
+                    log('Page and scripts loaded. Initializing app...');
                    
-                    const activities = await response.json();
-                    if (activities.length === 0) break;
+                    // Set up event listeners
+                    clientIdInput.addEventListener('input', checkInputs);
+                    clientSecretInput.addEventListener('input', checkInputs);
+                    connectButton.addEventListener('click', connectToStrava);
+                    resetButton.addEventListener('click', resetProgress);
+                    analyzeButton.addEventListener('click', analyzeAllActivities);
                    
-                    allActivities.push(...activities);
-                    page++;
-                } catch(e) {
-                    log(`Failed to fetch activities: ${e.message}`, 'error');
-                    return null;
-                }
-            }
-            return allActivities.filter(a => ['Walk', 'Hike'].includes(a.type));
-        }
+                    // Continue with initialization
+                    clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
+                    clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
+                    checkInputs();
 
-        async function getActivityStream(activityId) {
-            const accessToken = sessionStorage.getItem('stravaAccessToken');
-            try {
-                const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=latlng&key_by_type=true`, {
-                     headers: { 'Authorization': `Bearer ${accessToken}` }
-                });
-                if (!response.ok) return null;
-                const data = await response.json();
-                return data.latlng ? data.latlng.data : null;
-            } catch (e) {
-                log(`Error fetching stream for activity ${activityId}: ${e.message}`, 'error');
-                return null;
-            }
-        }
-       
-        function findOverlappingPoints(activityLine) {
-            const matchedPoints = [];
-            if (!swcpGeoJSON) {
-                log('SWCP path data not loaded yet, cannot find overlaps.', 'error');
-                return [];
-            }
-            for (const pointCoords of activityLine.geometry.coordinates) {
-                 const point = turf.point(pointCoords);
-                 const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point, {units: 'meters'});
-                 if (turf.distance(point, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
-                    matchedPoints.push(nearestPointOnLine.geometry.coordinates);
-                 }
-            }
-            return matchedPoints;
-        }
+                    const urlParams = new URLSearchParams(window.location.search);
+                    const authCode = urlParams.get('code');
 
-        function updateProgress(completedPoints, isNewAnalysis) {
-            completedSegmentsLayer.clearLayers();
-           
-            let totalCompletedDistance = 0;
-            let percentage = 0;
-
-            if (completedPoints.length > 1) {
-                const uniquePoints = completedPoints.reduce((acc, point) => {
-                    if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) {
-                        acc.push(point);
+                    if (authCode) {
+                        log('Authorization code found. Getting access token...');
+                        await getAccessToken(authCode);
                     }
-                    return acc;
-                }, []);
-               
-                uniquePoints.sort((a, b) => {
-                    const locA = turf.nearestPointOnLine(swcpGeoJSON, a).properties.location;
-                    const locB = turf.nearestPointOnLine(swcpGeoJSON, b).properties.location;
-                    return locA - locB;
-                });
-
-                if (uniquePoints.length > 1) {
-                    const completedLine = turf.lineString(uniquePoints);
-                    totalCompletedDistance = turf.length(completedLine, { units: 'kilometers' });
                    
-                    const leafletPoints = uniquePoints.map(p => [p[1], p[0]]);
-                    L.polyline(leafletPoints, { color: 'green', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+                    if (sessionStorage.getItem('stravaAccessToken')) {
+                        log('Access token found. Showing progress section.', 'success');
+                        await showProgressSection();
+                    } else {
+                        log('No access token. Please connect to Strava.');
+                    }
+                } catch (e) {
+                    log(`A critical error occurred on page load: ${e.message}`, 'error');
+                    console.error(e);
+                }
+            };
+           
+            function checkInputs() {
+                if (connectButton) {
+                    connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
+                }
+            }
+       
+            // --- STRAVA AUTHENTICATION ---
+            function connectToStrava() {
+                log('Connect button clicked! Preparing to redirect...');
+                try {
+                    sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
+                    sessionStorage.setItem('stravaClientSecret', clientSecretInput.value.trim());
+                    const redirectUri = window.location.origin + window.location.pathname;
+                    const scope = 'read,activity:read_all,activity:write';
+                    const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientIdInput.value.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
+                    window.location.href = authUrl;
+                } catch (e) {
+                    log(`An error occurred in the connect function: ${e.message}`, 'error');
+                }
+            }
 
-                    percentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
+            async function getAccessToken(code) {
+                try {
+                    const response = await fetch('https://www.strava.com/oauth/token', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            client_id: sessionStorage.getItem('stravaClientId'),
+                            client_secret: sessionStorage.getItem('stravaClientSecret'),
+                            code: code,
+                            grant_type: 'authorization_code',
+                        }),
+                    });
+                    const data = await response.json();
+                    if (data.access_token) {
+                        log('Success! Access Token received.', 'success');
+                        sessionStorage.setItem('stravaAccessToken', data.access_token);
+                        sessionStorage.setItem('stravaRefreshToken', data.refresh_token);
+                        sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
+                        window.location.href = window.location.pathname;
+                    } else {
+                        log(`Error getting access token: ${data.message}`, 'error');
+                    }
+                } catch (error) {
+                    log(`Network error during token exchange: ${error.message}`, 'error');
                 }
             }
            
-            completedDistanceEl.textContent = totalCompletedDistance.toFixed(2);
-            progressPercentage.textContent = percentage.toFixed(2) + '%';
-            progressBar.style.width = `${percentage}%`;
+            // --- UI AND MAP LOGIC ---
+            async function showProgressSection() {
+                configSection.style.display = 'none';
+                progressSection.style.display = 'block';
 
-            if (isNewAnalysis && completedPoints.length > 1) {
-                 log(`Total progress updated: ${totalCompletedDistance.toFixed(2)} km (${percentage.toFixed(2)}%)`, 'success');
-            } else if (!isNewAnalysis && completedPoints.length < 2) {
-                log('No progress to display.', 'info');
+                const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete'));
+                if(athlete) {
+                    stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+                }
+                await initializeMap();
+                loadProgressFromStorage();
             }
-        }
-    </script>
-</body>
-</html>
+
+            async function initializeMap() {
+                log('Initializing map...');
+                map = L.map('map').setView([50.5, -4.0], 8);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                }).addTo(map);
+
+                completedSegmentsLayer = L.layerGroup().addTo(map);
+
+                log('Fetching SWCP route data from local file...');
+                try {
+                    const response = await fetch(SWCP_GPX_URL);
+                    if (!response.ok) throw new Error(`HTTP error! Could not find GPX file. Did you upload it with the correct name ('${SWCP_GPX_URL}')? Status: ${response.status}`);
+                    const gpxData = await response.text();
+                    log('Route data received. Parsing GPX file...', 'success');
+                   
+                    return new Promise((resolve, reject) => {
+                        if (typeof gpxParse === 'undefined' || typeof turf === 'undefined' || typeof L === 'undefined') {
+                           return reject(new Error('A required library (Leaflet, Turf, or GPX-Parse) failed to load.'));
+                        }
+                        gpxParse.parseGpx(gpxData, (error, data) => {
+                            if (error) {
+                                reject(new Error(`GPX Parse Error: ${error}`));
+                                return;
+                            }
+                           
+                            const points = data.tracks[0].segments[0].map(p => [p.lon, p.lat]);
+                            swcpGeoJSON = turf.lineString(points);
+                            swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
+                            totalDistanceEl.textContent = swcpTotalDistance.toFixed(2);
+                           
+                            const leafletPoints = points.map(p => [p[1], p[0]]);
+                            const swcpPolyline = L.polyline(leafletPoints, { color: 'blue', weight: 3, opacity: 0.7 }).addTo(map);
+                            map.fitBounds(swcpPolyline.getBounds());
+                            log('Path data loaded successfully.', 'success');
+                            resolve();
+                        });
+                    });
+                } catch(e) {
+                    log(e.message, 'error');
+                    console.error(e);
+                }
+            }
+           
+            // --- DATA PERSISTENCE ---
+            function loadProgressFromStorage() {
+                const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
+                log(`Loaded ${completedPoints.length} completed points from storage.`);
+                updateProgress(completedPoints, false);
+            }
+           
+            function resetProgress() {
+                localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
+                localStorage.removeItem(COMPLETED_POINTS_KEY);
+                log('Progress has been reset. All activities will be re-analyzed on the next run.', 'success');
+                updateProgress([], false);
+            }
+
+            // --- MAIN ANALYSIS LOGIC ---
+            async function analyzeAllActivities() {
+                log('Analysis started...');
+                setLoading(true);
+               
+                const processedIds = JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]');
+                log(`Found ${processedIds.length} previously processed activities.`);
+
+                const activities = await fetchAllActivities();
+                if (!activities) {
+                    setLoading(false);
+                    return;
+                }
+
+                const newActivities = activities.filter(a => !processedIds.includes(a.id));
+                if (newActivities.length === 0) {
+                    log('No new walks or hikes found to analyze.', 'info');
+                    setLoading(false);
+                    return;
+                }
+
+                log(`Found ${newActivities.length} new activities to analyze...`);
+                let newlyCompletedPoints = [];
+                let newProcessedIds = [...processedIds];
+
+                for (const activity of newActivities) {
+                    log(`Analyzing: "${activity.name}" (ID: ${activity.id})`);
+                    await sleep(500);
+                    const stream = await getActivityStream(activity.id);
+                    if (stream) {
+                        const activityPoints = stream.map(p => [p[1], p[0]]);
+                        const activityLine = turf.lineString(activityPoints);
+                        const matchedPoints = findOverlappingPoints(activityLine);
+                        if (matchedPoints.length > 0) {
+                            log(`-> Found ${matchedPoints.length} matching points in this activity.`, 'success');
+                            newlyCompletedPoints.push(...matchedPoints);
+                        }
+                    }
+                    newProcessedIds.push(activity.id);
+                }
+               
+                const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
+                const allCompletedPoints = oldCompletedPoints.concat(newlyCompletedPoints);
+
+                localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
+                localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(newProcessedIds));
+
+                log('Analysis complete. Updating map and progress.', 'success');
+                updateProgress(allCompletedPoints, true);
+                setLoading(false);
+            }
+
+            function setLoading(isLoading) {
+                 if (isLoading) {
+                    analyzeButton.disabled = true;
+                    analyzeButtonText.innerHTML = '<span class="loader"></span>Analyzing...';
+                } else {
+                    analyzeButton.disabled = false;
+                    analyzeButtonText.innerHTML = 'Analyze New Activities';
+                }
+            }
+
+            async function fetchAllActivities() {
+                const accessToken = sessionStorage.getItem('stravaAccessToken');
+                let allActivities = [];
+                let page = 1;
+                const perPage = 100;
+               
+                while(true) {
+                    try {
+                        log(`Fetching activities page ${page}...`);
+                        const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, {
+                            headers: { 'Authorization': `Bearer ${accessToken}` }
+                        });
+                        if (!response.ok) throw new Error(await response.text());
+                       
+                        const activities = await response.json();
+                        if (activities.length === 0) break;
+                       
+                        allActivities.push(...activities);
+                        page++;
+                    } c
