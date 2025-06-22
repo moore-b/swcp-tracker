@@ -22,17 +22,7 @@
         }
         .activity-map { height: 200px; width: 100%; border-radius: 0.5rem; background-color: #f3f4f6; }
        
-        /* Unified Button Styling */
-        .btn-base {
-            font-weight: 700; /* Equivalent to font-bold */
-            padding: 0.5rem 0.75rem; /* py-2 px-3 */
-            border-radius: 0.5rem; /* rounded-lg */
-            /* All transformations, transitions, and shadows for consistent behavior */
-            transform-origin: center; /* Swell from center */
-            @apply transform transition duration-300;
-            @apply shadow-md hover:shadow-lg hover:scale-105; /* Shadow and swell on hover */
-            @apply disabled:bg-gray-300; /* Ensure disabled state looks consistent */
-        }
+        /* Specific Button Styles (colors) - Base classes now handle common visual effects */
         .btn-strava {
             background-color: #FC5200; /* Strava Orange */
             color: white;
@@ -90,7 +80,7 @@
             display: grid;
             /* Desktop: 2 columns (Map/Status stack: 2fr | Activities: 1fr) */
             grid-template-columns: 2fr 1fr;
-            grid-template-rows: auto auto; /* Rows for Map content and Status Log content */
+            grid-template-rows: auto auto auto; /* Rows for Map content and Status Log content */
             gap: 1rem; /* Increased gap for more breathing room */
             min-height: 100vh;
             padding: 1rem; /* Padding around the whole grid to ensure borders are visible */
@@ -231,9 +221,8 @@
     <div id="main-layout-container" class="hidden">
 
         <div id="header-tile" class="bg-white p-6 rounded-lg shadow-lg text-center">
-            <h1 class="text-4xl font-bold text-gray-900 flex items-center justify-center">
+            <h1 class="text-4xl font-bold text-gray-900">
                 South West Coast Path Tracker
-                <img src="acorn_logo.png" alt="Acorn Icon" class="w-8 h-8 ml-2">
             </h1>
         </div>
 
@@ -390,7 +379,7 @@
             const isMobile = window.innerWidth < 767; // Corrected breakpoint to match CSS @media (max-width: 767px)
 
             if (isMobile) {
-                // Mobile: Single column, stacked Header, Map, Activities, Status Log
+                // Set styles for mobile (single column, non-sticky)
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
                 UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto'; /* 4 rows */
 
@@ -417,7 +406,7 @@
                 UIElements.leftColumn.style.padding = '1rem'; /* Adjust padding for mobile */
 
             } else { // Desktop layout
-                // Desktop: 2 columns (Header/Map/Status stacked | Activities)
+                // Set styles for desktop (2 columns, sticky sidebars)
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = `2fr 1fr`;
                 UIElements.mainLayoutContainer.style.gridTemplateRows = `auto 1fr auto`; /* Header (auto), Map (1fr), Status (auto) */
 
@@ -1074,7 +1063,7 @@
             UIElements.activitySearchBox = document.getElementById('activity-search-box');
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
             UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
-            UIElements.headerTile = document.getElementById('header-tile'); // New reference for the header tile
+            UIElements.headerTile = document.getElementById('header-tile');
 
             log('App initialized.');
 
