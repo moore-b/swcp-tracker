@@ -84,9 +84,9 @@
             /* Desktop: 2 columns (Map/Status stack: 2fr | Activities: 1fr) */
             grid-template-columns: 2fr 1fr;
             grid-template-rows: auto auto; /* Rows for Map content and Status Log content */
-            gap: 1rem; /* Increased gap for more breathing room */
+            gap: 0.25rem; /* Very narrow gap between grid items */
             min-height: 100vh;
-            padding: 1rem; /* Padding around the whole grid to ensure borders are visible */
+            padding: 0.25rem; /* Small padding around the whole grid to ensure borders are visible */
         }
 
         /* Placement of items within the main grid for desktop */
@@ -1084,8 +1084,8 @@
 
             // Add event listeners (now that UIElements are populated)
             if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
-            if (UIlements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
-            if (UIlements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
+            if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
+            if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
             if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
             if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
             if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
