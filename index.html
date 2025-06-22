@@ -197,26 +197,31 @@
                 document.getElementById('auth-toggle-button').addEventListener('click', () => renderAuthForm(!isLogin));
             };
 
-            const handleRegister = async () => { /* ... unchanged ... */ };
-            const handleLogin = async () => { /* ... unchanged ... */ };
-            const handleLogout = async () => { /* ... unchanged ... */ };
-
-            async function getAccessToken(code) { /* ... unchanged ... */ }
-            async function showMainApp() { /* ... unchanged ... */ }
-            async function initializeMap() { /* ... unchanged ... */ }
-            function connectToStrava() { /* ... unchanged ... */ }
-            function resetProgress() { /* ... unchanged ... */ }
-            function handleFilterClick(e) { /* ... unchanged ... */ }
-            function renderActivityList(activities) { /* ... unchanged ... */ }
-            async function analyzeSingleActivity(activity, button) { /* ... unchanged ... */ }
-            async function updateSingleTitle(activity, button, nameEl) { /* ... unchanged ... */ }
-            async function updateActivity(id, newTitle) { /* ... unchanged ... */ }
-            async function fetchAllActivities() { /* ... unchanged ... */ }
-            async function getActivityStream(activityId) { /* ... unchanged ... */ }
-            function findOverlappingPoints(activityLine) { /* ... unchanged ... */ }
-            function updateProgress(completedPoints) { /* ... unchanged ... */ }
+            const handleRegister = async () => { /* ... see previous versions for implementation ... */ };
+            const handleLogin = async () => { /* ... see previous versions for implementation ... */ };
+            const handleLogout = async () => { /* ... see previous versions for implementation ... */ };
+            async function getAccessToken(code) { /* ... see previous versions for implementation ... */ }
+            async function showMainApp() { /* ... see previous versions for implementation ... */ }
+            async function initializeMap() { /* ... see previous versions for implementation ... */ }
+            function connectToStrava() { /* ... see previous versions for implementation ... */ }
+            function resetProgress() { /* ... see previous versions for implementation ... */ }
+            function handleFilterClick(e) { /* ... see previous versions for implementation ... */ }
+            function renderActivityList(activities) { /* ... see previous versions for implementation ... */ }
+            async function analyzeSingleActivity(activity, button) { /* ... see previous versions for implementation ... */ }
+            async function updateSingleTitle(activity, button, nameEl) { /* ... see previous versions for implementation ... */ }
+            async function updateActivity(id, newTitle) { /* ... see previous versions for implementation ... */ }
+            async function fetchAllActivities() { /* ... see previous versions for implementation ... */ }
+            async function getActivityStream(activityId) { /* ... see previous versions for implementation ... */ }
+            function findOverlappingPoints(activityLine) { /* ... see previous versions for implementation ... */ }
+            function updateProgress(completedPoints) { /* ... see previous versions for implementation ... */ }
            
-            async function handleAuthState(user) {
+            // --- MAIN APP ENTRY POINT ---
+            UIElements.logoutButton.addEventListener('click', handleLogout);
+            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
+            UIElements.filterButtons.addEventListener('click', handleFilterClick);
+            UIElements.resetButton.addEventListener('click', resetProgress);
+           
+            onAuthStateChanged(auth, async (user) => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
@@ -250,7 +255,8 @@
                     if (authCode) {
                         showView('loadingSection');
                         await getAccessToken(authCode);
-                        return; // onAuthStateChanged will re-fire with the new state
+                        // The onAuthStateChanged will re-fire with the new state
+                        return;
                     }
 
                     if (sessionStorage.getItem('stravaAccessToken')) {
@@ -263,15 +269,7 @@
                     showView('authSection');
                     renderAuthForm();
                 }
-            }
-
-            // --- MAIN APP ENTRY POINT ---
-            UIElements.logoutButton.addEventListener('click', handleLogout);
-            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
-            UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            UIElements.resetButton.addEventListener('click', resetProgress);
-           
-            onAuthStateChanged(auth, handleAuthState);
+            });
         });
     </script>
 </body>
