@@ -45,6 +45,11 @@
         </header>
 
         <main id="main-content">
+             <div id="loading-section" class="text-center p-8">
+                <div class="loader inline-block"></div>
+                <p class="text-gray-600">Loading Application...</p>
+            </div>
+
             <div id="auth-section" class="hidden bg-white p-6 rounded-lg shadow-md mb-8">
                 <div id="auth-container"></div>
             </div>
@@ -119,6 +124,7 @@
             const DISTANCE_THRESHOLD_METERS = 100;
            
             const UIElements = {
+                loadingSection: document.getElementById('loading-section'),
                 authSection: document.getElementById('auth-section'),
                 authContainer: document.getElementById('auth-container'),
                 stravaConnectSection: document.getElementById('strava-connect-section'),
@@ -159,6 +165,21 @@
 
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
            
+            // --- NEW VIEW MANAGER ---
+            const showView = (viewName) => {
+                ['loadingSection', 'authSection', 'stravaConnectSection', 'appContent'].forEach(section => {
+                    UIElements[section].style.display = 'none';
+                });
+                UIElements.logoutButton.style.display = 'none';
+
+                if (viewName === 'appContent') {
+                     UIElements.logoutButton.style.display = 'block';
+                }
+                if (UIElements[viewName]) {
+                    UIElements[viewName].style.display = 'block';
+                }
+            };
+
             const renderAuthForm = (isLogin = true) => {
                 const stravaFields = `
                     <div class="mt-4 pt-4 border-t">
@@ -225,6 +246,8 @@
                         sessionStorage.setItem('stravaAccessToken', data.access_token);
                         sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
                         window.history.pushState({}, document.title, window.location.pathname);
+                        // Manually trigger view update now that we have the token
+                        updateView(auth.currentUser);
                     } else { log(`Error getting Strava access token: ${data.message}`, 'error'); }
                 } catch (error) { log(`Network error during token exchange: ${error.message}`, 'error'); }
             }
@@ -232,7 +255,6 @@
             async function showMainApp() {
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-               
                 await initializeMap();
                 allFetchedActivities = await fetchAllActivities();
                 if (allFetchedActivities) renderActivityList(allFetchedActivities);
@@ -400,19 +422,7 @@
                 UIElements.progressBar.style.width = `${currentPercentage}%`;
             }
 
-            // ** NEW, SIMPLIFIED STARTUP LOGIC **
-            UIElements.logoutButton.addEventListener('click', handleLogout);
-            UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            UIElements.resetButton.addEventListener('click', resetProgress);
-            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
-
-            onAuthStateChanged(auth, async (user) => {
-                // Hide all main sections by default on any auth change
-                UIElements.authSection.style.display = 'none';
-                UIElements.stravaConnectSection.style.display = 'none';
-                UIElements.appContent.style.display = 'none';
-                UIElements.logoutButton.style.display = 'none';
-               
+            async function updateView(user) {
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
@@ -426,7 +436,7 @@
                     unsubscribe = onSnapshot(progressDocRef, (doc) => {
                         userProgress = doc.exists() ? doc.data() : { completedPoints: [], processedIds: [] };
                         log('Cloud progress data loaded/updated.');
-                        if (swcpGeoJSON) updateProgress(userProgress.completedPoints || []);
+                        if(swcpGeoJSON) updateProgress(userProgress.completedPoints || []);
                     });
                    
                     const credDoc = await getDoc(credentialsDocRef);
@@ -435,31 +445,38 @@
                         sessionStorage.setItem('stravaClientId', atob(creds.clientId));
                         sessionStorage.setItem('stravaClientSecret', atob(creds.clientSecret));
                     } else {
-                        log('FATAL: Strava credentials not found in your account!', 'error');
+                        log('FATAL: Strava credentials not found in your account! Please log out and register again.', 'error');
                         handleLogout();
                         return;
                     }
 
-                    UIElements.logoutButton.style.display = 'block';
-
                     if (authCode) {
+                        showView('loadingSection');
                         await getAccessToken(authCode);
-                        // The onAuthStateChanged will re-fire after the page reloads from getAccessToken
+                        // The onAuthStateChanged will re-fire with the now-valid session token
                         return;
                     }
 
                     if (sessionStorage.getItem('stravaAccessToken')) {
-                        UIElements.appContent.style.display = 'block';
+                        showView('appContent');
                         await showMainApp();
                     } else {
-                        UIElements.stravaConnectSection.style.display = 'block';
+                        showView('stravaConnectSection');
                     }
                 } else {
                     // Not logged in
-                    UIElements.authSection.style.display = 'block';
+                    showView('authSection');
                     renderAuthForm();
                 }
-            });
+            }
+
+            // --- MAIN APP ENTRY POINT ---
+            UIElements.logoutButton.addEventListener('click', handleLogout);
+            UIElements.filterButtons.addEventListener('click', handleFilterClick);
+            UIElements.resetButton.addEventListener('click', resetProgress);
+            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
+           
+            onAuthStateChanged(auth, updateView);
         });
     </script>
 </body>
