@@ -1,4 +1,4 @@
-x<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -19,7 +19,7 @@ x<!DOCTYPE html>
         .btn-strava { background-color: #FC5200; }
         .btn-strava:hover { background-color: #e04a00; }
         .loader {
-            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; /* Corrected border width for loader */
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; /* Corrected border-top to 4px */
             width: 24px; height: 24px; animation: spin 1s linear infinite;
             display: inline-block; margin-right: 10px;
         }
@@ -240,7 +240,7 @@ x<!DOCTYPE html>
                         <li data-elevation><strong>Elevation Gain:</strong> 0 m</li>
                     </ul>
                     <div class="mt-4 space-y-2">
-                        <button data-analyze-btn class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300">Analyze for SWCP</button>
+                        <button data-analyze-btn data-activity-id="" class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300">Analyze for SWCP</button>
                         <button data-update-btn class="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition">Update Title</button>
                     </div>
                 </div>
@@ -252,10 +252,13 @@ x<!DOCTYPE html>
         // Constants (moved outside to be globally accessible within the script scope)
         const SWCP_GEOJSON_URL = 'routes.geojson';
         const DISTANCE_THRESHOLD_METERS = 100;
-        const ACTIVITY_SAMPLE_INTERVAL_METERS = 50;
+        const ACTIVITY_SAMPLE_INTERVAL_METERS = 100; // Changed sample interval to 100m
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
         const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_';
+        const CACHED_ACTIVITIES_KEY = 'swcp_cached_activities';
+        const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
+        const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour (adjust as needed for 24 * 60 * 60 * 1000 for 24 hours)
 
         // UIElements (defined globally to be accessible by all functions)
         // These are populated in the init() function after DOMContentLoaded
@@ -294,12 +297,12 @@ x<!DOCTYPE html>
 
         // Log function
         const log = (message, type = 'info') => {
-            // Ensure UIElements.statusLog is available before trying to use it
-            // This check makes the log function safe to call even before all DOM elements are wired up.
+            // Ensure UIElements.statusLog is available before trying to use it.
+            // This prevents errors if log is called very early, before UIElements are populated.
             if (!UIElements.statusLog) {
                 // If statusLog is null, use console as a fallback for early messages
                 console.warn("Status log element not yet available, logging to console:", message);
-                return; // Prevent further errors trying to access properties of null
+                return;
             }
             const now = new Date().toLocaleTimeString();
             UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-800')}">${message}</span></p>`;
@@ -502,13 +505,17 @@ x<!DOCTYPE html>
             if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
                 localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
                 localStorage.removeItem(COMPLETED_POINTS_KEY);
+                // Clear cached activities and their timestamp
+                localStorage.removeItem(CACHED_ACTIVITIES_KEY);
+                localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
+
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
                     if (key.startsWith(ACTIVITY_STREAMS_CACHE_PREFIX)) {
                         localStorage.removeItem(key);
                     }
                 }
-                log('Progress and cached activity streams reset.', 'success');
+                log('Progress, cached activity streams, and cached activities reset.', 'success');
                 updateProgress([]);
                 renderActivityList(allFetchedActivities);
             }
@@ -558,6 +565,9 @@ x<!DOCTYPE html>
                
                 const analyzeBtn = cardDiv.querySelector('[data-analyze-btn]');
                 const updateBtn = cardDiv.querySelector('[data-update-btn]');
+
+                // Set data-activity-id for robust button selection
+                analyzeBtn.dataset.activityId = activity.id;
                
                 if (processedIds.has(activity.id)) {
                     analyzeBtn.textContent = 'Analyzed';
@@ -584,7 +594,7 @@ x<!DOCTYPE html>
         // Analyze Single Activity function
         async function analyzeSingleActivity(activity, button) {
             button.disabled = true;
-            button.innerHTML = `<span class="loader"></span>Analyzing...`;
+            button.innerHTML = `<span class="loader"></span>Analyzing (0%)...`; // Show initial 0%
             const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
            
             log(`Starting analysis for activity: "${activity.name}"`);
@@ -645,10 +655,23 @@ x<!DOCTYPE html>
         // Fetch All Activities function
         async function fetchAllActivities() {
             const accessToken = sessionStorage.getItem('stravaAccessToken');
+            const cachedActivities = localStorage.getItem(CACHED_ACTIVITIES_KEY);
+            const cachedTimestamp = localStorage.getItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
+            const now = new Date().getTime();
+
+            if (cachedActivities && cachedTimestamp && (now - parseInt(cachedTimestamp) < CACHE_EXPIRY_MS)) {
+                log('Loading activities from cache...', 'info');
+                const allRawActivities = JSON.parse(cachedActivities);
+                const relevantActivities = allRawActivities.filter(a => ['Hike'].includes(a.type));
+                log(`Successfully loaded ${relevantActivities.length} relevant activities from cache.`, 'success');
+                return relevantActivities;
+            }
+
+            // If no cache or cache expired, fetch from Strava
             let allRawActivities = [];
             let page = 1;
             const perPage = 100;
-            log('Fetching activities from Strava, this might take a moment...');
+            log('Fetching activities from Strava (cache expired or not found), this might take a moment...');
 
             while (true) {
                 try {
@@ -677,9 +700,14 @@ x<!DOCTYPE html>
                 }
             }
            
+            // Cache the newly fetched raw activities
+            localStorage.setItem(CACHED_ACTIVITIES_KEY, JSON.stringify(allRawActivities));
+            localStorage.setItem(CACHED_ACTIVITIES_TIMESTAMP_KEY, now.toString());
+            log('Fetched activities cached successfully.', 'success');
+
             const relevantActivities = allRawActivities.filter(a => ['Hike'].includes(a.type));
             if (relevantActivities.length > 0) {
-                log(`Successfully fetched ${relevantActivities.length} relevant activities (Hikes only).`, 'success');
+                log(`Successfully fetched and cached ${relevantActivities.length} relevant activities (Hikes only).`, 'success');
             } else {
                 log('No relevant activities (Hikes) found on Strava within fetched data.', 'info');
             }
@@ -825,7 +853,7 @@ x<!DOCTYPE html>
             UIElements.resetButton = document.getElementById('reset-button');
             UIElements.statusLog = document.getElementById('status-log');
             UIElements.stravaUserInfo = document.getElementById('strava-user-info');
-            UIElements.progressBar = document.getElementById('progress-bar');
+            UIElements.progressBar = document.getElementById('progressBar'); // Corrected ID: progressBar
             UIElements.progressPercentage = document.getElementById('progress-percentage');
             UIElements.completedDistance = document.getElementById('completed-distance');
             UIElements.totalDistance = document.getElementById('total-distance');
@@ -849,8 +877,9 @@ x<!DOCTYPE html>
                         const matchedPoints = e.data.matchedPoints;
 
                         // Find the analyze button for this activity to update its state
-                        const analyzeBtn = document.querySelector(`[data-analyze-btn][onclick*="${activityId}"]`);
-                        if (analyzeBtn) { // Re-select to ensure it's the current button instance
+                        // Use the data-activity-id for robust selection
+                        const analyzeBtn = document.querySelector(`button[data-activity-id="${activityId}"][data-analyze-btn]`);
+                        if (analyzeBtn) {
                             analyzeBtn.textContent = 'Analyzed';
                             analyzeBtn.disabled = true;
                         }
@@ -867,11 +896,21 @@ x<!DOCTYPE html>
                         processedIds.add(activityId);
                         localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
                         log(`Analysis complete for activity ${activityId}. Found ${matchedPoints.length} matching points.`, 'success');
-                    } else if (e.data.type === 'error') {
+                    } else if (e.data.type === 'progress') { // Handle progress updates from worker
+                        const activityId = e.data.activityId;
+                        const percentage = e.data.percentage;
+                        const analyzeBtn = document.querySelector(`button[data-activity-id="${activityId}"][data-analyze-btn]`);
+                        if (analyzeBtn) {
+                            // Update the button text to show progress
+                            analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${percentage}%)...`;
+                        }
+                        log(`Analyzing activity ${activityId}: ${percentage}% complete...`, 'info');
+                    }
+                    else if (e.data.type === 'error') {
                         log(`Worker Error: ${e.data.message}`, 'error');
                         console.error("Worker Error:", e.data.message);
                         // Re-enable the analyze button if there was an error
-                        const analyzeBtn = document.querySelector(`[data-analyze-btn][onclick*="${e.data.activityId}"]`);
+                        const analyzeBtn = document.querySelector(`button[data-activity-id="${e.data.activityId}"][data-analyze-btn]`);
                         if (analyzeBtn) {
                              analyzeBtn.textContent = 'Analyze for SWCP';
                              analyzeBtn.disabled = false;
@@ -893,7 +932,12 @@ x<!DOCTYPE html>
             UIElements.clientSecret.addEventListener('input', checkInputs);
             UIElements.connectButton.addEventListener('click', connectToStrava);
             UIElements.resetButton.addEventListener('click', resetProgress);
-            UIElements.filterButtons.addEventListener('click', handleFilterClick);
+            // Ensure UIElements.filterButtons is not null before adding listener
+            if (UIElements.filterButtons) {
+                UIElements.filterButtons.addEventListener('click', handleFilterClick);
+            } else {
+                log("Warning: Filter buttons element not found.", "warn");
+            }
            
             UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
             UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
@@ -913,9 +957,14 @@ x<!DOCTYPE html>
             }
 
             // Status log details toggle listener (can be added here as statusLogDetails is guaranteed to exist now)
-            UIElements.statusLogDetails.addEventListener('toggle', () => {
-                // Map invalidateSize is handled by the window resize listener now
-            });
+            // Ensure statusLogDetails is not null before adding listener
+            if (UIElements.statusLogDetails) {
+                UIElements.statusLogDetails.addEventListener('toggle', () => {
+                    // map.invalidateSize() is handled by the window resize listener now
+                });
+            } else {
+                log("Warning: Status log details element not found.", "warn");
+            }
            
             // Initial call to updateGridLayout on load to set correct mobile/desktop state
             updateGridLayout();
