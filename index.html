@@ -109,7 +109,7 @@
 
     <script>
         // --- CONFIGURATION & CONSTANTS ---
-        const SWCP_GPX_URL = 'https://api.allorigins.win/raw?url=https://www.nationaltrail.co.uk/fs/i/gpx/south-west-coast-path.gpx';
+        const SWCP_GPX_URL = './south-west-coast-path.gpx';
         const DISTANCE_THRESHOLD_METERS = 100;
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -147,24 +147,28 @@
 
         // --- CORE LOGIC ---
         window.onload = async () => {
-            log('Page loaded. Initializing...');
-            clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
-            clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
-            checkInputs();
+            try {
+                log('Page loaded. Initializing...');
+                clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
+                clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
+                checkInputs();
 
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
 
-            if (authCode) {
-                log('Authorization code found. Getting access token...');
-                await getAccessToken(authCode);
-            }
-           
-            if (sessionStorage.getItem('stravaAccessToken')) {
-                log('Access token found. Showing progress section.', 'success');
-                await showProgressSection(); // Make this async to wait for map
-            } else {
-                log('No access token. Please connect to Strava.');
+                if (authCode) {
+                    log('Authorization code found. Getting access token...');
+                    await getAccessToken(authCode);
+                }
+               
+                if (sessionStorage.getItem('stravaAccessToken')) {
+                    log('Access token found. Showing progress section.', 'success');
+                    await showProgressSection();
+                } else {
+                    log('No access token. Please connect to Strava.');
+                }
+            } catch (e) {
+                log(`A critical error occurred on page load: ${e.message}`, 'error');
             }
         };
 
@@ -176,13 +180,17 @@
        
         // --- STRAVA AUTHENTICATION ---
         connectButton.addEventListener('click', () => {
-            log('Redirecting to Strava for authorization...');
-            sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
-            sessionStorage.setItem('stravaClientSecret', clientSecretInput.value.trim());
-            const redirectUri = window.location.origin + window.location.pathname;
-            const scope = 'read,activity:read_all,activity:write';
-            const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientIdInput.value.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
-            window.location.href = authUrl;
+            log('Connect button clicked! Preparing to redirect...');
+            try {
+                sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
+                sessionStorage.setItem('stravaClientSecret', clientSecretInput.value.trim());
+                const redirectUri = window.location.origin + window.location.pathname;
+                const scope = 'read,activity:read_all,activity:write';
+                const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientIdInput.value.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
+                window.location.href = authUrl;
+            } catch (e) {
+                log(`An error occurred in the connect function: ${e.message}`, 'error');
+            }
         });
 
         async function getAccessToken(code) {
@@ -203,7 +211,7 @@
                     sessionStorage.setItem('stravaAccessToken', data.access_token);
                     sessionStorage.setItem('stravaRefreshToken', data.refresh_token);
                     sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                    window.location.href = window.location.pathname; // Clean URL
+                    window.location.href = window.location.pathname;
                 } else {
                     log(`Error getting access token: ${data.message}`, 'error');
                 }
@@ -221,8 +229,8 @@
             if(athlete) {
                 stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
             }
-            await initializeMap(); // Wait for map and path data to be ready
-            loadProgressFromStorage(); // Now load stored progress
+            await initializeMap();
+            loadProgressFromStorage();
         }
 
         async function initializeMap() {
@@ -234,16 +242,19 @@
 
             completedSegmentsLayer = L.layerGroup().addTo(map);
 
-            log('Fetching SWCP route data...');
+            log('Fetching SWCP route data from local file...');
             try {
                 const response = await fetch(SWCP_GPX_URL);
-                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! Could not find GPX file. Did you upload it to GitHub? Status: ${response.status}`);
                 const gpxData = await response.text();
                 log('Route data received. Parsing GPX file...', 'success');
                
-                return new Promise((resolve) => {
+                return new Promise((resolve, reject) => {
                     gpxParse.parseGpx(gpxData, (error, data) => {
-                        if (error) throw new Error(`GPX Parse Error: ${error}`);
+                        if (error) {
+                            reject(new Error(`GPX Parse Error: ${error}`));
+                            return;
+                        }
                        
                         const points = data.tracks[0].segments[0].map(p => [p.lon, p.lat]);
                         swcpGeoJSON = turf.lineString(points);
@@ -258,7 +269,7 @@
                     });
                 });
             } catch(e) {
-                log(`Failed to load SWCP GPX file: ${e.message}`, 'error');
+                log(e.message, 'error');
             }
         }
        
@@ -266,16 +277,15 @@
         function loadProgressFromStorage() {
             const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
             log(`Loaded ${completedPoints.length} completed points from storage.`);
-            updateProgress(completedPoints);
+            updateProgress(completedPoints, false);
         }
        
         resetButton.addEventListener('click', () => {
-            if(confirm('Are you sure you want to clear all your saved progress? You will need to re-analyze all activities.')) {
-                localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
-                localStorage.removeItem(COMPLETED_POINTS_KEY);
-                log('Progress has been reset.', 'success');
-                updateProgress([]);
-            }
+            // ** FIX ** Removed unsupported 'confirm()' dialog which can break scripts.
+            localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
+            localStorage.removeItem(COMPLETED_POINTS_KEY);
+            log('Progress has been reset. All activities will be re-analyzed on the next run.', 'success');
+            updateProgress([], false);
         });
 
         // --- MAIN ANALYSIS LOGIC ---
@@ -307,7 +317,7 @@
 
             for (const activity of newActivities) {
                 log(`Analyzing: "${activity.name}" (ID: ${activity.id})`);
-                await sleep(1000); // Wait 1 second to be nice to Strava's API
+                await sleep(500);
                 const stream = await getActivityStream(activity.id);
                 if (stream) {
                     const activityPoints = stream.map(p => [p[1], p[0]]);
@@ -328,7 +338,7 @@
             localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(newProcessedIds));
 
             log('Analysis complete. Updating map and progress.', 'success');
-            updateProgress(allCompletedPoints);
+            updateProgress(allCompletedPoints, true);
             setLoading(false);
         }
 
@@ -396,17 +406,11 @@
             return matchedPoints;
         }
 
-        function updateProgress(completedPoints) {
+        function updateProgress(completedPoints, isNewAnalysis) {
             completedSegmentsLayer.clearLayers();
            
-            if (completedPoints.length < 2) {
-                log('No progress to display.', 'info');
-                progressBar.style.width = '0%';
-                progressPercentage.textContent = '0.00%';
-                completedDistanceEl.textContent = '0.00';
-                return;
-            }
+            let totalCompletedDistance = 0;
+            let percentage = 0;
 
-            // Remove duplicate points to get a clean set for distance calculation
-            const uniquePoints = completedPoints.reduce((acc, point) => {
-                if (!acc.som
+            if (completedPoints.length > 1) {
+                const uniquePoints = completedPoints.reduce((
