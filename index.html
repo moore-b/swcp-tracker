@@ -108,8 +108,9 @@
     </div>
 
     <script>
-        // ** FINAL FIX ** Wrap all code in a DOMContentLoaded listener
-        // This ensures all HTML elements and deferred scripts are loaded before our code runs.
+        // ** DIAGNOSTIC FIX **
+        // Wrap all code in a DOMContentLoaded listener to ensure HTML is ready.
+        // Also added more detailed logging to pinpoint failures.
         document.addEventListener('DOMContentLoaded', () => {
 
             // --- CONFIGURATION & CONSTANTS ---
@@ -118,21 +119,10 @@
             const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
             const COMPLETED_POINTS_KEY = 'swcp_completed_points';
            
-            // --- DOM ELEMENTS ---
-            const clientIdInput = document.getElementById('clientId');
-            const clientSecretInput = document.getElementById('clientSecret');
-            const connectButton = document.getElementById('connect-button');
-            const configSection = document.getElementById('config-section');
-            const progressSection = document.getElementById('progress-section');
-            const analyzeButton = document.getElementById('analyze-button');
-            const analyzeButtonText = document.getElementById('analyze-button-text');
-            const resetButton = document.getElementById('reset-button');
-            const statusLog = document.getElementById('status-log');
-            const stravaUserInfo = document.getElementById('strava-user-info');
-            const progressBar = document.getElementById('progress-bar');
-            const progressPercentage = document.getElementById('progress-percentage');
-            const completedDistanceEl = document.getElementById('completed-distance');
-            const totalDistanceEl = document.getElementById('total-distance');
+            // --- DOM ELEMENTS (will be assigned in init) ---
+            let clientIdInput, clientSecretInput, connectButton, configSection, progressSection, analyzeButton,
+                analyzeButtonText, resetButton, statusLog, stravaUserInfo, progressBar,
+                progressPercentage, completedDistanceEl, totalDistanceEl;
 
             // --- GLOBAL STATE ---
             let map;
@@ -142,48 +132,79 @@
 
             // --- HELPER FUNCTIONS ---
             const log = (message, type = 'info') => {
-                if (!statusLog) return;
+                const logElement = document.getElementById('status-log');
+                if (!logElement) {
+                    console.error("Status log element not found!");
+                    return;
+                }
                 const now = new Date().toLocaleTimeString();
                 const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-300');
-                statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${color}">${message}</span></p>`;
-                statusLog.scrollTop = statusLog.scrollHeight;
+                logElement.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${color}">${message}</span></p>`;
+                logElement.scrollTop = logElement.scrollHeight;
+                if (type === 'error') {
+                    console.error(message);
+                } else {
+                    console.log(message);
+                }
             };
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
            
             // --- INITIALIZATION ---
+            const assignDOMElements = () => {
+                log('Assigning DOM elements...');
+                clientIdInput = document.getElementById('clientId');
+                clientSecretInput = document.getElementById('clientSecret');
+                connectButton = document.getElementById('connect-button');
+                configSection = document.getElementById('config-section');
+                progressSection = document.getElementById('progress-section');
+                analyzeButton = document.getElementById('analyze-button');
+                analyzeButtonText = document.getElementById('analyze-button-text');
+                resetButton = document.getElementById('reset-button');
+                statusLog = document.getElementById('status-log');
+                stravaUserInfo = document.getElementById('strava-user-info');
+                progressBar = document.getElementById('progress-bar');
+                progressPercentage = document.getElementById('progress-percentage');
+                completedDistanceEl = document.getElementById('completed-distance');
+                totalDistanceEl = document.getElementById('total-distance');
+                log('DOM elements assigned.');
+            };
+
+            const attachEventListeners = () => {
+                log('Attaching event listeners...');
+                if (!connectButton) {
+                    log('Cannot attach listener: Connect button is missing!', 'error');
+                    return;
+                }
+                clientIdInput.addEventListener('input', checkInputs);
+                clientSecretInput.addEventListener('input', checkInputs);
+                connectButton.addEventListener('click', connectToStrava);
+                resetButton.addEventListener('click', resetProgress);
+                analyzeButton.addEventListener('click', analyzeAllActivities);
+                log('Event listeners attached successfully.');
+            };
+
             const init = async () => {
-                try {
-                    log('Page and scripts loaded. Initializing app...');
-                   
-                    // Set up event listeners
-                    clientIdInput.addEventListener('input', checkInputs);
-                    clientSecretInput.addEventListener('input', checkInputs);
-                    connectButton.addEventListener('click', connectToStrava);
-                    resetButton.addEventListener('click', resetProgress);
-                    analyzeButton.addEventListener('click', analyzeAllActivities);
-                   
-                    // Continue with initialization
-                    clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
-                    clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
-                    checkInputs();
+                assignDOMElements();
+                log('Page and scripts loaded. Initializing app...');
+                attachEventListeners();
 
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const authCode = urlParams.get('code');
+                clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
+                clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
+                checkInputs();
 
-                    if (authCode) {
-                        log('Authorization code found. Getting access token...');
-                        await getAccessToken(authCode);
-                    }
-                   
-                    if (sessionStorage.getItem('stravaAccessToken')) {
-                        log('Access token found. Showing progress section.', 'success');
-                        await showProgressSection();
-                    } else {
-                        log('No access token. Please connect to Strava.');
-                    }
-                } catch (e) {
-                    log(`A critical error occurred on page load: ${e.message}`, 'error');
-                    console.error(e);
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
+
+                if (authCode) {
+                    log('Authorization code found. Getting access token...');
+                    await getAccessToken(authCode);
+                }
+               
+                if (sessionStorage.getItem('stravaAccessToken')) {
+                    log('Access token found. Showing progress section.', 'success');
+                    await showProgressSection();
+                } else {
+                    log('No access token. Please connect to Strava.');
                 }
             };
            
@@ -195,13 +216,14 @@
        
             // --- STRAVA AUTHENTICATION ---
             function connectToStrava() {
-                log('Connect button clicked! Preparing to redirect...');
+                log('Connect button clicked! Preparing to redirect...', 'success');
                 try {
                     sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
                     sessionStorage.setItem('stravaClientSecret', clientSecretInput.value.trim());
                     const redirectUri = window.location.origin + window.location.pathname;
                     const scope = 'read,activity:read_all,activity:write';
                     const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientIdInput.value.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
+                    log(`Redirecting to: ${authUrl}`);
                     window.location.href = authUrl;
                 } catch (e) {
                     log(`An error occurred in the connect function: ${e.message}`, 'error');
@@ -209,6 +231,7 @@
             }
 
             async function getAccessToken(code) {
+                // ... (rest of the functions are the same)
                 try {
                     const response = await fetch('https://www.strava.com/oauth/token', {
                         method: 'POST',
@@ -235,7 +258,6 @@
                 }
             }
            
-            // --- UI AND MAP LOGIC ---
             async function showProgressSection() {
                 configSection.style.display = 'none';
                 progressSection.style.display = 'block';
@@ -288,11 +310,9 @@
                     });
                 } catch(e) {
                     log(e.message, 'error');
-                    console.error(e);
                 }
             }
            
-            // --- DATA PERSISTENCE ---
             function loadProgressFromStorage() {
                 const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
                 log(`Loaded ${completedPoints.length} completed points from storage.`);
@@ -306,8 +326,8 @@
                 updateProgress([], false);
             }
 
-            // --- MAIN ANALYSIS LOGIC ---
             async function analyzeAllActivities() {
+                // ... (analysis logic is the same)
                 log('Analysis started...');
                 setLoading(true);
                
@@ -387,4 +407,90 @@
                        
                         allActivities.push(...activities);
                         page++;
-                    } c
+                    } catch(e) {
+                        log(`Failed to fetch activities: ${e.message}`, 'error');
+                        return null;
+                    }
+                }
+                return allActivities.filter(a => ['Walk', 'Hike'].includes(a.type));
+            }
+
+            async function getActivityStream(activityId) {
+                const accessToken = sessionStorage.getItem('stravaAccessToken');
+                try {
+                    const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=latlng&key_by_type=true`, {
+                         headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    if (!response.ok) return null;
+                    const data = await response.json();
+                    return data.latlng ? data.latlng.data : null;
+                } catch (e) {
+                    log(`Error fetching stream for activity ${activityId}: ${e.message}`, 'error');
+                    return null;
+                }
+            }
+           
+            function findOverlappingPoints(activityLine) {
+                const matchedPoints = [];
+                if (!swcpGeoJSON) {
+                    log('SWCP path data not loaded yet, cannot find overlaps.', 'error');
+                    return [];
+                }
+                for (const pointCoords of activityLine.geometry.coordinates) {
+                     const point = turf.point(pointCoords);
+                     const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point, {units: 'meters'});
+                     if (turf.distance(point, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
+                        matchedPoints.push(nearestPointOnLine.geometry.coordinates);
+                     }
+                }
+                return matchedPoints;
+            }
+
+            function updateProgress(completedPoints, isNewAnalysis) {
+                completedSegmentsLayer.clearLayers();
+               
+                let totalCompletedDistance = 0;
+                let percentage = 0;
+
+                if (completedPoints.length > 1) {
+                    const uniquePoints = completedPoints.reduce((acc, point) => {
+                        if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) {
+                            acc.push(point);
+                        }
+                        return acc;
+                    }, []);
+                   
+                    uniquePoints.sort((a, b) => {
+                        const locA = turf.nearestPointOnLine(swcpGeoJSON, a).properties.location;
+                        const locB = turf.nearestPointOnLine(swcpGeoJSON, b).properties.location;
+                        return locA - locB;
+                    });
+
+                    if (uniquePoints.length > 1) {
+                        const completedLine = turf.lineString(uniquePoints);
+                        totalCompletedDistance = turf.length(completedLine, { units: 'kilometers' });
+                       
+                        const leafletPoints = uniquePoints.map(p => [p[1], p[0]]);
+                        L.polyline(leafletPoints, { color: 'green', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+
+                        percentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
+                    }
+                }
+               
+                completedDistanceEl.textContent = totalCompletedDistance.toFixed(2);
+                progressPercentage.textContent = percentage.toFixed(2) + '%';
+                progressBar.style.width = `${percentage}%`;
+
+                if (isNewAnalysis && completedPoints.length > 1) {
+                     log(`Total progress updated: ${totalCompletedDistance.toFixed(2)} km (${percentage.toFixed(2)}%)`, 'success');
+                } else if (!isNewAnalysis && completedPoints.length < 2) {
+                    log('No progress to display.', 'info');
+                }
+            }
+
+            // Start the application
+            init();
+        });
+    </script>
+</body>
+</html>
