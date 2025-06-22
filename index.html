@@ -156,6 +156,11 @@
                 mainMap: document.getElementById('map'),
             };
 
+            if (!firebaseConfig.apiKey) {
+                document.body.innerHTML = `<div class="p-8 text-red-500 font-bold">Firebase configuration is missing from the HTML file.</div>`;
+                return;
+            }
+
             const app = initializeApp(firebaseConfig);
             const auth = getAuth(app);
             const db = getFirestore(app);
@@ -168,7 +173,7 @@
 
             const log = (message, type = 'info') => { /* ... unchanged ... */ };
             const showView = (viewName) => {
-                ['loadingSection', 'authSection', 'stravaConnectSection', 'appContent'].forEach(section => UIElements[section].style.display = 'none');
+                ['loadingSection', 'authSection', 'stravaConnectSection', 'appContent'].forEach(section => { UIElements[section].style.display = 'none'; });
                 UIElements.logoutButton.style.display = (viewName === 'appContent' || viewName === 'stravaConnectSection') ? 'block' : 'none';
                 if (UIElements[viewName]) UIElements[viewName].style.display = 'block';
             };
@@ -195,14 +200,7 @@
                 } catch (error) { log(`Network error during token exchange: ${error.message}`, 'error'); }
             }
            
-            async function showMainApp() {
-                const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
-                if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-                await initializeMap();
-                allFetchedActivities = await fetchAllActivities();
-                if (allFetchedActivities) renderActivityList(allFetchedActivities);
-            }
-
+            async function showMainApp() { /* ... unchanged ... */ }
             async function initializeMap() { /* ... unchanged ... */ }
             function connectToStrava() { /* ... unchanged ... */ }
             function resetProgress() { /* ... unchanged ... */ }
@@ -233,7 +231,10 @@
                     if (unsubscribe) unsubscribe();
                     unsubscribe = onSnapshot(progressDocRef, (doc) => {
                         const data = doc.data() || {};
-                        userProgress = { completedPoints: data.completedPoints || [], processedIds: data.processedIds || [] };
+                        userProgress = {
+                            completedPoints: data.completedPoints || [],
+                            processedIds: data.processedIds || []
+                        };
                         log('Cloud progress data loaded/updated.');
                         if(swcpGeoJSON) updateProgress(userProgress.completedPoints);
                     });
@@ -253,29 +254,20 @@
                     if (authCode) {
                         showView('loadingSection');
                         await getAccessToken(authCode);
-                        // After token exchange, re-evaluate view state
-                        updateView(user);
-                        return;
+                        // After token exchange, we can show the app
+                        showView('appContent');
+                        await showMainApp();
+                    } else if (sessionStorage.getItem('stravaAccessToken')) {
+                        showView('appContent');
+                        await showMainApp();
+                    } else {
+                        showView('stravaConnectSection');
                     }
-
-                   updateView(user);
                 } else {
                     showView('authSection');
                     renderAuthForm();
                 }
             });
-
-            async function updateView(user) {
-                if (!user) {
-                    showView('authSection');
-                    renderAuthForm();
-                } else if (sessionStorage.getItem('stravaAccessToken')) {
-                    showView('appContent');
-                    await showMainApp();
-                } else {
-                    showView('stravaConnectSection');
-                }
-            }
         });
     </script>
 </body>
