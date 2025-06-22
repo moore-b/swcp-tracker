@@ -918,7 +918,7 @@ function renderCompletedSegments(completedPoints) {
 // Process Activities function (Web Worker Integration)
 async function processActivities(activities) {
     if (!analysisWorker) {
-        analysisWorker = new Worker('analysisWorker.js'); // Assuming you have this worker file
+        analysisWorker = new Worker('swcp_analysis_worker.js'); // Assuming you have this worker file
         log('Web Worker initialized.', 'info');
 
         analysisWorker.onmessage = (e) => {
