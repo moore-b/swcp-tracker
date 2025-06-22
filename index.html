@@ -14,7 +14,12 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        #map { height: 700px; width: 100%; border-radius: 0.5rem; }
+        #map {
+            height: 700px;
+            width: 100%;
+            border-radius: 0.5rem;
+            position: relative; /* Essential for absolute positioning of overlay */
+        }
         .activity-map { height: 200px; width: 100%; border-radius: 0.5rem; background-color: #f3f4f6; }
         .btn-strava { background-color: #FC5200; }
         .btn-strava:hover { background-color: #e04a00; }
@@ -436,7 +441,7 @@
 
                 if (allFetchedActivities) {
                     filterActivities(); // Call filterActivities to initially render with any search/filter applied
-                    log('Activities rendered.');
+                    log('Activities rendered.', 'success'); // Changed to success as it's a positive outcome
                 } else {
                     log('Failed to fetch activities, or no relevant activities found.', 'error');
                 }
@@ -978,7 +983,7 @@
             UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
             UIElements.activitySearchBox = document.getElementById('activity-search-box');
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
-            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn'); // New: Activities Refresh Button
+            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
 
             log('App initialized.');
 
@@ -1048,7 +1053,7 @@
             if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
             if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
             if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
-            if (UIElements.refreshActivitiesBtn) UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities); // New event listener for refresh button
+            if (UIElements.refreshActivitiesBtn) UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
            
             if (UIElements.clientId) UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
             if (UIElements.clientSecret) UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
