@@ -21,8 +21,40 @@
             position: relative; /* Essential for absolute positioning of overlay */
         }
         .activity-map { height: 200px; width: 100%; border-radius: 0.5rem; background-color: #f3f4f6; }
-        .btn-strava { background-color: #FC5200; }
-        .btn-strava:hover { background-color: #e04a00; }
+       
+        /* Unified Button Styling */
+        .btn-base {
+            font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300; /* Common styles */
+        }
+        .btn-strava {
+            background-color: #FC5200; /* Strava Orange */
+            color: white;
+        }
+        .btn-strava:hover {
+            background-color: #e04a00; /* Darker Strava Orange */
+        }
+        .btn-primary { /* For Analyze */
+            background-color: #3b82f6; /* Tailwind Blue-500 */
+            color: white;
+        }
+        .btn-primary:hover {
+            background-color: #2563eb; /* Tailwind Blue-600 */
+        }
+        .btn-secondary { /* For Add to Description */
+            background-color: #10b981; /* Tailwind Emerald-500 */
+            color: white;
+        }
+        .btn-secondary:hover {
+            background-color: #059669; /* Tailwind Emerald-600 */
+        }
+        .btn-danger { /* For Reset */
+            color: #ef4444; /* Tailwind Red-500 */
+        }
+        .btn-danger:hover {
+            color: #dc2626; /* Tailwind Red-600 */
+            text-decoration: underline;
+        }
+
         .loader {
             border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
             width: 24px; height: 24px; animation: spin 1s linear infinite;
@@ -52,9 +84,9 @@
             /* Desktop: 2 columns (Map/Status stack: 2fr | Activities: 1fr) */
             grid-template-columns: 2fr 1fr;
             grid-template-rows: auto auto; /* Rows for Map content and Status Log content */
-            gap: 0.25rem; /* Very narrow gap between grid items */
+            gap: 1rem; /* Increased gap for more breathing room */
             min-height: 100vh;
-            padding: 0.25rem; /* Small padding around the whole grid to ensure borders are visible */
+            padding: 1rem; /* Padding around the whole grid to ensure borders are visible */
         }
 
         /* Placement of items within the main grid for desktop */
@@ -175,16 +207,16 @@
         <div id="config-section" class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
             <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Connect to Strava</h2>
             <div class="space-y-4 mb-6">
-                <div><label for="clientId" class="block text-sm font-medium text-gray-700 text-left">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
-                <div><label for="clientSecret" class="block text-sm font-medium text-gray-700 text-left">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
+                <div><label for="clientId" class="block text-sm font-medium text-gray-700 text-left">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
+                <div><label for="clientSecret" class="block text-sm font-medium text-gray-700 text-left">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
             </div>
-            <button id="connect-button" class="w-full btn-strava text-white font-bold py-3 px-4 rounded-lg transition" disabled>Connect with Strava</button>
+            <button id="connect-button" class="w-full btn-base btn-strava">Connect with Strava</button>
         </div>
     </div>
 
     <div id="main-layout-container" class="hidden">
 
-        <div id="center-column" class="bg-white p-6 rounded-lg shadow-md">
+        <div id="center-column" class="bg-white p-6 rounded-lg shadow-lg">
             <header class="text-center"> <img src="header_logo.png" alt="South West Coast Path Tracker Logo" class="mx-auto h-36"> </header>
 
             <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
@@ -203,17 +235,17 @@
                         <div class="loader mr-3"></div> <span class="text-gray-500">Loading map...</span>
                     </div>
                 </div>
-                <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
+                <div class="text-right mt-2"><button id="reset-button" class="text-sm btn-danger">Reset All Progress</button></div>
             </div>
         </div>
 
-        <div id="left-column" class="bg-white p-6 rounded-lg shadow-md text-gray-800">
+        <div id="left-column" class="bg-white p-6 rounded-lg shadow-lg text-gray-800">
             <details open id="status-log-details" class="h-full flex flex-col">
                 <summary class="text-xl font-semibold p-4 sticky top-0 bg-white z-10">Status Log</summary>
                 <div id="status-log" class="flex-grow overflow-y-auto"></div> </details>
         </div>
 
-        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto bg-white p-6 rounded-lg shadow-md">
+        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto bg-white p-6 rounded-lg shadow-lg">
             <div id="activity-list-section" class="mt-8 md:mt-0">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
@@ -223,9 +255,9 @@
                     </div>
                 </div>
                 <div class="mb-4">
-                    <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                    <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
                 </div>
-                <button id="refresh-activities-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg transition mb-4">Refresh Activities</button>
+                <button id="refresh-activities-btn" class="w-full btn-base btn-strava mb-4 transform transition hover:scale-105">Refresh Activities</button>
                 <div id="activities-loading-spinner" class="flex justify-center items-center h-32">
                     <div class="loader mr-3"></div> <span class="text-gray-500">Loading activities...</span>
                 </div>
@@ -252,8 +284,8 @@
                         <li data-elevation><strong>Elevation Gain:</strong> 0 m</li>
                     </ul>
                     <div class="mt-4 space-y-2">
-                        <button data-analyze-btn data-activity-id="" class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300">Analyze for SWCP</button>
-                        <button data-update-btn data-activity-id="" class="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition">Add to Strava Description</button>
+                        <button data-analyze-btn data-activity-id="" class="w-full btn-base btn-primary">Analyze for SWCP</button>
+                        <button data-update-btn data-activity-id="" class="w-full btn-base btn-secondary">Add to Strava Description</button>
                     </div>
                 </div>
             </div>
@@ -1052,8 +1084,8 @@
 
             // Add event listeners (now that UIElements are populated)
             if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
-            if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
-            if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
+            if (UIlements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
+            if (UIlements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
             if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
             if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
             if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
