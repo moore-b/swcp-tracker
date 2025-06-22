@@ -7,8 +7,8 @@
    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
-    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js' defer></script>
     <script src="https://unpkg.com/@mapbox/polyline@1.1.1/src/polyline.js"></script>
 
     <style>
@@ -114,9 +114,6 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ** STARTUP FIX **
-        // All logic is now wrapped in a DOMContentLoaded listener to ensure the page is ready.
-        // The startup sequence is simplified and made more robust.
         document.addEventListener('DOMContentLoaded', () => {
             const SWCP_GEOJSON_URL = 'routes.geojson';
             const DISTANCE_THRESHOLD_METERS = 100;
@@ -227,7 +224,7 @@
                         log('Success! Strava Access Token received.', 'success');
                         sessionStorage.setItem('stravaAccessToken', data.access_token);
                         sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                        window.history.pushState({}, document.title, window.location.pathname); // Clear URL
+                        window.history.pushState({}, document.title, window.location.pathname);
                     } else { log(`Error getting Strava access token: ${data.message}`, 'error'); }
                 } catch (error) { log(`Network error during token exchange: ${error.message}`, 'error'); }
             }
@@ -403,14 +400,21 @@
                 UIElements.progressBar.style.width = `${currentPercentage}%`;
             }
 
+            // ** NEW, SIMPLIFIED STARTUP LOGIC **
+            UIElements.logoutButton.addEventListener('click', handleLogout);
+            UIElements.filterButtons.addEventListener('click', handleFilterClick);
+            UIElements.resetButton.addEventListener('click', resetProgress);
+            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
+
             onAuthStateChanged(auth, async (user) => {
+                // Hide all main sections by default on any auth change
+                UIElements.authSection.style.display = 'none';
+                UIElements.stravaConnectSection.style.display = 'none';
+                UIElements.appContent.style.display = 'none';
+                UIElements.logoutButton.style.display = 'none';
+               
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
-               
-                if (authCode && user) {
-                    await getAccessToken(authCode);
-                    return;
-                }
 
                 if (user) {
                     userId = user.uid;
@@ -422,7 +426,7 @@
                     unsubscribe = onSnapshot(progressDocRef, (doc) => {
                         userProgress = doc.exists() ? doc.data() : { completedPoints: [], processedIds: [] };
                         log('Cloud progress data loaded/updated.');
-                        if(swcpGeoJSON) updateProgress(userProgress.completedPoints || []);
+                        if (swcpGeoJSON) updateProgress(userProgress.completedPoints || []);
                     });
                    
                     const credDoc = await getDoc(credentialsDocRef);
@@ -431,36 +435,31 @@
                         sessionStorage.setItem('stravaClientId', atob(creds.clientId));
                         sessionStorage.setItem('stravaClientSecret', atob(creds.clientSecret));
                     } else {
-                        log('FATAL: Strava credentials not found in cloud!', 'error');
-                        handleLogout(); return;
+                        log('FATAL: Strava credentials not found in your account!', 'error');
+                        handleLogout();
+                        return;
                     }
 
-                    UIElements.authSection.style.display = 'none';
                     UIElements.logoutButton.style.display = 'block';
 
-                    if (!sessionStorage.getItem('stravaAccessToken')) {
-                        UIElements.appContent.style.display = 'none';
-                        UIElements.stravaConnectSection.style.display = 'block';
-                    } else {
-                        UIElements.stravaConnectSection.style.display = 'none';
+                    if (authCode) {
+                        await getAccessToken(authCode);
+                        // The onAuthStateChanged will re-fire after the page reloads from getAccessToken
+                        return;
+                    }
+
+                    if (sessionStorage.getItem('stravaAccessToken')) {
                         UIElements.appContent.style.display = 'block';
                         await showMainApp();
+                    } else {
+                        UIElements.stravaConnectSection.style.display = 'block';
                     }
                 } else {
-                    userId = null;
-                    if (unsubscribe) unsubscribe();
-                    UIElements.appContent.style.display = 'none';
-                    UIElements.stravaConnectSection.style.display = 'none';
-                    UIElements.logoutButton.style.display = 'none';
+                    // Not logged in
                     UIElements.authSection.style.display = 'block';
                     renderAuthForm();
                 }
             });
-
-            UIElements.logoutButton.addEventListener('click', handleLogout);
-            UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            UIElements.resetButton.addEventListener('click', resetProgress);
-            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
         });
     </script>
 </body>
