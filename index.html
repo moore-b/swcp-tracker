@@ -24,7 +24,10 @@
        
         /* Unified Button Styling */
         .btn-base {
-            font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300; /* Common styles */
+            font-bold py-2 px-3 rounded-lg; /* Common styles */
+            /* Added duration-300 for slower swell */
+            @apply transform transition duration-300;
+            @apply shadow-md hover:shadow-lg hover:scale-105; /* Shadow and swell on hover */
         }
         .btn-strava {
             background-color: #FC5200; /* Strava Orange */
@@ -84,9 +87,9 @@
             /* Desktop: 2 columns (Map/Status stack: 2fr | Activities: 1fr) */
             grid-template-columns: 2fr 1fr;
             grid-template-rows: auto auto; /* Rows for Map content and Status Log content */
-            gap: 0.25rem; /* Very narrow gap between grid items */
+            gap: 1rem; /* Increased gap for more breathing room */
             min-height: 100vh;
-            padding: 0.25rem; /* Small padding around the whole grid to ensure borders are visible */
+            padding: 1rem; /* Padding around the whole grid to ensure borders are visible */
         }
 
         /* Placement of items within the main grid for desktop */
