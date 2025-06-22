@@ -19,7 +19,7 @@
         .btn-strava { background-color: #FC5200; }
         .btn-strava:hover { background-color: #e04a00; }
         .loader {
-            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%; /* Corrected border-top to 4px */
+            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
             width: 24px; height: 24px; animation: spin 1s linear infinite;
             display: inline-block; margin-right: 10px;
         }
@@ -201,8 +201,7 @@
         <div id="left-column" class="bg-white p-6 rounded-lg shadow-md text-gray-800">
             <details open id="status-log-details" class="h-full flex flex-col">
                 <summary class="text-xl font-semibold p-4 sticky top-0 bg-white z-10">Status Log</summary>
-                <div id="status-log" class="flex-grow overflow-y-auto"></div>
-            </details>
+                <div id="status-log" class="flex-grow overflow-y-auto"></div> </details>
         </div>
 
         <div id="right-column" class="sticky top-0 h-screen overflow-y-auto bg-white p-6 rounded-lg shadow-md">
@@ -390,18 +389,20 @@
         async function showMainApp() {
             log('Attempting to show main application dashboard.');
             // Hide login screen
-            UIElements.loginScreenWrapper.style.display = 'none';
+            if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'none';
             // Show main app container (grid)
-            UIElements.mainLayoutContainer.style.display = 'grid'; // Set to 'grid' to activate CSS grid layout
+            if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'grid';
 
             try {
                 // Show relevant sections of the main app
-                UIElements.progressSection.style.display = 'block';
-                UIElements.activityListSection.style.display = 'block';
+                if (UIElements.progressSection) UIElements.progressSection.style.display = 'block';
+                if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block';
                
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
-                if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-                log('Athlete info displayed.');
+                if(athlete.firstname) {
+                    if (UIElements.stravaUserInfo) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+                }
+                log('Athlete info displayed (if element found).');
                
                 await initializeMap();
                 log('Map initialized.');
@@ -410,16 +411,16 @@
                
                 // Show loading spinner for activities before fetching
                 if (UIElements.activitiesLoadingSpinner) {
-                    UIElements.activitiesLoadingSpinner.style.display = 'flex'; // Show spinner
-                    UIElements.activityListContainer.style.display = 'none'; // Hide activity list while loading
+                    UIElements.activitiesLoadingSpinner.style.display = 'flex';
+                    if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'none';
                 }
 
                 allFetchedActivities = await fetchAllActivities();
                
                 // Hide loading spinner after fetching
                 if (UIElements.activitiesLoadingSpinner) {
-                    UIElements.activitiesLoadingSpinner.style.display = 'none'; // Hide spinner
-                    UIElements.activityListContainer.style.display = 'block'; // Show activity list
+                    UIElements.activitiesLoadingSpinner.style.display = 'none';
+                    if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'block';
                 }
 
                 if (allFetchedActivities) {
@@ -431,15 +432,16 @@
 
                 // Add resize listener only AFTER mainMap is initialized
                 window.addEventListener('resize', () => {
-                    mainMap.invalidateSize(); // Invalidate map size on window resize
+                    if (mainMap) mainMap.invalidateSize();
+                    updateGridLayout();
                 });
                
                 // Ensure initial grid layout is correctly applied after map is ready
-                mainMap.invalidateSize(); // Important to call after showing map in its container
+                if (mainMap) mainMap.invalidateSize();
                 log('Main application dashboard fully loaded.', 'success');
             } catch (error) {
                 log(`Error loading main application: ${error.message}`, 'error');
-                console.error(error); // Log to console for full stack trace
+                console.error(error);
             }
         }
 
@@ -541,8 +543,12 @@
         // Render Activity List function
         function renderActivityList(activities) {
             log(`Rendering ${activities.length} activities...`);
+            if (!UIElements.activityListContainer || !UIElements.activityCardTemplate) {
+                log("Error: Activity list container or template not found for rendering.", "error");
+                return;
+            }
             UIElements.activityListContainer.innerHTML = '';
-            UIElements.activityCount.textContent = `(${activities.length} found)`;
+            if (UIElements.activityCount) UIElements.activityCount.textContent = `(${activities.length} found)`; // Check for null
             const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
            
             activities.forEach(activity => {
@@ -761,9 +767,9 @@
 
             if (completedPoints.length === 0) {
                 currentPercentage = 0;
-                UIElements.completedDistance.textContent = "0.00";
-                UIElements.progressPercentage.textContent = "0.00%";
-                UIElements.progressBar.style.width = "0%";
+                if (UIElements.completedDistance) UIElements.completedDistance.textContent = "0.00";
+                if (UIElements.progressPercentage) UIElements.progressPercentage.textContent = "0.00%";
+                if (UIElements.progressBar) UIElements.progressBar.style.width = "0%";
                 return;
             }
 
@@ -831,9 +837,9 @@
             });
 
             currentPercentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : 0;
-            UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
-            UIElements.progressPercentage.textContent = `${currentPercentage}%`;
-            UIElements.progressBar.style.width = `${currentPercentage}%`;
+            if (UIElements.completedDistance) UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
+            if (UIElements.progressPercentage) UIElements.progressPercentage.textContent = `${currentPercentage}%`;
+            if (UIElements.progressBar) UIElements.progressBar.style.width = `${currentPercentage}%`;
         }
 
         // Initialize function (called on DOMContentLoaded)
@@ -853,7 +859,7 @@
             UIElements.resetButton = document.getElementById('reset-button');
             UIElements.statusLog = document.getElementById('status-log');
             UIElements.stravaUserInfo = document.getElementById('strava-user-info');
-            UIElements.progressBar = document.getElementById('progressBar'); // Corrected ID: progressBar
+            UIElements.progressBar = document.getElementById('progress-bar');
             UIElements.progressPercentage = document.getElementById('progress-percentage');
             UIElements.completedDistance = document.getElementById('completed-distance');
             UIElements.totalDistance = document.getElementById('total-distance');
@@ -928,19 +934,14 @@
 
 
             // Add event listeners (now that UIElements are populated)
-            UIElements.clientId.addEventListener('input', checkInputs);
-            UIElements.clientSecret.addEventListener('input', checkInputs);
-            UIElements.connectButton.addEventListener('click', connectToStrava);
-            UIElements.resetButton.addEventListener('click', resetProgress);
-            // Ensure UIElements.filterButtons is not null before adding listener
-            if (UIElements.filterButtons) {
-                UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            } else {
-                log("Warning: Filter buttons element not found.", "warn");
-            }
+            if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
+            if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
+            if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
+            if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
+            if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
            
-            UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
-            UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
+            if (UIElements.clientId) UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
+            if (UIElements.clientSecret) UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
             checkInputs();
 
             const urlParams = new URLSearchParams(window.location.search);
@@ -951,13 +952,12 @@
             } else if (sessionStorage.getItem('stravaAccessToken')) {
                 await showMainApp();
             } else {
-                UIElements.loginScreenWrapper.style.display = 'flex';
-                UIElements.mainLayoutContainer.style.display = 'none';
+                if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
+                if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
                 log('Please connect to Strava.');
             }
 
             // Status log details toggle listener (can be added here as statusLogDetails is guaranteed to exist now)
-            // Ensure statusLogDetails is not null before adding listener
             if (UIElements.statusLogDetails) {
                 UIElements.statusLogDetails.addEventListener('toggle', () => {
                     // map.invalidateSize() is handled by the window resize listener now
