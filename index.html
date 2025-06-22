@@ -179,6 +179,31 @@
                 if (UIElements[viewName]) UIElements[viewName].style.display = 'block';
             };
            
+            const handleRegister = async () => {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const clientId = document.getElementById('stravaClientId').value;
+                const clientSecret = document.getElementById('stravaClientSecret').value;
+                if (!email || !password || !clientId || !clientSecret) { log('All fields are required.', 'error'); return; }
+                try {
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    log(`User registered: ${user.uid}`, 'success');
+                    const credentialsDocRef = doc(db, "users", user.uid);
+                    await setDoc(credentialsDocRef, {
+                        stravaClientId: btoa(clientId),
+                        stravaClientSecret: btoa(clientSecret)
+                    });
+                    log('Credentials saved.', 'success');
+                } catch (error) { log(`Registration failed: ${error.message}`, 'error'); }
+            };
+           
+            const handleLogin = async () => {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                try { await signInWithEmailAndPassword(auth, email, password); } catch (error) { log(`Login failed: ${error.message}`, 'error'); }
+            };
+
             const renderAuthForm = (isLogin = true) => {
                 const stravaFields = `
                     <div class="mt-4 pt-4 border-t">
@@ -193,27 +218,45 @@
                     ${isLogin ? '' : stravaFields}
                     <button id="auth-submit-button" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">${isLogin ? 'Login' : 'Register'}</button>
                     <p class="mt-4 text-center text-sm">${isLogin ? "Don't have an account?" : "Already have an account?"} <button id="auth-toggle-button" class="font-medium text-blue-600 hover:underline">${isLogin ? 'Register' : 'Login'}</button></p>`;
+                // ** FIX: Attach listeners immediately after rendering the form **
                 document.getElementById('auth-submit-button').addEventListener('click', isLogin ? handleLogin : handleRegister);
                 document.getElementById('auth-toggle-button').addEventListener('click', () => renderAuthForm(!isLogin));
             };
 
-            const handleRegister = async () => { /* ... see previous versions for implementation ... */ };
-            const handleLogin = async () => { /* ... see previous versions for implementation ... */ };
-            const handleLogout = async () => { /* ... see previous versions for implementation ... */ };
-            async function getAccessToken(code) { /* ... see previous versions for implementation ... */ }
-            async function showMainApp() { /* ... see previous versions for implementation ... */ }
-            async function initializeMap() { /* ... see previous versions for implementation ... */ }
-            function connectToStrava() { /* ... see previous versions for implementation ... */ }
-            function resetProgress() { /* ... see previous versions for implementation ... */ }
-            function handleFilterClick(e) { /* ... see previous versions for implementation ... */ }
-            function renderActivityList(activities) { /* ... see previous versions for implementation ... */ }
-            async function analyzeSingleActivity(activity, button) { /* ... see previous versions for implementation ... */ }
-            async function updateSingleTitle(activity, button, nameEl) { /* ... see previous versions for implementation ... */ }
-            async function updateActivity(id, newTitle) { /* ... see previous versions for implementation ... */ }
-            async function fetchAllActivities() { /* ... see previous versions for implementation ... */ }
-            async function getActivityStream(activityId) { /* ... see previous versions for implementation ... */ }
-            function findOverlappingPoints(activityLine) { /* ... see previous versions for implementation ... */ }
-            function updateProgress(completedPoints) { /* ... see previous versions for implementation ... */ }
+            const handleLogout = async () => { /* ... unchanged ... */ };
+            async function getAccessToken(code) { /* ... unchanged ... */ }
+            async function showMainApp() { /* ... unchanged ... */ }
+            async function initializeMap() { /* ... unchanged ... */ }
+            function connectToStrava() { /* ... unchanged ... */ }
+            function resetProgress() { /* ... unchanged ... */ }
+            function handleFilterClick(e) { /* ... unchanged ... */ }
+            function renderActivityList(activities) { /* ... unchanged ... */ }
+           
+            async function analyzeSingleActivity(activity, button) {
+                button.disabled = true; button.innerHTML = `<span class="loader"></span>Analyzing...`;
+                const stream = await getActivityStream(activity.id);
+                let newlyCompletedPoints = [];
+                if (stream) {
+                    const activityLine = turf.lineString(stream.map(p => [p[1], p[0]]));
+                    newlyCompletedPoints = findOverlappingPoints(activityLine);
+                    log(`-> Found ${newlyCompletedPoints.length} matching points for "${activity.name}".`, 'success');
+                }
+                const newProgress = {
+                    completedPoints: [...(userProgress.completedPoints || []), ...newlyCompletedPoints],
+                    processedIds: [...(userProgress.processedIds || []), activity.id]
+                };
+                // ** FIX: Use { merge: true } to avoid overwriting credentials **
+                await setDoc(progressDocRef, newProgress, { merge: true });
+                log('Progress saved to the cloud.', 'success');
+                button.textContent = 'Analyzed';
+            }
+
+            async function updateSingleTitle(activity, button, nameEl) { /* ... unchanged ... */ }
+            async function updateActivity(id, newTitle) { /* ... unchanged ... */ }
+            async function fetchAllActivities() { /* ... unchanged ... */ }
+            async function getActivityStream(activityId) { /* ... unchanged ... */ }
+            function findOverlappingPoints(activityLine) { /* ... unchanged ... */ }
+            function updateProgress(completedPoints) { /* ... unchanged ... */ }
            
             // --- MAIN APP ENTRY POINT ---
             UIElements.logoutButton.addEventListener('click', handleLogout);
@@ -225,6 +268,14 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
+                if (authCode && user) {
+                    showView('loadingSection');
+                    await getAccessToken(authCode);
+                    // This will cause a page reload, which will then trigger the correct view
+                    window.location.href = window.location.pathname;
+                    return;
+                }
+               
                 if (user) {
                     userId = user.uid;
                     progressDocRef = doc(db, "users", userId);
@@ -234,7 +285,7 @@
                         const data = doc.data() || {};
                         userProgress = {
                             completedPoints: data.completedPoints || [],
-                            processedIds: data.processedIds || []
+                            processedIds: data.processedIds || [],
                         };
                         log('Cloud progress data loaded/updated.');
                         if(swcpGeoJSON) updateProgress(userProgress.completedPoints);
@@ -250,13 +301,6 @@
                            log('FATAL: Strava credentials not found in your account! Please log out and register again.', 'error');
                            handleLogout(); return;
                         }
-                    }
-
-                    if (authCode) {
-                        showView('loadingSection');
-                        await getAccessToken(authCode);
-                        // The onAuthStateChanged will re-fire with the new state
-                        return;
                     }
 
                     if (sessionStorage.getItem('stravaAccessToken')) {
