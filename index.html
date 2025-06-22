@@ -25,7 +25,7 @@
             left: 0;
             width: 100%;
             height: 100%;
-            background-image: url('background.png'); /* Applied here */
+            background-image: url('background.webp'); /* Updated to .webp */
             background-size: cover;
             background-position: center center;
             background-repeat: no-repeat;
@@ -118,8 +118,8 @@
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
             background-color: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
-            backdrop-filter: blur(4px); /* Adjusted blur amount to 4px */
-            -webkit-backdrop-filter: blur(4px); /* For Safari compatibility */
+            backdrop-filter: blur(3px); /* Adjusted blur amount to 3px */
+            -webkit-backdrop-filter: blur(3px); /* For Safari compatibility */
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
         }
 
@@ -361,7 +361,7 @@
         const CACHED_ACTIVITIES_KEY = 'swcp_cached_activities';
         const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
         const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour (adjust as needed for 24 * 60 * 60 * 1000 for 24 hours)
-        const BACKGROUND_IMAGE_PATH = 'background.png'; // Path to background image
+        const BACKGROUND_IMAGE_PATH = 'background.webp'; // Updated to .webp
 
         // UIElements (defined globally to be accessible by all functions)
         const UIElements = {
@@ -394,8 +394,8 @@
             mapLoadingOverlay: null,
             refreshActivitiesBtn: null,
             headerTile: null,
-            appBackground: null, // New reference for the background div
-            initialLoadingScreen: null // New reference for the initial loading overlay
+            appBackground: null,
+            initialLoadingScreen: null
         };
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
@@ -1112,8 +1112,8 @@
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
             UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
             UIElements.headerTile = document.getElementById('header-tile');
-            UIElements.appBackground = document.getElementById('app-background'); // Reference to the new background div
-            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen'); // Reference to the initial loading screen
+            UIElements.appBackground = document.getElementById('app-background');
+            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
 
             log('App initialized.');
 
@@ -1197,12 +1197,25 @@
             bgImage.src = BACKGROUND_IMAGE_PATH;
 
             bgImage.onload = async () => {
-                // Background image loaded, now show the appropriate screen
+                // Background image loaded, now apply it and proceed
                 if (UIElements.appBackground) {
                     UIElements.appBackground.style.backgroundImage = `url('${BACKGROUND_IMAGE_PATH}')`;
                 }
                 log('Background image loaded successfully.', 'success');
+                proceedWithAppInitFlow();
+            };
 
+            bgImage.onerror = () => {
+                log('Error loading background image. Proceeding without it.', 'error');
+                // Proceed without background image if it fails to load
+                proceedWithAppInitFlow();
+            };
+
+            // This function encapsulates the main app initialization flow that starts after background loads
+            async function proceedWithAppInitFlow() {
+                // Initialize Web Worker (already done above, but ensure flow continues)
+                // This block moves the rest of init() that depends on loaded background
+               
                 if (authCode) {
                     await getAccessToken(authCode);
                 } else if (sessionStorage.getItem('stravaAccessToken')) {
@@ -1218,27 +1231,7 @@
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
                 log('Initial app setup complete and visible.', 'success');
-            };
-
-            bgImage.onerror = () => {
-                log('Error loading background image. Proceeding without it.', 'error');
-                // Proceed without background image if it fails to load
-                if (authCode) {
-                    getAccessToken(authCode);
-                } else if (sessionStorage.getItem('stravaAccessToken')) {
-                    showMainApp();
-                } else {
-                    if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
-                    if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
-                    log('Please connect to Strava.');
-                }
-               
-                // Hide initial loading screen even if background fails
-                if (UIElements.initialLoadingScreen) {
-                    UIElements.initialLoadingScreen.style.display = 'none';
-                }
-                log('Initial app setup complete (background image failed to load).', 'success');
-            };
+            }
            
             // Initial call to updateGridLayout on load to set correct mobile/desktop state
             updateGridLayout();
