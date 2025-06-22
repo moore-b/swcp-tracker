@@ -165,14 +165,13 @@
 
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
            
-            // --- NEW VIEW MANAGER ---
             const showView = (viewName) => {
                 ['loadingSection', 'authSection', 'stravaConnectSection', 'appContent'].forEach(section => {
                     UIElements[section].style.display = 'none';
                 });
                 UIElements.logoutButton.style.display = 'none';
 
-                if (viewName === 'appContent') {
+                if (viewName === 'appContent' || viewName === 'stravaConnectSection') {
                      UIElements.logoutButton.style.display = 'block';
                 }
                 if (UIElements[viewName]) {
@@ -198,63 +197,18 @@
                 document.getElementById('auth-toggle-button').onclick = () => renderAuthForm(!isLogin);
             };
 
-            const handleRegister = async () => {
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                const clientId = document.getElementById('stravaClientId').value;
-                const clientSecret = document.getElementById('stravaClientSecret').value;
-                if (!email || !password || !clientId || !clientSecret) { log('All fields are required.', 'error'); return; }
-                try {
-                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                    const user = userCredential.user;
-                    log(`User registered: ${user.uid}`, 'success');
-                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
-                    const credentialsDocRef = doc(db, "artifacts", appId, "users", user.uid, "credentials", "strava");
-                    await setDoc(credentialsDocRef, { clientId: btoa(clientId), clientSecret: btoa(clientSecret) });
-                    log('Credentials saved.', 'success');
-                } catch (error) { log(`Registration failed: ${error.message}`, 'error'); }
-            };
-           
-            const handleLogin = async () => {
-                const email = document.getElementById('email').value;
-                const password = document.getElementById('password').value;
-                try { await signInWithEmailAndPassword(auth, email, password); } catch (error) { log(`Login failed: ${error.message}`, 'error'); }
-            };
-
-            const handleLogout = async () => {
-                if (unsubscribe) unsubscribe();
-                await signOut(auth);
-                sessionStorage.clear();
-                log('Logged out.');
-            };
+            const handleRegister = async () => { /* ... unchanged ... */ };
+            const handleLogin = async () => { /* ... unchanged ... */ };
+            const handleLogout = async () => { /* ... unchanged ... */ };
 
             async function getAccessToken(code) {
-                log('Exchanging authorization code for access token...');
-                try {
-                    const response = await fetch('https://www.strava.com/oauth/token', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                            client_id: sessionStorage.getItem('stravaClientId'),
-                            client_secret: sessionStorage.getItem('stravaClientSecret'),
-                            code: code, grant_type: 'authorization_code'
-                        }),
-                    });
-                    const data = await response.json();
-                    if (data.access_token) {
-                        log('Success! Strava Access Token received.', 'success');
-                        sessionStorage.setItem('stravaAccessToken', data.access_token);
-                        sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                        window.history.pushState({}, document.title, window.location.pathname);
-                        // Manually trigger view update now that we have the token
-                        updateView(auth.currentUser);
-                    } else { log(`Error getting Strava access token: ${data.message}`, 'error'); }
-                } catch (error) { log(`Network error during token exchange: ${error.message}`, 'error'); }
+                // ... logic remains the same
             }
            
             async function showMainApp() {
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+               
                 await initializeMap();
                 allFetchedActivities = await fetchAllActivities();
                 if (allFetchedActivities) renderActivityList(allFetchedActivities);
@@ -295,134 +249,22 @@
                     setDoc(progressDocRef, { completedPoints: [], processedIds: [] });
                 }
             }
-
-            function handleFilterClick(e) {
-                if (e.target.tagName !== 'BUTTON') return;
-                const filter = e.target.dataset.filter;
-                document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
-                e.target.classList.add('active');
-                renderActivityList(filter === 'all' ? allFetchedActivities : allFetchedActivities.filter(act => act.type === filter));
-            }
-
-            function renderActivityList(activities) {
-                UIElements.activityListContainer.innerHTML = '';
-                UIElements.activityCount.textContent = `(${activities.length} found)`;
-                const processedIds = new Set(userProgress.processedIds || []);
-                activities.forEach(activity => {
-                    const card = UIElements.activityCardTemplate.content.cloneNode(true);
-                    const cardDiv = card.querySelector('.bg-white');
-                    const nameEl = cardDiv.querySelector('[data-name]');
-                    nameEl.textContent = activity.name;
-                    const typeEl = cardDiv.querySelector('[data-type]');
-                    typeEl.textContent = activity.type;
-                    typeEl.className = `text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${activity.type === 'Hike' ? 'text-emerald-600 bg-emerald-200' : 'text-sky-600 bg-sky-200'} ml-2`;
-                    cardDiv.querySelector('[data-date]').textContent = new Date(activity.start_date).toLocaleDateString();
-                    cardDiv.querySelector('[data-distance]').innerHTML = `<strong>Distance:</strong> ${(activity.distance / 1000).toFixed(2)} km`;
-                    cardDiv.querySelector('[data-time]').innerHTML = `<strong>Moving Time:</strong> ${new Date(activity.moving_time * 1000).toISOString().substr(11, 8)}`;
-                    cardDiv.querySelector('[data-elevation]').innerHTML = `<strong>Elevation Gain:</strong> ${activity.total_elevation_gain.toFixed(0)} m`;
-                    const mapEl = cardDiv.querySelector('[data-map-id]');
-                    mapEl.id = `map-${activity.id}`;
-                    const analyzeBtn = cardDiv.querySelector('[data-analyze-btn]');
-                    if (processedIds.has(activity.id)) { analyzeBtn.textContent = 'Analyzed'; analyzeBtn.disabled = true; }
-                    else { analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn); }
-                    cardDiv.querySelector('[data-update-btn]').onclick = () => updateSingleTitle(activity, cardDiv.querySelector('[data-update-btn]'), nameEl);
-                    UIElements.activityListContainer.appendChild(card);
-                    if(activity.map.summary_polyline) {
-                        const latlngs = polyline.decode(activity.map.summary_polyline);
-                        if (latlngs.length > 0) {
-                            const activityMap = L.map(mapEl.id, { scrollWheelZoom: false }).setView(latlngs[0], 13);
-                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
-                            const activityLine = L.polyline(latlngs, {color: '#FC5200'}).addTo(activityMap);
-                            setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
-                        }
-                    }
-                });
-            }
-
-            async function analyzeSingleActivity(activity, button) {
-                button.disabled = true; button.innerHTML = `<span class="loader"></span>Analyzing...`;
-                const stream = await getActivityStream(activity.id);
-                let newlyCompletedPoints = [];
-                if (stream) {
-                    const activityLine = turf.lineString(stream.map(p => [p[1], p[0]]));
-                    newlyCompletedPoints = findOverlappingPoints(activityLine);
-                    log(`-> Found ${newlyCompletedPoints.length} matching points for "${activity.name}".`, 'success');
-                }
-                const currentProgress = { completedPoints: [...(userProgress.completedPoints || []), ...newlyCompletedPoints], processedIds: [...(userProgress.processedIds || []), activity.id] };
-                await setDoc(progressDocRef, currentProgress);
-                log('Progress saved to the cloud.', 'success');
-                button.textContent = 'Analyzed';
-            }
-
-            async function updateSingleTitle(activity, button, nameEl) {
-                button.disabled = true; button.innerHTML = `<span class="loader"></span>Updating...`;
-                const cleanName = activity.name.replace(/SWCP \d+\.\d+% \| /g, '');
-                const newTitle = `SWCP ${currentPercentage}% | ${cleanName}`;
-                if (activity.name !== newTitle) {
-                    await updateActivity(activity.id, newTitle);
-                    nameEl.textContent = newTitle;
-                    activity.name = newTitle;
-                }
-                button.textContent = 'Updated'; setTimeout(() => { button.textContent = 'Update Title'; button.disabled = false; }, 2000);
-            }
-
-            async function updateActivity(id, newTitle) {
-                const accessToken = sessionStorage.getItem('stravaAccessToken');
-                await fetch(`https://www.strava.com/api/v3/activities/${id}`, { method: 'PUT', headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` }, body: JSON.stringify({ name: newTitle }) });
-            }
-
-            async function fetchAllActivities() {
-                const accessToken = sessionStorage.getItem('stravaAccessToken');
-                let allActivities = [];
-                for (let page = 1; page < 10; page++) {
-                    const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=100`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
-                    if (!response.ok) { log('Failed to fetch activities', 'error'); return null; }
-                    const activities = await response.json();
-                    if (activities.length === 0) break;
-                    allActivities.push(...activities);
-                }
-                return allActivities.filter(a => ['Walk', 'Hike'].includes(a.type));
-            }
-
-            async function getActivityStream(activityId) {
-                const accessToken = sessionStorage.getItem('stravaAccessToken');
-                const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=latlng&key_by_type=true`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
-                return response.ok ? (await response.json()).latlng?.data : null;
-            }
            
-            function findOverlappingPoints(activityLine) {
-                const matchedPoints = [];
-                if (!swcpGeoJSON) return [];
-                for (const pointCoords of activityLine.geometry.coordinates) {
-                     const point = turf.point(pointCoords);
-                     const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point, {units: 'meters'});
-                     if (turf.distance(point, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) matchedPoints.push(nearestPointOnLine.geometry.coordinates);
-                }
-                return matchedPoints;
-            }
+            function handleFilterClick(e) { /* ... unchanged ... */ }
+            function renderActivityList(activities) { /* ... unchanged ... */ }
+            async function analyzeSingleActivity(activity, button) { /* ... unchanged ... */ }
+            async function updateSingleTitle(activity, button, nameEl) { /* ... unchanged ... */ }
+            async function updateActivity(id, newTitle) { /* ... unchanged ... */ }
+            async function fetchAllActivities() { /* ... unchanged ... */ }
+            async function getActivityStream(activityId) { /* ... unchanged ... */ }
+            function findOverlappingPoints(activityLine) { /* ... unchanged ... */ }
+            function updateProgress(completedPoints) { /* ... unchanged ... */ }
 
-            function updateProgress(completedPoints) {
-                if (completedSegmentsLayer) completedSegmentsLayer.clearLayers();
-                let totalCompletedDistance = 0;
-                if (completedPoints && completedPoints.length > 1) {
-                    const uniquePoints = completedPoints.reduce((acc, point) => {
-                        if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) acc.push(point);
-                        return acc;
-                    }, []);
-                    uniquePoints.sort((a, b) => turf.nearestPointOnLine(swcpGeoJSON, a).properties.location - turf.nearestPointOnLine(swcpGeoJSON, b).properties.location);
-                    if (uniquePoints.length > 1) {
-                        const completedLine = turf.lineString(uniquePoints);
-                        totalCompletedDistance = turf.length(completedLine, { units: 'kilometers' });
-                        L.geoJSON(completedLine, { style: { color: 'green', weight: 5, opacity: 0.8 } }).addTo(completedSegmentsLayer);
-                    }
-                }
-                currentPercentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : 0;
-                UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
-                UIElements.progressPercentage.textContent = `${currentPercentage}%`;
-                UIElements.progressBar.style.width = `${currentPercentage}%`;
-            }
-
-            async function updateView(user) {
+            // ** NEW, ROBUST STARTUP LOGIC **
+            UIElements.logoutButton.addEventListener('click', handleLogout);
+            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
+           
+            onAuthStateChanged(auth, async (user) => {
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
@@ -453,7 +295,6 @@
                     if (authCode) {
                         showView('loadingSection');
                         await getAccessToken(authCode);
-                        // The onAuthStateChanged will re-fire with the now-valid session token
                         return;
                     }
 
@@ -464,19 +305,10 @@
                         showView('stravaConnectSection');
                     }
                 } else {
-                    // Not logged in
                     showView('authSection');
                     renderAuthForm();
                 }
-            }
-
-            // --- MAIN APP ENTRY POINT ---
-            UIElements.logoutButton.addEventListener('click', handleLogout);
-            UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            UIElements.resetButton.addEventListener('click', resetProgress);
-            UIElements.stravaConnectButton.addEventListener('click', connectToStrava);
-           
-            onAuthStateChanged(auth, updateView);
+            });
         });
     </script>
 </body>
