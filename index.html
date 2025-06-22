@@ -193,7 +193,11 @@
                     <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
                 </div>
                 <h3 class="text-xl font-semibold mb-3">Master Map</h3>
-                <div id="map"></div>
+                <div id="map">
+                    <div id="map-loading-overlay" class="absolute top-0 left-0 w-full h-full bg-white bg-opacity-80 flex justify-center items-center z-1000 hidden">
+                        <div class="loader mr-3"></div> <span class="text-gray-500">Loading map...</span>
+                    </div>
+                </div>
                 <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
             </div>
         </div>
@@ -216,6 +220,7 @@
                 <div class="mb-4">
                     <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
                 </div>
+                <button id="refresh-activities-btn" class="w-full bg-blue-500 hover:bg-blue-600 text-white font-bold py-2 px-3 rounded-lg transition mb-4">Refresh Activities</button>
                 <div id="activities-loading-spinner" class="flex justify-center items-center h-32">
                     <div class="loader mr-3"></div> <span class="text-gray-500">Loading activities...</span>
                 </div>
@@ -290,7 +295,9 @@
             rightColumn: null,
             centerColumn: null,
             activitiesLoadingSpinner: null,
-            activitySearchBox: null // New reference for the search input
+            activitySearchBox: null,
+            mapLoadingOverlay: null,
+            refreshActivitiesBtn: null // New reference for refresh button
         };
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
@@ -452,6 +459,11 @@
         // Initialize Map function
         async function initializeMap() {
             log('Initializing master map...');
+            // Show map loading overlay
+            if (UIElements.mapLoadingOverlay) {
+                UIElements.mapLoadingOverlay.style.display = 'flex';
+            }
+
             // Ensure map element exists before trying to create map
             if (!UIElements.mainMap) {
                 log("Error: Map element not found!", "error");
@@ -496,7 +508,12 @@
                 mainMap.fitBounds(leafletGeoJson.getBounds());
                 UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
                 log('Master map loaded.', 'success');
-            } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); throw e; }
+            } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); throw e; } finally {
+                // Ensure overlay is hidden even on error
+                if (UIElements.mapLoadingOverlay) {
+                    UIElements.mapLoadingOverlay.style.display = 'none';
+                }
+            }
         }
        
         // Load Progress From Storage function
@@ -556,6 +573,36 @@
 
             filterActivities(); // Re-apply all filters including search
         }
+
+        // Handle Activities Refresh Button Click
+        async function refreshActivities() {
+            if (confirm("Are you sure you want to refresh activities from Strava? This will clear the cache and fetch new data.")) {
+                // Clear cached activities so fetchAllActivities pulls new data
+                localStorage.removeItem(CACHED_ACTIVITIES_KEY);
+                localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
+                log('Activities cache cleared. Fetching new activities from Strava...', 'info');
+               
+                if (UIElements.activitiesLoadingSpinner) {
+                    UIElements.activitiesLoadingSpinner.style.display = 'flex';
+                    if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'none';
+                }
+
+                allFetchedActivities = await fetchAllActivities(); // Fetch new data
+               
+                if (UIElements.activitiesLoadingSpinner) {
+                    UIElements.activitiesLoadingSpinner.style.display = 'none';
+                    if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'block';
+                }
+
+                if (allFetchedActivities) {
+                    filterActivities(); // Render with new data (and current filters/search)
+                    log('Activities refreshed and rendered.', 'success');
+                } else {
+                    log('Failed to refresh activities.', 'error');
+                }
+            }
+        }
+
 
         // Render Activity List function
         function renderActivityList(activities) {
@@ -929,7 +976,9 @@
             UIElements.rightColumn = document.getElementById('right-column');
             UIElements.centerColumn = document.getElementById('center-column');
             UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
-            UIElements.activitySearchBox = document.getElementById('activity-search-box'); // New reference for the search input
+            UIElements.activitySearchBox = document.getElementById('activity-search-box');
+            UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
+            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn'); // New: Activities Refresh Button
 
             log('App initialized.');
 
@@ -998,7 +1047,8 @@
             if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
             if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
             if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities); // New event listener for search box
+            if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
+            if (UIElements.refreshActivitiesBtn) UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities); // New event listener for refresh button
            
             if (UIElements.clientId) UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
             if (UIElements.clientSecret) UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
