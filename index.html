@@ -1156,7 +1156,7 @@
 
             log('App initialized.');
 
-            // Show initial loading screen (it starts hidden in HTML, we display it here)
+            // Show initial loading screen. This is crucial for the very first load experience.
             if (UIElements.initialLoadingScreen) {
                 UIElements.initialLoadingScreen.style.display = 'flex';
             }
@@ -1165,22 +1165,23 @@
             const bgImage = new Image();
             bgImage.src = BACKGROUND_IMAGE_PATH;
 
-            let backgroundLoadedPromise = new Promise((resolve, reject) => {
-                bgImage.onload = () => {
-                    if (UIElements.appBackground) {
-                        UIElements.appBackground.style.backgroundImage = `url('${BACKGROUND_IMAGE_PATH}')`;
-                    }
-                    log('Background image loaded successfully.', 'success');
-                    resolve();
-                };
-                bgImage.onerror = () => {
-                    log('Error loading background image. Proceeding without it.', 'error');
-                    reject(new Error("Background image failed to load"));
-                };
-            });
+            bgImage.onload = async () => {
+                if (UIElements.appBackground) {
+                    UIElements.appBackground.style.backgroundImage = `url('${BACKGROUND_IMAGE_PATH}')`;
+                }
+                log('Background image loaded successfully.', 'success');
+                // Proceed with app flow after background is ready
+                await handleAppStartupFlow();
+            };
 
-            // This function encapsulates the main app initialization flow that starts after background loads
-            async function proceedWithAppInitFlow() {
+            bgImage.onerror = async () => {
+                log('Error loading background image. Proceeding without it.', 'error');
+                // Proceed without background image if it fails to load
+                await handleAppStartupFlow();
+            };
+
+            // This function encapsulates the main app initialization flow that starts AFTER background loads
+            async function handleAppStartupFlow() {
                 // Add event listeners (now that UIElements are populated)
                 if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
                 if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
@@ -1199,34 +1200,29 @@
 
                 if (authCode) {
                     await getAccessToken(authCode);
-                    // Note: getAccessToken reloads the page. This means the current execution context will be destroyed.
-                    // The initialLoadingScreen will show again because init() runs from scratch on the new page load.
-                    // The goal is for the *new* init() call to properly transition.
-                    return; // Crucially, exit this function, init() will re-run on the next page load.
+                    // Important: After getAccessToken, the page reloads. The rest of this function won't execute.
+                    // The new page load's init() will handle the display logic.
+                    // So, we do NOT hide initial loading screen here if authCode exists.
                 } else if (sessionStorage.getItem('stravaAccessToken')) {
                     await showMainApp();
                 } else {
-                    // Show login screen, hide main app container
+                    // This path is taken if not authenticated (initial visit or session expired)
+                    // Show login screen
                     if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
                     if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
                     log('Please connect to Strava.');
                 }
                
-                // Hide initial loading screen ONLY after all content is prepared and ready to show
-                if (UIElements.initialLoadingScreen) {
+                // This is the critical line: Hide initial loading screen ONLY IF we are not about to reload (i.e., no authCode)
+                // If authCode exists, the page reload will hide it and the new init() will manage the next state.
+                if (!authCode && UIElements.initialLoadingScreen) {
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
-                log('Initial app setup complete and visible.', 'success');
+                log('App setup complete and visible (or redirecting).', 'success');
                
                 updateGridLayout();
                 window.addEventListener('resize', updateGridLayout);
             }
-           
-            // Wait for background image to load (or fail) before proceeding with app flow
-            backgroundLoadedPromise.catch(() => {}).then(() => {
-                // This ensures proceedWithAppInitFlow is called regardless of background image success
-                // but the overall init flow only completes after background is ready.
-            });
         };
 
         // Call init when the DOM is fully loaded
