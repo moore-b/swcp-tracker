@@ -379,6 +379,7 @@
         const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
         const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
         const BACKGROUND_IMAGE_PATH = 'background.webp';
+        const HAS_LOADED_INITIALLY_KEY = 'swcp_init_loaded'; // Session storage key for initial load flag
 
         // UIElements (defined globally to be accessible by all functions)
         const UIElements = {
@@ -431,7 +432,7 @@
                 return;
             }
             const now = new Date().toLocaleTimeString();
-            UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-900')}">${message}</span></p>`; /* Changed to text-gray-900 for default info */
+            UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-900')}">${message}</span></p>`;
             UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
             if (type === 'error') console.error(message);
         };
@@ -1146,16 +1147,17 @@
             UIElements.activitySearchBox = document.getElementById('activity-search-box');
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
             UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
-            UIElements.headerTile = document.getElementById('header-section'); // Corrected ID
+            UIElements.headerTile = document.getElementById('header-section');
             UIElements.appBackground = document.getElementById('app-background');
             UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
-            UIElements.progressSummarySection = document.getElementById('progress-summary-section'); // New reference
-            UIElements.mapSection = document.getElementById('map-section'); // Reference to map section tile
+            UIElements.progressSummarySection = document.getElementById('progress-summary-section');
+            UIElements.mapSection = document.getElementById('map-section');
+            UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container');
+            UIElements.activitiesSection = document.getElementById('activities-section');
 
             log('App initialized.');
 
-            // Show initial loading screen immediately
-            // This is now explicitly handled here and hidden only after full content is ready
+            // Show initial loading screen immediately (it starts hidden in HTML, we display it here)
             if (UIElements.initialLoadingScreen) {
                 UIElements.initialLoadingScreen.style.display = 'flex';
             }
@@ -1198,9 +1200,10 @@
 
                 if (authCode) {
                     await getAccessToken(authCode);
-                    // Note: getAccessToken reloads the page. The subsequent flow will start from init() again.
-                    // This means the remaining code in this specific proceedWithAppInitFlow instance won't execute.
-                    return; // Exit here if redirecting
+                    // getAccessToken reloads the page. This means the current execution context will be destroyed.
+                    // The initialLoadingScreen will show again because init() runs from scratch on the new page load.
+                    // The goal is for the *new* init() call to properly transition.
+                    return; // Crucially, exit this function, init() will re-run on the next page load.
                 } else if (sessionStorage.getItem('stravaAccessToken')) {
                     await showMainApp();
                 } else {
@@ -1210,7 +1213,7 @@
                     log('Please connect to Strava.');
                 }
                
-                // Hide initial loading screen only AFTER everything (login screen or main app) is prepared and shown
+                // Hide initial loading screen ONLY after all content is prepared and ready to show
                 if (UIElements.initialLoadingScreen) {
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
