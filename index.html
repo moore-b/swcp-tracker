@@ -8,6 +8,7 @@
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gpx-parse/0.10.3/gpx-parse.min.js" defer></script>
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js' defer></script>
 
     <style>
@@ -71,6 +72,11 @@
                         Reset Progress
                     </button>
                 </div>
+                 <div class="mt-4">
+                    <button id="update-strava-button" class="w-full bg-green-600 hover:bg-green-700 text-white font-bold py-3 px-4 rounded-lg flex items-center justify-center" disabled>
+                        <span id="update-strava-text">Update Strava Activity Titles</span>
+                    </button>
+                </div>
             </div>
 
             <div id="status-log-section" class="mt-8">
@@ -83,11 +89,13 @@
     <script>
         document.addEventListener('DOMContentLoaded', () => {
 
-            const SWCP_GEOJSON_URL = 'swcp.geojson';
+            const OFFICIAL_GPX_URL = 'https://api.allorigins.win/raw?url=https://www.nationaltrail.co.uk/fs/i/gpx/south-west-coast-path.gpx';
             const DISTANCE_THRESHOLD_METERS = 100;
             const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
             const COMPLETED_POINTS_KEY = 'swcp_completed_points';
+            const SWCP_DATA_KEY = 'swcp_geojson_data';
            
+            // DOM Elements
             const clientIdInput = document.getElementById('clientId');
             const clientSecretInput = document.getElementById('clientSecret');
             const connectButton = document.getElementById('connect-button');
@@ -96,17 +104,21 @@
             const analyzeButton = document.getElementById('analyze-button');
             const analyzeButtonText = document.getElementById('analyze-button-text');
             const resetButton = document.getElementById('reset-button');
+            const updateStravaButton = document.getElementById('update-strava-button');
+            const updateStravaText = document.getElementById('update-strava-text');
             const statusLog = document.getElementById('status-log');
             const stravaUserInfo = document.getElementById('strava-user-info');
             const progressBar = document.getElementById('progress-bar');
-            const progressPercentage = document.getElementById('progress-percentage');
+            const progressPercentageEl = document.getElementById('progress-percentage');
             const completedDistanceEl = document.getElementById('completed-distance');
             const totalDistanceEl = document.getElementById('total-distance');
 
+            // Global State
             let map;
             let swcpGeoJSON;
             let swcpTotalDistance = 0;
             let completedSegmentsLayer;
+            let currentPercentage = 0;
 
             const log = (message, type = 'info') => {
                 const now = new Date().toLocaleTimeString();
@@ -115,16 +127,18 @@
                 statusLog.scrollTop = statusLog.scrollHeight;
                 if (type === 'error') console.error(message);
             };
+
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
            
             const init = async () => {
-                log('Page and scripts loaded. Initializing app...');
+                log('App initialized. Waiting for user input.');
                
                 clientIdInput.addEventListener('input', checkInputs);
                 clientSecretInput.addEventListener('input', checkInputs);
                 connectButton.addEventListener('click', connectToStrava);
                 resetButton.addEventListener('click', resetProgress);
                 analyzeButton.addEventListener('click', analyzeAllActivities);
+                updateStravaButton.addEventListener('click', updateStravaTitles);
                
                 clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
                 clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
@@ -133,19 +147,13 @@
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
-                if (authCode) {
-                    await getAccessToken(authCode);
-                } else if (sessionStorage.getItem('stravaAccessToken')) {
-                    await showProgressSection();
-                } else {
-                    log('No access token. Please connect to Strava.');
-                }
+                if (authCode) await getAccessToken(authCode);
+                else if (sessionStorage.getItem('stravaAccessToken')) await showProgressSection();
+                else log('Please connect to Strava.');
             };
            
             function checkInputs() {
-                if (connectButton) {
-                    connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
-                }
+                if (connectButton) connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
             }
        
             function connectToStrava() {
@@ -158,7 +166,7 @@
             }
 
             async function getAccessToken(code) {
-                log('Authorization code found. Exchanging for access token...');
+                log('Exchanging authorization code for access token...');
                 try {
                     const response = await fetch('https://www.strava.com/oauth/token', {
                         method: 'POST',
@@ -166,8 +174,7 @@
                         body: JSON.stringify({
                             client_id: sessionStorage.getItem('stravaClientId'),
                             client_secret: sessionStorage.getItem('stravaClientSecret'),
-                            code: code,
-                            grant_type: 'authorization_code',
+                            code: code, grant_type: 'authorization_code'
                         }),
                     });
                     const data = await response.json();
@@ -176,12 +183,8 @@
                         sessionStorage.setItem('stravaAccessToken', data.access_token);
                         sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
                         window.location.href = window.location.pathname;
-                    } else {
-                        log(`Error getting access token: ${data.message}`, 'error');
-                    }
-                } catch (error) {
-                    log(`Network error during token exchange: ${error.message}`, 'error');
-                }
+                    } else { log(`Error getting access token: ${data.message}`, 'error'); }
+                } catch (error) { log(`Network error: ${error.message}`, 'error'); }
             }
            
             async function showProgressSection() {
@@ -189,9 +192,8 @@
                 progressSection.style.display = 'block';
 
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
-                if(athlete.firstname) {
-                    stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-                }
+                if(athlete.firstname) stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+               
                 await initializeMap();
                 loadProgressFromStorage();
             }
@@ -199,69 +201,87 @@
             async function initializeMap() {
                 log('Initializing map...');
                 map = L.map('map').setView([50.5, -4.0], 8);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
-                }).addTo(map);
+                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(map);
                 completedSegmentsLayer = L.layerGroup().addTo(map);
 
-                log('Fetching SWCP route data from local GeoJSON file...');
-                try {
-                    const response = await fetch(SWCP_GEOJSON_URL);
-                    if (!response.ok) throw new Error(`HTTP error! Could not find GeoJSON file. Status: ${response.status}`);
-                   
-                    const data = await response.json();
-                    log('GeoJSON data loaded and parsed successfully.', 'success');
-                   
-                    swcpGeoJSON = data.geometry;
-                    const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(map);
-                    map.fitBounds(leafletGeoJson.getBounds());
-
-                    swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
-                    totalDistanceEl.textContent = swcpTotalDistance.toFixed(2);
-                    analyzeButton.disabled = false;
-
-                } catch(e) {
-                    log(e.message, 'error');
+                const storedData = localStorage.getItem(SWCP_DATA_KEY);
+                if (storedData) {
+                    log('Loading map data from browser storage.', 'success');
+                    processSwcpData(storedData, false);
+                    return;
                 }
+               
+                log('Fetching official SWCP route data... (this may take a moment on first load)');
+                try {
+                    const response = await fetch(OFFICIAL_GPX_URL);
+                    if (!response.ok) throw new Error(`HTTP error fetching route! Status: ${response.status}`);
+                    const gpxData = await response.text();
+                    log('Route data received. Parsing...', 'success');
+                    processSwcpData(gpxData, true);
+                } catch(e) { log(`Failed to fetch map data: ${e.message}`, 'error'); }
+            }
+
+            function processSwcpData(data, isGpx = false) {
+                try {
+                    if (isGpx) {
+                        if (typeof gpxParse === 'undefined') throw new Error('GPX-Parse library not loaded.');
+                        gpxParse.parseGpx(data, (error, parsedData) => {
+                            if (error) throw new Error(`GPX Parse Error: ${error}`);
+                            const points = parsedData.tracks[0].segments[0].map(p => [p.lon, p.lat]);
+                            swcpGeoJSON = turf.lineString(points);
+                            localStorage.setItem(SWCP_DATA_KEY, JSON.stringify(swcpGeoJSON));
+                            log('Map data parsed and saved to browser storage.', 'success');
+                            renderMap();
+                        });
+                    } else {
+                        swcpGeoJSON = JSON.parse(data);
+                        renderMap();
+                    }
+                } catch(e) { log(`Error processing map data: ${e.message}`, 'error'); }
+            }
+
+            function renderMap() {
+                if (!swcpGeoJSON || !map) return;
+                 const leafletGeoJson = L.geoJSON(swcpGeoJSON, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(map);
+                map.fitBounds(leafletGeoJson.getBounds());
+                swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
+                totalDistanceEl.textContent = swcpTotalDistance.toFixed(2);
+                analyzeButton.disabled = false;
+                updateStravaButton.disabled = false;
             }
            
             function loadProgressFromStorage() {
                 const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                log(`Loaded ${completedPoints.length} completed points from storage.`);
+                log(`Loaded ${completedPoints.length} completed points.`);
                 updateProgress(completedPoints);
             }
            
             function resetProgress() {
                 localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
                 localStorage.removeItem(COMPLETED_POINTS_KEY);
-                log('Progress has been reset.', 'success');
+                localStorage.removeItem(SWCP_DATA_KEY); // Also clear the map data to force a re-fetch
+                log('Progress and map data reset. Please reload the page.', 'success');
                 updateProgress([]);
             }
 
             async function analyzeAllActivities() {
-                log('Analysis started...');
-                setLoading(true);
+                setLoading(true, 'analyze-button');
                 const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
-                log(`Found ${processedIds.size} previously processed activities.`);
-
                 const activities = await fetchAllActivities();
-                if (!activities) {
-                    setLoading(false);
-                    return;
-                }
+                if (!activities) { setLoading(false, 'analyze-button'); return; }
 
                 const newActivities = activities.filter(a => !processedIds.has(a.id));
                 if (newActivities.length === 0) {
-                    log('No new walks or hikes found to analyze.', 'info');
-                    setLoading(false);
+                    log('No new activities to analyze.', 'info');
+                    setLoading(false, 'analyze-button');
                     return;
                 }
 
-                log(`Found ${newActivities.length} new activities to analyze...`);
+                log(`Analyzing ${newActivities.length} new activities...`);
                 let newlyCompletedPoints = [];
 
                 for (const activity of newActivities) {
-                    log(`Analyzing: "${activity.name}" (ID: ${activity.id})`);
+                    log(`Checking: "${activity.name}"`);
                     await sleep(500);
                     const stream = await getActivityStream(activity.id);
                     if (stream) {
@@ -281,31 +301,76 @@
                 localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
                 localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
 
-                log('Analysis complete. Updating map and progress.', 'success');
+                log('Analysis complete.', 'success');
                 updateProgress(allCompletedPoints);
-                setLoading(false);
+                setLoading(false, 'analyze-button');
             }
 
-            function setLoading(isLoading) {
-                 analyzeButton.disabled = isLoading;
-                 analyzeButtonText.innerHTML = isLoading ? '<span class="loader"></span>Analyzing...' : 'Analyze New Activities';
+            async function updateStravaTitles() {
+                setLoading(true, 'update-strava-button');
+                const activities = await fetchAllActivities();
+                if (!activities) { setLoading(false, 'update-strava-button'); return; }
+
+                log(`Checking ${activities.length} total activities for title updates...`);
+                for (const activity of activities) {
+                    // Check if the activity route actually overlaps with the path before updating
+                    const stream = await getActivityStream(activity.id);
+                    if (stream) {
+                        const activityLine = turf.lineString(stream.map(p => [p[1], p[0]]));
+                        if (findOverlappingPoints(activityLine).length > 0) {
+                            const cleanName = activity.name.replace(/SWCP \d+\.\d+% \| /g, ''); // Remove old percentage
+                            const newTitle = `SWCP ${currentPercentage}% | ${cleanName}`;
+                            if (activity.name !== newTitle) {
+                                log(`Updating title for "${cleanName}"`);
+                                await updateActivity(activity.id, newTitle);
+                                await sleep(500);
+                            } else {
+                                log(`Skipping "${activity.name}", already up to date.`);
+                            }
+                        }
+                    }
+                }
+                log('Finished updating Strava titles.', 'success');
+                setLoading(false, 'update-strava-button');
+            }
+
+            async function updateActivity(id, newTitle, newDescription) {
+                const accessToken = sessionStorage.getItem('stravaAccessToken');
+                const payload = { name: newTitle };
+                if (newDescription) payload.description = newDescription;
+
+                try {
+                    const response = await fetch(`https://www.strava.com/api/v3/activities/${id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
+                        body: JSON.stringify(payload)
+                    });
+                     if (!response.ok) {
+                        log(`Failed to update activity ${id}. Status: ${response.status}`, 'error');
+                    }
+                } catch(e) { log(`Error updating activity ${id}: ${e.message}`, 'error'); }
+            }
+
+            function setLoading(isLoading, buttonId) {
+                 const button = document.getElementById(buttonId);
+                 const textSpan = document.getElementById(buttonId.replace('-button', '-text'));
+                 button.disabled = isLoading;
+                 const originalText = buttonId === 'analyze-button' ? 'Analyze New Activities' : 'Update Strava Activity Titles';
+                 textSpan.innerHTML = isLoading ? '<span class="loader"></span>Processing...' : originalText;
             }
 
             async function fetchAllActivities() {
                 const accessToken = sessionStorage.getItem('stravaAccessToken');
                 let allActivities = [];
-                let page = 1;
-                const perPage = 100;
-                while(true) {
+                for (let page = 1; page < 10; page++) { // Limit to 10 pages for sanity
                     try {
-                        const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, {
+                        const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=100`, {
                             headers: { 'Authorization': `Bearer ${accessToken}` }
                         });
                         if (!response.ok) throw new Error(await response.text());
                         const activities = await response.json();
                         if (activities.length === 0) break;
                         allActivities.push(...activities);
-                        page++;
                     } catch(e) {
                         log(`Failed to fetch activities: ${e.message}`, 'error');
                         return null;
@@ -321,8 +386,7 @@
                          headers: { 'Authorization': `Bearer ${accessToken}` }
                     });
                     if (!response.ok) return null;
-                    const data = await response.json();
-                    return data.latlng ? data.latlng.data : null;
+                    return (await response.json()).latlng?.data;
                 } catch (e) {
                     log(`Error fetching stream for activity ${activityId}: ${e.message}`, 'error');
                     return null;
@@ -345,8 +409,7 @@
             function updateProgress(completedPoints) {
                 completedSegmentsLayer.clearLayers();
                 let totalCompletedDistance = 0;
-                let percentage = 0;
-
+               
                 if (completedPoints.length > 1) {
                     const uniquePoints = completedPoints.reduce((acc, point) => {
                         if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) {
@@ -355,24 +418,21 @@
                         return acc;
                     }, []);
                    
-                    uniquePoints.sort((a, b) => {
-                        const locA = turf.nearestPointOnLine(swcpGeoJSON, a).properties.location;
-                        const locB = turf.nearestPointOnLine(swcpGeoJSON, b).properties.location;
-                        return locA - locB;
-                    });
+                    uniquePoints.sort((a, b) => turf.nearestPointOnLine(swcpGeoJSON, a).properties.location - turf.nearestPointOnLine(swcpGeoJSON, b).properties.location);
 
                     if (uniquePoints.length > 1) {
                         const completedLine = turf.lineString(uniquePoints);
                         totalCompletedDistance = turf.length(completedLine, { units: 'kilometers' });
                         L.geoJSON(completedLine, { style: { color: 'green', weight: 5, opacity: 0.8 } }).addTo(completedSegmentsLayer);
-                        percentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
                     }
                 }
                
+                currentPercentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : 0;
                 completedDistanceEl.textContent = totalCompletedDistance.toFixed(2);
-                progressPercentage.textContent = percentage.toFixed(2) + '%';
-                progressBar.style.width = `${percentage}%`;
+                progressPercentageEl.textContent = `${currentPercentage}%`;
+                progressBar.style.width = `${currentPercentage}%`;
             }
+
             init();
         });
     </script>
