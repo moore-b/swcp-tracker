@@ -13,7 +13,16 @@
 
 
     <style>
-        body { font-family: 'Inter', sans-serif; }
+        body {
+            font-family: 'Inter', sans-serif;
+            /* Background Image for the entire app */
+            background-image: url('background.png');
+            background-size: cover;
+            background-position: center center;
+            background-attachment: fixed;
+            background-repeat: no-repeat;
+            background-color: #f3f4f6; /* Fallback if image fails or for initial load */
+        }
         #map {
             height: 700px;
             width: 100%;
@@ -24,26 +33,25 @@
        
         /* Unified Button Styling */
         .btn-base {
-            font-weight: 700 !important; /* Equivalent to font-bold */
-            padding: 0.5rem 0.75rem !important; /* py-2 px-3 */
-            border-radius: 0.5rem !important; /* rounded-lg */
-            outline: none !important; /* Remove default outline */
-            border: none !important; /* Remove default border */
-            cursor: pointer !important; /* Ensure cursor is pointer */
-           
+            font-weight: 700; /* Equivalent to font-bold */
+            padding: 0.5rem 0.75rem; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
             /* All transformations, transitions, and shadows for consistent behavior */
-            transform-origin: center !important; /* Swell from center */
-            transition-property: all !important; /* Apply transition to all changing properties */
-            transition-duration: 300ms !important; /* Equivalent to Tailwind's duration-300 */
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important; /* Equivalent to Tailwind's ease-in-out */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; /* Equivalent to Tailwind's shadow-md */
+            transform-origin: center; /* Swell from center */
+            transition-property: all; /* Apply transition to all changing properties */
+            transition-duration: 300ms; /* Equivalent to Tailwind's duration-300 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* Equivalent to Tailwind's ease-in-out */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Equivalent to Tailwind's shadow-md */
+            outline: none; /* Remove default outline */
+            border: none; /* Remove default border */
+            cursor: pointer; /* Ensure cursor is pointer */
         }
         .btn-base:hover {
-            transform: scale(1.05) !important; /* Equivalent to Tailwind's hover:scale-105 */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important; /* Equivalent to Tailwind's hover:shadow-lg */
+            transform: scale(1.05); /* Equivalent to Tailwind's hover:scale-105 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Equivalent to Tailwind's hover:shadow-lg */
         }
         .btn-base:disabled {
-            background-color: #d1d5db !important; /* Equivalent to Tailwind's disabled:bg-gray-300 */
+            background-color: #d1d5db; /* Equivalent to Tailwind's disabled:bg-gray-300 */
         }
 
         .btn-strava {
@@ -98,12 +106,20 @@
             border-color: #3b82f6;
         }
 
+        /* --- Translucent & Blurred Tile Backgrounds --- */
+        .blurred-tile-background {
+            background-color: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
+            backdrop-filter: blur(8px); /* Apply blur effect */
+            -webkit-backdrop-filter: blur(8px); /* For Safari compatibility */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
+        }
+
         /* --- CSS Grid Layout --- */
         #main-layout-container {
             display: grid;
             /* Desktop: 2 columns (Map/Status stack: 2fr | Activities: 1fr) */
             grid-template-columns: 2fr 1fr;
-            grid-template-rows: auto auto auto; /* Rows for Map content and Status Log content */
+            grid-template-rows: auto auto auto; /* Rows for Header, Map, and Status Log */
             gap: 1rem; /* Increased gap for more breathing room */
             min-height: 100vh;
             padding: 1rem; /* Padding around the whole grid to ensure borders are visible */
@@ -134,7 +150,7 @@
                 grid-template-rows: auto auto auto auto; /* Stack Header, Map content, Activities, Status Log */
                 padding: 1rem; /* More padding on mobile */
             }
-            /* Reorder for mobile: Map first, then Activities, then Status Log */
+            /* Reorder for mobile: Header first, then Map, then Activities, then Status Log */
             #header-tile {
                 grid-row: 1;
             }
@@ -231,11 +247,11 @@
 <body class="bg-gray-50 text-gray-800">
 
     <div id="login-screen-wrapper" class="min-h-screen flex items-center justify-center bg-gray-50">
-        <div id="config-section" class="bg-white p-8 rounded-lg shadow-xl max-w-md w-full text-center">
+        <div id="config-section" class="p-8 rounded-lg shadow-xl max-w-md w-full text-center blurred-tile-background">
             <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Connect to Strava</h2>
             <div class="space-y-4 mb-6">
-                <div><label for="clientId" class="block text-sm font-medium text-gray-700 text-left">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
-                <div><label for="clientSecret" class="block text-sm font-medium text-gray-700 text-left">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
+                <div><label for="clientId" class="block text-sm font-medium text-gray-700 text-left">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
+                <div><label for="clientSecret" class="block text-sm font-medium text-gray-700 text-left">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
             </div>
             <button id="connect-button" class="w-full btn-base btn-strava">Connect with Strava</button>
         </div>
@@ -243,14 +259,14 @@
 
     <div id="main-layout-container" class="hidden">
 
-        <div id="header-tile" class="bg-white p-6 rounded-lg shadow-lg text-center">
+        <div id="header-tile" class="p-6 rounded-lg shadow-lg text-center blurred-tile-background">
             <h1 class="text-4xl font-bold text-gray-900">
                 South West Coast Path Tracker
             </h1>
         </div>
 
-        <div id="center-column" class="bg-white p-6 rounded-lg shadow-lg">
-            <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
+        <div id="center-column" class="p-6 rounded-lg shadow-lg blurred-tile-background">
+            <div id="progress-section" class="hidden p-6 rounded-lg shadow-md">
                 <div class="flex justify-between items-center mb-4 border-b pb-3">
                     <h2 class="text-2xl font-semibold">Overall Progress</h2>
                     <div id="strava-user-info" class="text-right"></div>
@@ -270,13 +286,13 @@
             </div>
         </div>
 
-        <div id="left-column" class="bg-white p-6 rounded-lg shadow-lg text-gray-800">
+        <div id="left-column" class="p-6 rounded-lg shadow-lg text-gray-800 blurred-tile-background">
             <details open id="status-log-details" class="h-full flex flex-col">
-                <summary class="text-xl font-semibold p-4 sticky top-0 bg-white z-10">Status Log</summary>
+                <summary class="text-xl font-semibold p-4 sticky top-0 blurred-tile-background z-10">Status Log</summary>
                 <div id="status-log" class="flex-grow overflow-y-auto"></div> </details>
         </div>
 
-        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto bg-white p-6 rounded-lg shadow-lg">
+        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto p-6 rounded-lg shadow-lg blurred-tile-background">
             <div id="activity-list-section" class="mt-8 md:mt-0">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
