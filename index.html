@@ -114,6 +114,9 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
+        // ** STARTUP FIX **
+        // All logic is now wrapped in a DOMContentLoaded listener to ensure the page is ready.
+        // The startup sequence is simplified and made more robust.
         document.addEventListener('DOMContentLoaded', () => {
             const SWCP_GEOJSON_URL = 'routes.geojson';
             const DISTANCE_THRESHOLD_METERS = 100;
@@ -235,7 +238,6 @@
             async function showMainApp() {
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-               
                 await initializeMap();
                 allFetchedActivities = await fetchAllActivities();
                 if (allFetchedActivities) renderActivityList(allFetchedActivities);
@@ -268,8 +270,7 @@
 
             function connectToStrava() {
                 const clientId = sessionStorage.getItem('stravaClientId');
-                const clientSecret = sessionStorage.getItem('stravaClientSecret');
-                if(!clientId || !clientSecret) { log('Could not find Strava Credentials.', 'error'); return; }
+                if(!clientId) { log('Could not find Strava Client ID.', 'error'); return; }
                 const redirectUri = window.location.origin + window.location.pathname;
                 window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
             }
@@ -406,7 +407,7 @@
                 UIElements.progressBar.style.width = `${currentPercentage}%`;
             }
 
-            // ** FIX: Correctly start the application initialization **
+            // Centralized Auth State Manager
             onAuthStateChanged(auth, async (user) => {
                 if (user) {
                     userId = user.uid;
@@ -414,11 +415,11 @@
                     progressDocRef = doc(db, "artifacts", appId, "users", userId, "swcp_progress", "main");
                     const credentialsDocRef = doc(db, "artifacts", appId, "users", userId, "credentials", "strava");
                    
-                    if (unsubscribe) unsubscribe(); // remove old listener
+                    if (unsubscribe) unsubscribe();
                     unsubscribe = onSnapshot(progressDocRef, (doc) => {
                         userProgress = doc.exists() ? doc.data() : { completedPoints: [], processedIds: [] };
                         log('Cloud progress data loaded/updated.');
-                        updateProgress(userProgress.completedPoints || []);
+                        if(swcpGeoJSON) updateProgress(userProgress.completedPoints || []);
                     });
                    
                     const credDoc = await getDoc(credentialsDocRef);
