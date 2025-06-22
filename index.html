@@ -42,25 +42,25 @@
        
         /* Unified Button Styling */
         .btn-base {
-            font-weight: 700; /* Equivalent to font-bold */
-            padding: 0.5rem 0.75rem; /* py-2 px-3 */
-            border-radius: 0.5rem; /* rounded-lg */
+            font-weight: 700 !important; /* Equivalent to font-bold */
+            padding: 0.5rem 0.75rem !important; /* py-2 px-3 */
+            border-radius: 0.5rem !important; /* rounded-lg */
             /* All transformations, transitions, and shadows for consistent behavior */
-            transform-origin: center; /* Swell from center */
-            transition-property: all; /* Apply transition to all changing properties */
-            transition-duration: 300ms; /* Equivalent to Tailwind's duration-300 */
-            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1); /* Equivalent to Tailwind's ease-in-out */
-            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06); /* Equivalent to Tailwind's shadow-md */
-            outline: none; /* Remove default outline */
-            border: none; /* Remove default border */
-            cursor: pointer; /* Ensure cursor is pointer */
+            transform-origin: center !important; /* Swell from center */
+            transition-property: all !important; /* Apply transition to all changing properties */
+            transition-duration: 300ms !important; /* Equivalent to Tailwind's duration-300 */
+            transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1) !important; /* Equivalent to Tailwind's ease-in-out */
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06) !important; /* Equivalent to Tailwind's shadow-md */
+            outline: none !important; /* Remove default outline */
+            border: none !important; /* Remove default border */
+            cursor: pointer !important; /* Ensure cursor is pointer */
         }
         .btn-base:hover {
-            transform: scale(1.05); /* Equivalent to Tailwind's hover:scale-105 */
-            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* Equivalent to Tailwind's hover:shadow-lg */
+            transform: scale(1.05) !important; /* Equivalent to Tailwind's hover:scale-105 */
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05) !important; /* Equivalent to Tailwind's hover:shadow-lg */
         }
         .btn-base:disabled {
-            background-color: #d1d5db; /* Equivalent to Tailwind's disabled:bg-gray-300 */
+            background-color: #d1d5db !important; /* Equivalent to Tailwind's disabled:bg-gray-300 */
         }
 
         .btn-strava {
@@ -148,13 +148,17 @@
             grid-column: 1;
             grid-row: 3;
         }
-        #status-log-section-container { /* This is the Status Log */
+        #status-log-section-container { /* This is the Status Log tile */
             grid-column: 1;
             grid-row: 4;
+            /* These properties are now handled by updateGridLayout for responsiveness */
+            /* position: sticky; height: 100vh; overflow-y: auto; will be set dynamically */
         }
-        #activities-section { /* This is the Activities List */
+        #activities-section { /* This is the Activities List tile */
             grid-column: 2;
             grid-row: 1 / span 4; /* Spans all 4 rows */
+            /* These properties are now handled by updateGridLayout for responsiveness */
+            /* position: sticky; height: 100vh; overflow-y: auto; will be set dynamically */
         }
 
         /* For smaller screens, stack columns vertically */
@@ -212,7 +216,7 @@
             display: inline-block;
             transition: transform 0.2s;
         }
-        #status-log-section-container > details[open] > summary::before {
+        #status-log-details[open] > summary::before {
             content: '- '; /* Custom collapse indicator */
             transform: rotate(0deg); /* No rotation needed for +/- */
         }
@@ -399,18 +403,18 @@
             mainLayoutContainer: null,
             loginScreenWrapper: null,
             statusLogDetails: null, // The details element for status log
-            leftColumn: null, // This is the status log *tile* container (formerly status-log-section-container)
-            rightColumn: null, // This is the activities *tile* container (formerly activities-section)
-            centerColumn: null, // This is the map *tile* container (formerly map-section)
+            leftColumn: null, // This is the status log *tile* container
+            rightColumn: null, // This is the activities *tile* container
+            centerColumn: null, // This is the map *tile* container
             activitiesLoadingSpinner: null,
             activitySearchBox: null,
             mapLoadingOverlay: null,
             refreshActivitiesBtn: null,
-            headerTile: null, // The new header *tile* container
-            progressSummarySection: null, // New: The progress summary *tile* container
-            mapSection: null, // New: The map *tile* container (was center-column in previous concept)
-            statusLogSectionContainer: null, // New: The status log *tile* container (was left-column in previous concept)
-            activitiesSection: null, // New: The activities *tile* container (was right-column in previous concept)
+            headerTile: null,
+            progressSummarySection: null,
+            mapSection: null,
+            statusLogSectionContainer: null,
+            activitiesSection: null,
             appBackground: null,
             initialLoadingScreen: null
         };
@@ -435,21 +439,18 @@
         // Sleep utility
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
        
-        // Function to update grid layout based on screen size
+        // Function to update grid-template-columns based on screen size
         function updateGridLayout() {
-            // Ensure UIElements are initialized before using
-            if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.activitiesSection || !UIElements.statusLogSectionContainer || !UIElements.headerSection || !UIElements.mapSection || !UIElements.progressSummarySection) {
+            if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.activitiesSection || !UIElements.statusLogSectionContainer || !UIElements.headerTile || !UIElements.mapSection || !UIElements.progressSummarySection) {
                 return;
             }
 
-            const isMobile = window.innerWidth < 767; // Corrected breakpoint to match CSS @media (max-width: 767px)
+            const isMobile = window.innerWidth < 767;
 
             if (isMobile) {
-                // Mobile: Single column, stacked Header, Progress, Map, Activities, Status Log
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
-                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto'; /* 5 rows for mobile */
+                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
 
-                // Order and visibility for mobile
                 UIElements.headerSection.style.gridColumn = '1';
                 UIElements.headerSection.style.gridRow = '1';
                 UIElements.headerSection.style.padding = '1rem';
@@ -476,12 +477,17 @@
                 UIElements.statusLogSectionContainer.style.overflowY = 'visible';
                 UIElements.statusLogSectionContainer.style.padding = '1rem';
 
-            } else { // Desktop layout
-                // Desktop: 2 columns (Left stack: Header, Progress, Map, Status Log | Activities: spans all)
-                UIElements.mainLayoutContainer.style.gridTemplateColumns = `2fr 1fr`;
-                UIElements.mainLayoutContainer.style.gridTemplateRows = `auto auto 1fr auto`; /* Header, Progress, Map (1fr), Status Log (auto) */
+                // Ensure elements are displayed correctly on mobile as grid items
+                UIElements.headerSection.style.display = 'block';
+                UIElements.progressSummarySection.style.display = 'block';
+                UIElements.mapSection.style.display = 'block';
+                UIElements.activitiesSection.style.display = 'block';
+                UIElements.statusLogSectionContainer.style.display = 'block';
 
-                // Order and visibility for desktop
+            } else { // Desktop layout
+                UIElements.mainLayoutContainer.style.gridTemplateColumns = `2fr 1fr`;
+                UIElements.mainLayoutContainer.style.gridTemplateRows = `auto auto 1fr auto`;
+
                 UIElements.headerSection.style.gridColumn = '1';
                 UIElements.headerSection.style.gridRow = '1';
                 UIElements.headerSection.style.padding = '1.5rem';
@@ -502,19 +508,19 @@
                 UIElements.statusLogSectionContainer.style.padding = '1.5rem';
 
                 UIElements.activitiesSection.style.gridColumn = '2';
-                UIElements.activitiesSection.style.gridRow = '1 / span 4'; /* Spans all 4 rows */
+                UIElements.activitiesSection.style.gridRow = '1 / span 4';
                 UIElements.activitiesSection.style.height = '100vh';
                 UIElements.activitiesSection.style.position = 'sticky';
                 UIElements.activitiesSection.style.overflowY = 'auto';
                 UIElements.activitiesSection.style.padding = '1.5rem';
+
+                // Ensure elements are displayed correctly on desktop as grid items
+                UIElements.headerSection.style.display = 'block';
+                UIElements.progressSummarySection.style.display = 'block';
+                UIElements.mapSection.style.display = 'block';
+                UIElements.activitiesSection.style.display = 'block';
+                UIElements.statusLogSectionContainer.style.display = 'block';
             }
-            // Ensure `display` is correct for main columns after `updateGridLayout`
-            // These ensure the sections are visible based on screen size, controlled by grid-template-columns/rows
-            UIElements.headerSection.style.display = 'block';
-            UIElements.progressSummarySection.style.display = 'block';
-            UIElements.mapSection.style.display = 'block';
-            UIElements.activitiesSection.style.display = 'block';
-            UIElements.statusLogSectionContainer.style.display = 'block';
         }
 
         // Check inputs function
@@ -524,6 +530,7 @@
    
         // Connect to Strava function
         function connectToStrava() {
+            console.log("Connect with Strava button clicked! Initiating OAuth flow.");
             sessionStorage.setItem('stravaClientId', UIElements.clientId.value.trim());
             sessionStorage.setItem('stravaClientSecret', UIElements.clientSecret.value.trim());
             const redirectUri = window.location.origin + window.location.pathname;
@@ -546,9 +553,9 @@
                 const data = await response.json();
                 if (data.access_token) {
                     log('Success! Access Token received.', 'success');
-                    sessionStorage.setItem('stravaAccessToken', data.access_token);
+                    sessionStorage.setItem('stravaAccessToken', JSON.stringify(data.access_token)); // Store as string
                     sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                    window.location.href = window.location.pathname; // This reload will trigger init() again
+                    window.location.href = window.location.pathname;
                 } else { log(`Error getting access token: ${data.message}`, 'error'); }
             } catch (error) { log(`Network error: ${error.message}`, 'error'); }
         }
@@ -563,15 +570,15 @@
 
             try {
                 // Show relevant sections of the main app
-                if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.display = 'block'; // New: show progress summary
-                if (UIElements.mapSection) UIElements.mapSection.style.display = 'block'; // New: show map section
-                if (UIElements.activitiesSection) UIElements.activitiesSection.style.display = 'block'; // New: show activities section
-                if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.display = 'block'; // New: show status log section
+                if (UIElements.headerSection) UIElements.headerSection.style.display = 'block';
+                if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.display = 'block';
+                if (UIElements.mapSection) UIElements.mapSection.style.display = 'block';
+                if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.display = 'block';
+                if (UIElements.activitiesSection) UIElements.activitiesSection.style.display = 'block';
 
                 // Old elements that are now inside new sections:
-                if (UIElements.progressSection) UIElements.progressSection.style.display = 'block'; // This is now inside map-section
-                if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block'; // This is now inside activities-section
-                // No longer need to hide configSection here as it's part of loginScreenWrapper now
+                if (UIElements.progressSection) UIElements.progressSection.style.display = 'block';
+                if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block';
                
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) {
@@ -599,19 +606,17 @@
                 }
 
                 if (allFetchedActivities) {
-                    filterActivities(); // Call filterActivities to initially render with any search/filter applied
+                    filterActivities();
                     log('Activities rendered.', 'success');
                 } else {
                     log('Failed to fetch activities, or no relevant activities found.', 'error');
                 }
 
-                // Add resize listener only AFTER mainMap is initialized
                 window.addEventListener('resize', () => {
                     if (mainMap) mainMap.invalidateSize();
                     updateGridLayout();
                 });
                
-                // Ensure initial grid layout is correctly applied after map is ready
                 if (mainMap) mainMap.invalidateSize();
                 log('Main application dashboard fully loaded.', 'success');
             } catch (error) {
@@ -630,7 +635,6 @@
                 await sleep(50);
             }
 
-            // Ensure map element exists before trying to create map
             if (!UIElements.mainMap) {
                 log("Error: Map element not found!", "error");
                 throw new Error("Map element not found");
@@ -695,7 +699,6 @@
             if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
                 localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
                 localStorage.removeItem(COMPLETED_POINTS_KEY);
-                // Clear cached activities and their timestamp
                 localStorage.removeItem(CACHED_ACTIVITIES_KEY);
                 localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
 
@@ -707,7 +710,7 @@
                 }
                 log('Progress, cached activity streams, and cached activities reset.', 'success');
                 updateProgress([]);
-                filterActivities(); // Re-render activities after reset
+                filterActivities();
             }
         }
 
@@ -731,20 +734,19 @@
             renderActivityList(filtered);
         }
 
-        // Handle Filter Button Click (now just calls filterActivities)
+        // Handle Filter Button Click
         function handleFilterClick(e) {
             if (e.target.tagName !== 'BUTTON') return;
            
             document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
             e.target.classList.add('active');
 
-            filterActivities(); // Re-apply all filters including search
+            filterActivities();
         }
 
         // Handle Activities Refresh Button Click
         async function refreshActivities() {
             if (confirm("Are you sure you want to refresh activities from Strava? This will clear the cache and fetch new data.")) {
-                // Clear cached activities so fetchAllActivities pulls new data
                 localStorage.removeItem(CACHED_ACTIVITIES_KEY);
                 localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
                 log('Activities cache cleared. Fetching new activities from Strava...', 'info');
@@ -754,7 +756,7 @@
                     if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'none';
                 }
 
-                allFetchedActivities = await fetchAllActivities(); // Fetch new data
+                allFetchedActivities = await fetchAllActivities();
                
                 if (UIElements.activitiesLoadingSpinner) {
                     UIElements.activitiesLoadingSpinner.style.display = 'none';
@@ -762,7 +764,7 @@
                 }
 
                 if (allFetchedActivities) {
-                    filterActivities(); // Render with new data (and current filters/search)
+                    filterActivities();
                     log('Activities refreshed and rendered.', 'success');
                 } else {
                     log('Failed to refresh activities.', 'error');
@@ -1139,20 +1141,17 @@
             UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
             UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
             UIElements.statusLogDetails = document.getElementById('status-log-details');
-            UIElements.leftColumn = document.getElementById('left-column');
-            UIElements.rightColumn = document.getElementById('right-column');
-            UIElements.centerColumn = document.getElementById('center-column');
+            UIElements.leftColumn = document.getElementById('status-log-section-container'); // Corrected ID
+            UIElements.rightColumn = document.getElementById('activities-section'); // Corrected ID
+            UIElements.centerColumn = document.getElementById('map-section'); // Corrected ID
             UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
             UIElements.activitySearchBox = document.getElementById('activity-search-box');
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
             UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
-            UIElements.headerTile = document.getElementById('header-tile');
+            UIElements.headerTile = document.getElementById('header-section'); // Corrected ID
             UIElements.appBackground = document.getElementById('app-background');
             UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
-            UIElements.progressSummarySection = document.getElementById('progress-summary-section'); // New reference
-            UIElements.mapSection = document.getElementById('map-section'); // New reference
-            UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container'); // New reference
-            UIElements.activitiesSection = document.getElementById('activities-section'); // New reference
+            UIElements.progressSummarySection = document.getElementById('progress-summary-section'); // Reference to new tile
 
             log('App initialized.');
 
@@ -1183,13 +1182,29 @@
             // This function encapsulates the main app initialization flow that starts after background loads
             async function proceedWithAppInitFlow() {
                 // Initialize Web Worker (already done above, but ensure flow continues)
-                // This block moves the rest of init() that depends on loaded background
                
-                if (window.location.search.includes('code=')) { // Check specifically for OAuth redirect code
-                    await getAccessToken(window.location.search.split('code=')[1].split('&')[0]);
+                // Add event listeners (now that UIElements are populated and before OAuth checks)
+                if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
+                if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
+                if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava); // Listener attached here
+                if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
+                if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
+                if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
+                if (UIElements.refreshActivitiesBtn) UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
+               
+                if (UIElements.clientId) UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
+                if (UIElements.clientSecret) UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
+                checkInputs(); // Initial check of button state
+
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
+
+                if (authCode) {
+                    await getAccessToken(authCode); // This will reload the page
                 } else if (sessionStorage.getItem('stravaAccessToken')) {
                     await showMainApp();
                 } else {
+                    // Show login screen, hide main app container
                     if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
                     if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
                     log('Please connect to Strava.');
@@ -1200,13 +1215,13 @@
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
                 log('Initial app setup complete and visible.', 'success');
+               
+                // Initial call to updateGridLayout on load to set correct mobile/desktop state
+                updateGridLayout();
+                // Add resize listener to window for responsive layout updates
+                // (mainMap.invalidateSize() is called inside showMainApp after map is ready)
+                window.addEventListener('resize', updateGridLayout);
             }
-           
-            // Initial call to updateGridLayout on load to set correct mobile/desktop state
-            updateGridLayout();
-            // Add resize listener to window for responsive layout updates
-            // (mainMap.invalidateSize() is called inside showMainApp after map is ready)
-            window.addEventListener('resize', updateGridLayout);
         };
 
         // Call init when the DOM is fully loaded
