@@ -117,67 +117,75 @@
 
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
-            background-color: rgba(192, 192, 192, 0.4) !important; /* Grey tint with 40% opacity, !important to ensure it applies */
+            background-color: rgba(192, 192, 192, 0.5) !important; /* Grey tint with 40% opacity, !important to ensure it applies */
             backdrop-filter: blur(5px); /* Adjusted blur amount to 5px for more distinctness */
             -webkit-backdrop-filter: blur(5px); /* For Safari compatibility */
-            box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.2), 0 6px 10px -2px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
+            box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.3), 0 6px 10px -2px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
         }
 
         /* --- CSS Grid Layout --- */
         #main-layout-container {
             display: grid;
-            /* Desktop: 2 columns (Map/Status stack: 2fr | Activities: 1fr) */
+            /* Desktop: 2 columns (Left stack: 2fr | Activities: 1fr) */
             grid-template-columns: 2fr 1fr;
-            grid-template-rows: auto auto auto; /* Rows for Header, Map, and Status Log */
+            /* 4 rows: Header (auto), Progress Summary (auto), Map (1fr), Status Log (auto) */
+            grid-template-rows: auto auto 1fr auto;
             gap: 1rem; /* Increased gap for more breathing room */
             min-height: 100vh;
             padding: 1rem; /* Padding around the whole grid to ensure borders are visible */
         }
 
         /* Placement of items within the main grid for desktop */
-        #header-tile { /* New header tile */
+        #header-section { /* New header section tile */
             grid-column: 1;
             grid-row: 1;
         }
-        #center-column { /* This is the Map and its related content */
+        #progress-summary-section { /* New progress summary section tile */
             grid-column: 1;
             grid-row: 2;
         }
-        #left-column { /* This is the Status Log */
+        #map-section { /* This is the Map and its container */
             grid-column: 1;
             grid-row: 3;
         }
-        #right-column { /* This is the Activities List */
+        #status-log-section-container { /* This is the Status Log */
+            grid-column: 1;
+            grid-row: 4;
+        }
+        #activities-section { /* This is the Activities List */
             grid-column: 2;
-            grid-row: 1 / span 3; /* Spans all 3 rows */
+            grid-row: 1 / span 4; /* Spans all 4 rows */
         }
 
         /* For smaller screens, stack columns vertically */
         @media (max-width: 767px) { /* md breakpoint for stacking */
             #main-layout-container {
                 grid-template-columns: 1fr; /* Single column layout for smaller screens */
-                grid-template-rows: auto auto auto auto; /* Stack Header, Map content, Activities, Status Log */
+                grid-template-rows: auto auto auto auto auto; /* 5 rows: Header, Progress, Map, Activities, Status Log */
                 padding: 1rem; /* More padding on mobile */
             }
-            /* Reorder for mobile: Map first, then Activities, then Status Log */
-            #header-tile {
+            /* Reorder for mobile: Header, Progress, Map, Activities, Status Log */
+            #header-section {
                 grid-row: 1;
             }
-            #center-column {
+            #progress-summary-section {
                 grid-row: 2;
-                padding: 1rem; /* Adjust padding for mobile */
             }
-            #right-column {
-                grid-column: 1; /* Ensure it's in the single column */
+            #map-section {
                 grid-row: 3;
-                height: auto; /* Remove h-screen for stacking */
-                position: static; /* Remove sticky for stacking */
-                overflow-y: visible; /* Allow normal scrolling */
                 padding: 1rem; /* Adjust padding for mobile */
             }
-            #left-column { /* Status log now comes last on mobile */
-                grid-column: 1;
+            #activities-section {
+                grid-column: 1; /* Ensure it's in the single column */
                 grid-row: 4;
+                height: auto;
+                position: static;
+                overflow-y: visible;
+                padding: 1rem; /* Adjust padding for mobile */
+            }
+            #status-log-section-container {
+                grid-column: 1;
+                grid-row: 5;
                 height: auto;
                 position: static;
                 overflow-y: visible;
@@ -187,7 +195,7 @@
 
 
         /* Status log details summary styling for expand/collapse indicator */
-        #status-log-details > summary {
+        #status-log-section-container > details > summary {
             cursor: pointer;
             list-style: none; /* Remove default marker */
             position: sticky;
@@ -195,16 +203,16 @@
             background-color: inherit; /* Ensure background color matches parent */
             z-index: 10; /* Keep it above scrolling content */
         }
-        #status-log-details > summary::-webkit-details-marker {
+        #status-log-section-container > details > summary::-webkit-details-marker {
             display: none;
         }
-        #status-log-details > summary::before {
+        #status-log-section-container > details > summary::before {
             content: '+ '; /* Custom expand indicator */
             margin-right: 0.5rem;
             display: inline-block;
             transition: transform 0.2s;
         }
-        #status-log-details[open] > summary::before {
+        #status-log-section-container > details[open] > summary::before {
             content: '- '; /* Custom collapse indicator */
             transform: rotate(0deg); /* No rotation needed for +/- */
         }
@@ -226,28 +234,28 @@
         }
 
         /* Less noticeable scrollbars for internal scrollable divs */
-        #left-column::-webkit-scrollbar,
+        #status-log-section-container::-webkit-scrollbar,
         #status-log::-webkit-scrollbar,
-        #right-column::-webkit-scrollbar,
+        #activities-section::-webkit-scrollbar,
         #activity-list-container::-webkit-scrollbar {
             width: 6px; /* Thinner scrollbar */
         }
-        #left-column::-webkit-scrollbar-track,
+        #status-log-section-container::-webkit-scrollbar-track,
         #status-log::-webkit-scrollbar-track,
-        #right-column::-webkit-scrollbar-track,
+        #activities-section::-webkit-scrollbar-track,
         #activity-list-container::-webkit-scrollbar-track {
             background: transparent; /* Invisible track */
         }
-        #left-column::-webkit-scrollbar-thumb,
+        #status-log-section-container::-webkit-scrollbar-thumb,
         #status-log::-webkit-scrollbar-thumb,
-        #right-column::-webkit-scrollbar-thumb,
-        #activity-list-container::-webkit-webkit-scrollbar-thumb {
+        #activities-section::-webkit-scrollbar-thumb,
+        #activity-list-container::-webkit-scrollbar-thumb {
             background-color: rgba(136, 136, 136, 0.5); /* Semi-transparent thumb */
             border-radius: 3px;
         }
-        #left-column::-webkit-scrollbar-thumb:hover,
+        #status-log-section-container::-webkit-scrollbar-thumb:hover,
         #status-log::-webkit-scrollbar-thumb:hover,
-        #right-column::-webkit-scrollbar-thumb:hover,
+        #activities-section::-webkit-scrollbar-thumb:hover,
         #activity-list-container::-webkit-scrollbar-thumb:hover {
             background-color: rgba(85, 85, 85, 0.7); /* Darker on hover */
         }
@@ -257,7 +265,11 @@
 
     <div id="app-background"></div>
 
-    <div id="login-screen-wrapper" class="min-h-screen flex items-center justify-center">
+    <div id="initial-loading-screen" class="fixed inset-0 flex items-center justify-center bg-gray-200 z-[9999]">
+        <div class="loader mr-3"></div> <span class="text-gray-500">Loading application...</span>
+    </div>
+
+    <div id="login-screen-wrapper" class="min-h-screen flex items-center justify-center hidden">
         <div id="config-section" class="p-8 rounded-lg shadow-xl max-w-md w-full text-center blurred-tile-background">
             <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Connect to Strava</h2>
             <div class="space-y-4 mb-6">
@@ -270,42 +282,43 @@
 
     <div id="main-layout-container" class="hidden">
 
-        <div id="header-tile" class="p-6 rounded-lg shadow-lg text-center blurred-tile-background">
+        <div id="header-section" class="p-6 rounded-lg shadow-lg text-center blurred-tile-background">
             <h1 class="text-4xl font-bold text-gray-900">
                 South West Coast Path Tracker
             </h1>
         </div>
 
-        <div id="center-column" class="p-6 rounded-lg shadow-lg blurred-tile-background">
-            <div id="progress-section" class="hidden p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-4 border-b pb-3">
-                    <h2 class="text-2xl font-semibold">Overall Progress</h2>
-                    <div id="strava-user-info" class="text-right"></div>
+        <div id="progress-summary-section" class="p-6 rounded-lg shadow-lg blurred-tile-background">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h2 class="text-2xl font-semibold">Overall Progress</h2>
+                <div id="strava-user-info" class="text-right"></div>
+            </div>
+            <div class="mb-6">
+                <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
+                <p class="text-sm text-gray-500">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
+                <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
+            </div>
+            <div class="text-right mt-2"><button id="reset-button" class="text-sm btn-danger">Reset All Progress</button></div>
+        </div>
+
+        <div id="map-section" class="p-6 rounded-lg shadow-lg blurred-tile-background">
+            <h3 class="text-xl font-semibold mb-3">Master Map</h3>
+            <div id="map">
+                <div id="map-loading-overlay" class="absolute top-0 left-0 w-full h-full bg-white bg-opacity-80 flex justify-center items-center z-1000">
+                    <div class="loader mr-3"></div> <span class="text-gray-500">Loading map...</span>
                 </div>
-                <div class="mb-6">
-                    <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
-                    <p class="text-sm text-gray-500">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
-                    <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
-                </div>
-                <h3 class="text-xl font-semibold mb-3">Master Map</h3>
-                <div id="map">
-                    <div id="map-loading-overlay" class="absolute top-0 left-0 w-full h-full bg-white bg-opacity-80 flex justify-center items-center z-1000">
-                        <div class="loader mr-3"></div> <span class="text-gray-500">Loading map...</span>
-                    </div>
-                </div>
-                <div class="text-right mt-2"><button id="reset-button" class="text-sm btn-danger">Reset All Progress</button></div>
             </div>
         </div>
 
-        <div id="left-column" class="p-6 rounded-lg shadow-lg text-gray-800 blurred-tile-background">
+        <div id="status-log-section-container" class="p-6 rounded-lg shadow-lg text-gray-800 blurred-tile-background">
             <details open id="status-log-details" class="h-full flex flex-col">
                 <summary class="text-xl font-semibold p-4 sticky top-0 blurred-tile-background z-10">Status Log</summary>
-                <div id="status-log" class="flex-grow overflow-y-auto"></div> </details>
+                <div id="status-log" class="flex-grow overflow-y-auto"></div>
+            </details>
         </div>
 
-        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto blurred-tile-background">
-            <div id="activity-list-section" class="mt-8 md:mt-0">
-                <div class="flex justify-between items-center mb-4">
+        <div id="activities-section" class="sticky top-0 h-screen overflow-y-auto blurred-tile-background">
+            <div class="activity-list-wrapper"> <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
                     <div id="filter-buttons" class="flex space-x-2">
                         <button data-filter="all" class="filter-btn active">All</button>
@@ -354,23 +367,22 @@
         // Constants (moved outside to be globally accessible within the script scope)
         const SWCP_GEOJSON_URL = 'routes.geojson';
         const DISTANCE_THRESHOLD_METERS = 100;
-        const ACTIVITY_SAMPLE_INTERVAL_METERS = 100; // Changed sample interval to 100m
+        const ACTIVITY_SAMPLE_INTERVAL_METERS = 100;
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
         const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_';
         const CACHED_ACTIVITIES_KEY = 'swcp_cached_activities';
         const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
-        const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour (adjust as needed for 24 * 60 * 60 * 1000 for 24 hours)
-        const BACKGROUND_IMAGE_PATH = 'background.webp'; // Updated to .webp
+        const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+        const BACKGROUND_IMAGE_PATH = 'background.webp';
 
         // UIElements (defined globally to be accessible by all functions)
-        // These are populated in the init() function after DOMContentLoaded
         const UIElements = {
             clientId: null,
             clientSecret: null,
             connectButton: null,
             configSection: null,
-            progressSection: null,
+            progressSection: null, // This is now just the progress bar + map container content
             activityListSection: null,
             activityListContainer: null,
             activityCardTemplate: null,
@@ -383,18 +395,22 @@
             progressPercentage: null,
             completedDistance: null,
             totalDistance: null,
-            mainMap: null,
+            mainMap: null, // The Leaflet map div
             mainLayoutContainer: null,
             loginScreenWrapper: null,
-            statusLogDetails: null,
-            leftColumn: null,
-            rightColumn: null,
-            centerColumn: null,
+            statusLogDetails: null, // The details element for status log
+            leftColumn: null, // This is the status log *tile* container (formerly status-log-section-container)
+            rightColumn: null, // This is the activities *tile* container (formerly activities-section)
+            centerColumn: null, // This is the map *tile* container (formerly map-section)
             activitiesLoadingSpinner: null,
             activitySearchBox: null,
             mapLoadingOverlay: null,
             refreshActivitiesBtn: null,
-            headerTile: null,
+            headerTile: null, // The new header *tile* container
+            progressSummarySection: null, // New: The progress summary *tile* container
+            mapSection: null, // New: The map *tile* container (was center-column in previous concept)
+            statusLogSectionContainer: null, // New: The status log *tile* container (was left-column in previous concept)
+            activitiesSection: null, // New: The activities *tile* container (was right-column in previous concept)
             appBackground: null,
             initialLoadingScreen: null
         };
@@ -406,10 +422,7 @@
 
         // Log function
         const log = (message, type = 'info') => {
-            // Ensure UIElements.statusLog is available before trying to use it.
-            // This prevents errors if log is called very early, before UIElements are populated.
             if (!UIElements.statusLog) {
-                // If statusLog is null, use console as a fallback for early messages
                 console.warn("Status log element not yet available, logging to console:", message);
                 return;
             }
@@ -422,75 +435,86 @@
         // Sleep utility
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
        
-        // Function to update grid-template-columns based on screen size
+        // Function to update grid layout based on screen size
         function updateGridLayout() {
             // Ensure UIElements are initialized before using
-            if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.rightColumn || !UIElements.leftColumn || !UIElements.headerTile || !UIElements.centerColumn) {
+            if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.activitiesSection || !UIElements.statusLogSectionContainer || !UIElements.headerSection || !UIElements.mapSection || !UIElements.progressSummarySection) {
                 return;
             }
 
             const isMobile = window.innerWidth < 767; // Corrected breakpoint to match CSS @media (max-width: 767px)
 
             if (isMobile) {
-                // Set styles for mobile (single column, non-sticky)
+                // Mobile: Single column, stacked Header, Progress, Map, Activities, Status Log
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
-                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto'; /* 4 rows */
+                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto'; /* 5 rows for mobile */
 
                 // Order and visibility for mobile
-                UIElements.headerTile.style.gridColumn = '1';
-                UIElements.headerTile.style.gridRow = '1';
+                UIElements.headerSection.style.gridColumn = '1';
+                UIElements.headerSection.style.gridRow = '1';
+                UIElements.headerSection.style.padding = '1rem';
                
-                UIElements.centerColumn.style.gridColumn = '1';
-                UIElements.centerColumn.style.gridRow = '2';
-                UIElements.centerColumn.style.padding = '1rem'; /* Adjust padding for mobile */
-               
-                UIElements.rightColumn.style.gridColumn = '1';
-                UIElements.rightColumn.style.gridRow = '3';
-                UIElements.rightColumn.style.height = 'auto';
-                UIElements.rightColumn.style.position = 'static';
-                UIElements.rightColumn.style.overflowY = 'visible';
-                UIElements.rightColumn.style.padding = '1rem'; /* Adjust padding for mobile */
+                UIElements.progressSummarySection.style.gridColumn = '1';
+                UIElements.progressSummarySection.style.gridRow = '2';
+                UIElements.progressSummarySection.style.padding = '1rem';
 
-                UIElements.leftColumn.style.gridColumn = '1';
-                UIElements.leftColumn.style.gridRow = '4';
-                UIElements.leftColumn.style.height = 'auto';
-                UIElements.leftColumn.style.position = 'static';
-                UIElements.leftColumn.style.overflowY = 'visible';
-                UIElements.leftColumn.style.padding = '1rem'; /* Adjust padding for mobile */
+                UIElements.mapSection.style.gridColumn = '1';
+                UIElements.mapSection.style.gridRow = '3';
+                UIElements.mapSection.style.padding = '1rem';
+               
+                UIElements.activitiesSection.style.gridColumn = '1';
+                UIElements.activitiesSection.style.gridRow = '4';
+                UIElements.activitiesSection.style.height = 'auto';
+                UIElements.activitiesSection.style.position = 'static';
+                UIElements.activitiesSection.style.overflowY = 'visible';
+                UIElements.activitiesSection.style.padding = '1rem';
+
+                UIElements.statusLogSectionContainer.style.gridColumn = '1';
+                UIElements.statusLogSectionContainer.style.gridRow = '5';
+                UIElements.statusLogSectionContainer.style.height = 'auto';
+                UIElements.statusLogSectionContainer.style.position = 'static';
+                UIElements.statusLogSectionContainer.style.overflowY = 'visible';
+                UIElements.statusLogSectionContainer.style.padding = '1rem';
 
             } else { // Desktop layout
-                // Set styles for desktop (2 columns, sticky sidebars)
+                // Desktop: 2 columns (Left stack: Header, Progress, Map, Status Log | Activities: spans all)
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = `2fr 1fr`;
-                UIElements.mainLayoutContainer.style.gridTemplateRows = `auto 1fr auto`; /* Header (auto), Map (1fr), Status (auto) */
+                UIElements.mainLayoutContainer.style.gridTemplateRows = `auto auto 1fr auto`; /* Header, Progress, Map (1fr), Status Log (auto) */
 
                 // Order and visibility for desktop
-                UIElements.headerTile.style.gridColumn = '1';
-                UIElements.headerTile.style.gridRow = '1';
+                UIElements.headerSection.style.gridColumn = '1';
+                UIElements.headerSection.style.gridRow = '1';
+                UIElements.headerSection.style.padding = '1.5rem';
 
-                UIElements.centerColumn.style.gridColumn = '1';
-                UIElements.centerColumn.style.gridRow = '2';
-                UIElements.centerColumn.style.padding = '1.5rem'; /* Default desktop padding */
+                UIElements.progressSummarySection.style.gridColumn = '1';
+                UIElements.progressSummarySection.style.gridRow = '2';
+                UIElements.progressSummarySection.style.padding = '1.5rem';
 
-                UIElements.leftColumn.style.gridColumn = '1';
-                UIElements.leftColumn.style.gridRow = '3';
-                UIElements.leftColumn.style.position = 'sticky';
-                UIElements.leftColumn.style.height = '100vh';
-                UIElements.leftColumn.style.overflowY = 'auto';
-                UIElements.leftColumn.style.padding = '1.5rem'; /* Default desktop padding */
+                UIElements.mapSection.style.gridColumn = '1';
+                UIElements.mapSection.style.gridRow = '3';
+                UIElements.mapSection.style.padding = '1.5rem';
+               
+                UIElements.statusLogSectionContainer.style.gridColumn = '1';
+                UIElements.statusLogSectionContainer.style.gridRow = '4';
+                UIElements.statusLogSectionContainer.style.position = 'sticky';
+                UIElements.statusLogSectionContainer.style.height = '100vh';
+                UIElements.statusLogSectionContainer.style.overflowY = 'auto';
+                UIElements.statusLogSectionContainer.style.padding = '1.5rem';
 
-                UIElements.rightColumn.style.gridColumn = '2';
-                UIElements.rightColumn.style.gridRow = '1 / span 3'; /* Spans all 3 rows */
-                UIElements.rightColumn.style.height = '100vh';
-                UIElements.rightColumn.style.position = 'sticky';
-                UIElements.rightColumn.style.overflowY = 'auto';
-                UIElements.rightColumn.style.padding = '1.5rem'; /* Default desktop padding */
+                UIElements.activitiesSection.style.gridColumn = '2';
+                UIElements.activitiesSection.style.gridRow = '1 / span 4'; /* Spans all 4 rows */
+                UIElements.activitiesSection.style.height = '100vh';
+                UIElements.activitiesSection.style.position = 'sticky';
+                UIElements.activitiesSection.style.overflowY = 'auto';
+                UIElements.activitiesSection.style.padding = '1.5rem';
             }
             // Ensure `display` is correct for main columns after `updateGridLayout`
-            // These ensure the columns are visible based on screen size, controlled by grid-template-columns/rows
-            UIElements.headerTile.style.display = 'block';
-            UIElements.centerColumn.style.display = 'block';
-            UIElements.rightColumn.style.display = 'block';
-            UIElements.leftColumn.style.display = 'block';
+            // These ensure the sections are visible based on screen size, controlled by grid-template-columns/rows
+            UIElements.headerSection.style.display = 'block';
+            UIElements.progressSummarySection.style.display = 'block';
+            UIElements.mapSection.style.display = 'block';
+            UIElements.activitiesSection.style.display = 'block';
+            UIElements.statusLogSectionContainer.style.display = 'block';
         }
 
         // Check inputs function
@@ -539,8 +563,15 @@
 
             try {
                 // Show relevant sections of the main app
-                if (UIElements.progressSection) UIElements.progressSection.style.display = 'block';
-                if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block';
+                if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.display = 'block'; // New: show progress summary
+                if (UIElements.mapSection) UIElements.mapSection.style.display = 'block'; // New: show map section
+                if (UIElements.activitiesSection) UIElements.activitiesSection.style.display = 'block'; // New: show activities section
+                if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.display = 'block'; // New: show status log section
+
+                // Old elements that are now inside new sections:
+                if (UIElements.progressSection) UIElements.progressSection.style.display = 'block'; // This is now inside map-section
+                if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block'; // This is now inside activities-section
+                // No longer need to hide configSection here as it's part of loginScreenWrapper now
                
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) {
@@ -569,7 +600,7 @@
 
                 if (allFetchedActivities) {
                     filterActivities(); // Call filterActivities to initially render with any search/filter applied
-                    log('Activities rendered.', 'success'); // Changed to success as it's a positive outcome
+                    log('Activities rendered.', 'success');
                 } else {
                     log('Failed to fetch activities, or no relevant activities found.', 'error');
                 }
@@ -596,8 +627,7 @@
             if (UIElements.mapLoadingOverlay) {
                 UIElements.mapLoadingOverlay.style.display = 'flex';
                 log('Map loading overlay shown.', 'info');
-                // Add a very small delay to allow browser to render the display:flex change
-                await sleep(50); // Pause briefly
+                await sleep(50);
             }
 
             // Ensure map element exists before trying to create map
@@ -648,7 +678,7 @@
                 // Ensure overlay is hidden even on error
                 if (UIElements.mapLoadingOverlay) {
                     UIElements.mapLoadingOverlay.style.display = 'none';
-                    log('Map loading overlay hidden.', 'info'); // New log
+                    log('Map loading overlay hidden.', 'info');
                 }
             }
         }
@@ -1119,83 +1149,17 @@
             UIElements.headerTile = document.getElementById('header-tile');
             UIElements.appBackground = document.getElementById('app-background');
             UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
+            UIElements.progressSummarySection = document.getElementById('progress-summary-section'); // New reference
+            UIElements.mapSection = document.getElementById('map-section'); // New reference
+            UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container'); // New reference
+            UIElements.activitiesSection = document.getElementById('activities-section'); // New reference
 
             log('App initialized.');
 
-            // Initialize Web Worker
-            if (window.Worker) {
-                analysisWorker = new Worker('swcp_analysis_worker.js'); // Path to your worker file
-                analysisWorker.onmessage = function(e) {
-                    if (e.data.type === 'result') {
-                        const activityId = e.data.activityId;
-                        const matchedPoints = e.data.matchedPoints;
-
-                        // Find the analyze button for this activity to update its state
-                        // Use the data-activity-id for robust selection
-                        const analyzeBtn = document.querySelector(`button[data-activity-id="${activityId}"][data-analyze-btn]`);
-                        if (analyzeBtn) {
-                            analyzeBtn.textContent = 'Analyzed';
-                            analyzeBtn.disabled = true;
-                        }
-
-                        // Update progress and persist
-                        if (matchedPoints.length > 0) {
-                            const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                            const allCompletedPoints = oldCompletedPoints.concat(matchedPoints);
-                            localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
-                            updateProgress(allCompletedPoints);
-                        }
-
-                        const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
-                        processedIds.add(activityId);
-                        localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
-                        log(`Analysis complete for activity ${activityId}. Found ${matchedPoints.length} matching points.`, 'success');
-                    } else if (e.data.type === 'progress') { // Handle progress updates from worker
-                        const activityId = e.data.activityId;
-                        const percentage = e.data.percentage;
-                        const analyzeBtn = document.querySelector(`button[data-activity-id="${activityId}"][data-analyze-btn]`);
-                        if (analyzeBtn) {
-                            // Update the button text to show progress
-                            analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${percentage}%)...`;
-                        }
-                        log(`Analyzing activity ${activityId}: ${percentage}% complete...`, 'info');
-                    }
-                    else if (e.data.type === 'error') {
-                        log(`Worker Error: ${e.data.message}`, 'error');
-                        console.error("Worker Error:", e.data.message);
-                        // Re-enable the analyze button if there was an error
-                        const analyzeBtn = document.querySelector(`button[data-activity-id="${e.data.activityId}"][data-analyze-btn]`);
-                        if (analyzeBtn) {
-                             analyzeBtn.textContent = 'Analyze for SWCP';
-                             analyzeBtn.disabled = false;
-                        }
-                    }
-                };
-                analysisWorker.onerror = function(error) {
-                    log(`Worker encountered an error: ${error.message}`, 'error');
-                    console.error("Worker Error:", error);
-                };
-                log('Web Worker initialized successfully.');
-            } else {
-                log('Your browser does not support Web Workers. Performance may be impacted.', 'error');
+            // Show initial loading screen immediately
+            if (UIElements.initialLoadingScreen) {
+                UIElements.initialLoadingScreen.style.display = 'flex';
             }
-
-
-            // Add event listeners (now that UIElements are populated)
-            if (UIElements.clientId) UIElements.clientId.addEventListener('input', checkInputs);
-            if (UIElements.clientSecret) UIElements.clientSecret.addEventListener('input', checkInputs);
-            if (UIElements.connectButton) UIElements.connectButton.addEventListener('click', connectToStrava);
-            if (UIElements.resetButton) UIElements.resetButton.addEventListener('click', resetProgress);
-            if (UIElements.filterButtons) UIElements.filterButtons.addEventListener('click', handleFilterClick);
-            if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
-            if (UIElements.refreshActivitiesBtn) UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
-           
-            if (UIElements.clientId) UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
-            if (UIElements.clientSecret) UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
-            checkInputs();
-
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
 
             // Preload background image
             const bgImage = new Image();
@@ -1221,8 +1185,8 @@
                 // Initialize Web Worker (already done above, but ensure flow continues)
                 // This block moves the rest of init() that depends on loaded background
                
-                if (authCode) {
-                    await getAccessToken(authCode);
+                if (window.location.search.includes('code=')) { // Check specifically for OAuth redirect code
+                    await getAccessToken(window.location.search.split('code=')[1].split('&')[0]);
                 } else if (sessionStorage.getItem('stravaAccessToken')) {
                     await showMainApp();
                 } else {
