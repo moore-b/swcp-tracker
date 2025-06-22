@@ -24,10 +24,14 @@
        
         /* Unified Button Styling */
         .btn-base {
-            font-bold py-2 px-3 rounded-lg; /* Common styles */
-            /* Added duration-300 for slower swell */
+            font-weight: 700; /* Equivalent to font-bold */
+            padding: 0.5rem 0.75rem; /* py-2 px-3 */
+            border-radius: 0.5rem; /* rounded-lg */
+            /* All transformations, transitions, and shadows for consistent behavior */
+            transform-origin: center; /* Swell from center */
             @apply transform transition duration-300;
             @apply shadow-md hover:shadow-lg hover:scale-105; /* Shadow and swell on hover */
+            @apply disabled:bg-gray-300; /* Ensure disabled state looks consistent */
         }
         .btn-strava {
             background-color: #FC5200; /* Strava Orange */
@@ -260,7 +264,7 @@
                 <div class="mb-4">
                     <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
                 </div>
-                <button id="refresh-activities-btn" class="w-full btn-base btn-strava mb-4 transform transition hover:scale-105">Refresh Activities</button>
+                <button id="refresh-activities-btn" class="w-full btn-base btn-strava mb-4">Refresh Activities</button>
                 <div id="activities-loading-spinner" class="flex justify-center items-center h-32">
                     <div class="loader mr-3"></div> <span class="text-gray-500">Loading activities...</span>
                 </div>
