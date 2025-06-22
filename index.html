@@ -207,9 +207,6 @@
             background-color: inherit; /* Ensure background color matches parent */
             z-index: 10; /* Keep it above scrolling content */
         }
-        #status-log-section-container > details > summary::-webkit-details-marker {
-            display: none;
-        }
         #status-log-section-container > details > summary::before {
             content: '+ '; /* Custom expand indicator */
             margin-right: 0.5rem;
@@ -380,9 +377,9 @@
         const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
         const BACKGROUND_IMAGE_PATH = 'background.webp';
         const HAS_LOADED_INITIALLY_KEY = 'swcp_init_loaded'; // Session storage key for initial load flag
-        const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
-        const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
-        const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
+        const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken'; // New constant for access token key
+        const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken'; // New constant for refresh token key
+        const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt'; // New constant for access token expiry timestamp
 
         // UIElements (defined globally to be accessible by all functions)
         const UIElements = {
@@ -513,7 +510,7 @@
                     body: JSON.stringify({
                         client_id: clientId,
                         client_secret: clientSecret,
-                        refresh_token: JSON.parse(refreshToken),
+                        refresh_token: JSON.parse(refreshToken), // refresh_token is stored as stringified JSON
                         grant_type: 'refresh_token'
                     }),
                 });
@@ -527,7 +524,7 @@
                 if (data.access_token) {
                     localStorage.setItem(STRAVA_ACCESS_TOKEN_KEY, JSON.stringify(data.access_token));
                     localStorage.setItem(STRAVA_REFRESH_TOKEN_KEY, JSON.stringify(data.refresh_token));
-                    localStorage.setItem(STRAVA_EXPIRES_AT_KEY, data.expires_at.toString());
+                    localStorage.setItem(STRAVA_EXPIRES_AT_KEY, data.expires_at.toString()); // expiry time as number
                     log('Access token refreshed and stored successfully.', 'success');
                     return data.access_token;
                 }
@@ -549,7 +546,7 @@
 
             if (isMobile) {
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
-                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
+                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto'; /* 5 rows */
 
                 UIElements.headerSection.style.gridColumn = '1';
                 UIElements.headerSection.style.gridRow = '1';
@@ -639,7 +636,7 @@
         async function getAccessToken(code) {
             log('Exchanging authorization code for access token...');
             try {
-                const response = await fetch('https://www.strava.com/oauth/token', { // This specific fetch is for the initial code exchange, not regular API calls
+                const response = await makeStravaApiCall('https://www.strava.com/oauth/token', { // Use wrapper for token exchange
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
@@ -647,11 +644,12 @@
                         client_secret: sessionStorage.getItem('stravaClientSecret'),
                         code: code, grant_type: 'authorization_code'
                     }),
-                });
+                }, false); // Pass false for retry, as this is the first token exchange
 
-                if (!response.ok) { // This handles initial authentication errors
-                     const errorData = await response.text();
-                     throw new Error(`Error during initial token exchange: ${response.status} - ${errorData}`);
+                if (!response || !response.ok) { // Check response success from wrapper
+                     const errorData = response ? await response.text() : 'Network error';
+                     log(`Error getting access token: ${response.status} - ${errorData}`, 'error');
+                     throw new Error('Failed to get access token');
                 }
                 const data = await response.json();
                
@@ -659,27 +657,28 @@
                     localStorage.setItem(STRAVA_ACCESS_TOKEN_KEY, JSON.stringify(data.access_token));
                     localStorage.setItem(STRAVA_REFRESH_TOKEN_KEY, JSON.stringify(data.refresh_token));
                     localStorage.setItem(STRAVA_EXPIRES_AT_KEY, data.expires_at.toString()); // expiry time as number
-                    localStorage.setItem('stravaAthlete', JSON.stringify(data.athlete)); // Store athlete info in localStorage
+                    sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete)); // Store athlete info
+
                     log('Success! Access Token and Refresh Token received and stored.', 'success');
-                    window.location.href = window.location.pathname; // Redirect to clean URL, re-trigger init()
+                    window.location.href = window.location.pathname; // This reload will trigger init() again
                 } else {
                     log(`Error getting access token: No token in response.`, 'error');
                     throw new Error('No access token in response');
                 }
             } catch (error) {
-                log(`Network error or authentication failed: ${error.message}. Please try connecting again.`, 'error');
+                log(`Network error or authentication failed: ${error.message}`, 'error');
                 console.error(error);
-                // On initial failure, clear tokens and redirect to clean login (user will see login form again)
+                // On failure, clear tokens and redirect to clean login (handled by makeStravaApiCall wrapper)
                 localStorage.clear();
                 sessionStorage.clear();
-                window.location.href = window.location.pathname;
+                window.location.href = window.location.pathname; // Force re-login
             }
         }
        
         // Show Main App function
         async function showMainApp() {
             log('Attempting to show main application dashboard.');
-            // Hide login screen if it was visible
+            // Hide login screen
             if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'none';
             // Show main app container (grid)
             if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'grid';
@@ -701,18 +700,18 @@
                 if (UIElements.progressSection) UIElements.progressSection.style.display = 'block';
                 if (UIElements.activityListSection) UIElements.activityListSection.style.display = 'block';
                
-                const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}'); // Get athlete info from localStorage
+                const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) {
                     if (UIElements.stravaUserInfo) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
                 }
                 log('Athlete info displayed (if element found).');
                
-                await initializeMap(); // This uses makeStravaApiCall internally
+                await initializeMap();
                 log('Map initialized.');
                 loadProgressFromStorage();
                 log('Progress loaded from storage.');
                
-                // Show loading spinner for activities BEFORE fetching
+                // Show loading spinner for activities before fetching
                 if (UIElements.activitiesLoadingSpinner) {
                     UIElements.activitiesLoadingSpinner.style.display = 'flex';
                     if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'none';
@@ -720,7 +719,7 @@
 
                 allFetchedActivities = await fetchAllActivities(); // This uses makeStravaApiCall internally
                
-                // Hide loading spinner AFTER fetching
+                // Hide loading spinner after fetching
                 if (UIElements.activitiesLoadingSpinner) {
                     UIElements.activitiesLoadingSpinner.style.display = 'none';
                     if (UIElements.activityListContainer) UIElements.activityListContainer.style.display = 'block';
@@ -740,16 +739,14 @@
 
                 log('Main application dashboard fully loaded.', 'success');
             } catch (error) {
-                log(`Critical Error loading main application dashboard: ${error.message}. Please try connecting to Strava again.`, 'error');
+                log(`Error loading main application: ${error.message}`, 'error');
                 console.error(error);
-                // Ensure initial loading screen is hidden if dashboard fails to load
+                // Ensure initial loading screen is hidden even if dashboard fails to load
                 if (UIElements.initialLoadingScreen) {
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
-                // Force re-login if main app load fails critically (e.g., cannot init map, cannot fetch activities even after refresh attempts)
-                localStorage.clear();
-                sessionStorage.clear();
-                window.location.href = window.location.pathname;
+                // Optionally redirect to login if core app load fails
+                // localStorage.clear(); sessionStorage.clear(); window.location.href = window.location.pathname;
             } finally {
                 // Ensure the initial loading screen is hidden when showMainApp completes or errors out
                 if (UIElements.initialLoadingScreen) {
@@ -839,7 +836,7 @@
                 localStorage.removeItem(STRAVA_ACCESS_TOKEN_KEY);
                 localStorage.removeItem(STRAVA_REFRESH_TOKEN_KEY);
                 localStorage.removeItem(STRAVA_EXPIRES_AT_KEY);
-                localStorage.removeItem('stravaAthlete'); // Clear athlete info
+                sessionStorage.removeItem('stravaAthlete'); // Clear athlete info
 
                 for (let i = localStorage.length - 1; i >= 0; i--) {
                     const key = localStorage.key(i);
@@ -850,7 +847,7 @@
                 log('Progress, cached data, and Strava authentication reset.', 'success');
                 updateProgress([]);
                 filterActivities();
-                // Force redirect to login page after full reset
+                // Optionally redirect to login page after full reset
                 window.location.href = window.location.pathname;
             }
         }
@@ -1280,9 +1277,9 @@
             UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
             UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
             UIElements.statusLogDetails = document.getElementById('status-log-details');
-            UIElements.leftColumn = document.getElementById('status-log-section-container');
-            UIElements.rightColumn = document.getElementById('activities-section');
-            UIElements.centerColumn = document.getElementById('map-section');
+            UIElements.leftColumn = document.getElementById('status-log-section-container'); // Corrected ID
+            UIElements.rightColumn = document.getElementById('activities-section'); // Corrected ID
+            UIElements.centerColumn = document.getElementById('map-section'); // Corrected ID
             UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
             UIElements.activitySearchBox = document.getElementById('activity-search-box');
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
@@ -1325,39 +1322,42 @@
                 if (UIElements.activitySearchBox) UIElements.activitySearchBox.addEventListener('input', filterActivities);
                 if (UIElements.refreshActivitiesBtn) UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
                
-                if (UIElements.clientId) UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
-                if (UIElements.clientSecret) UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
+                if (UIElements.clientId) UIElements.clientId.value = localStorage.getItem('stravaClientId') || ''; // Use localStorage for client ID/Secret persistence
+                if (UIElements.clientSecret) UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || ''; // Use localStorage
                 checkInputs();
 
                 const urlParams = new URLSearchParams(window.location.search);
                 const authCode = urlParams.get('code');
 
-                let shouldShowLogin = true; // Default to showing login screen
+                let shouldShowMainApp = false;
 
                 if (authCode) {
-                    await getAccessToken(authCode); // This will reload the page, so this function instance will terminate.
-                    // The new page load's init() will pick up the flow.
-                    return; // Exit here immediately if we're redirecting
-                } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
-                    // Token exists, try to show main app
-                    await showMainApp();
-                    shouldShowLogin = false; // Main app was shown, so don't show login
-                }
-
-                if (shouldShowLogin) {
-                    // Only show login screen if main app wasn't loaded
-                    if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
-                    if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
-                    log('Please connect to Strava.', 'info');
+                    await getAccessToken(authCode);
+                    // After getAccessToken, page reloads. This init() instance ends.
+                    // The next init() will take the 'else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY))' path.
                 }
                
-                // Hide initial loading screen ONLY after the final display state is determined and shown.
+                // On subsequent load (after OAuth redirect), check for existing tokens
+                if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
+                    // Try to show main app if token exists (and handle refresh internally)
+                    shouldShowMainApp = true;
+                }
+
+                if (shouldShowMainApp) {
+                    await showMainApp();
+                } else {
+                    // Not authenticated, show login screen
+                    if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
+                    if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
+                    log('Please connect to Strava.');
+                }
+               
+                // Hide initial loading screen only after *some* main content (login or dashboard) is shown
                 if (UIElements.initialLoadingScreen) {
                     UIElements.initialLoadingScreen.style.display = 'none';
                 }
                 log('App startup sequence completed.', 'success');
                
-                // Initial layout update and resize listener, always apply these
                 updateGridLayout();
                 window.addEventListener('resize', updateGridLayout);
             }
