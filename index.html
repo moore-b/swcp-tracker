@@ -19,7 +19,7 @@
         .btn-strava { background-color: #FC5200; }
         .btn-strava:hover { background-color: #e04a00; }
         .loader {
-            border: 4px solid #f3f3f3; border-top: 4px solid #3498db; border-radius: 50%;
+            border: 4px solid #f3f3f3; border-top: 44px solid #3498db; border-radius: 50%; /* Corrected border width for loader */
             width: 24px; height: 24px; animation: spin 1s linear infinite;
             display: inline-block; margin-right: 10px;
         }
@@ -258,32 +258,33 @@
         const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_';
 
         // UIElements (defined globally to be accessible by all functions)
+        // These are populated in the init() function after DOMContentLoaded
         const UIElements = {
-            clientId: null, // Will be set in init
-            clientSecret: null, // Will be set in init
-            connectButton: null, // Will be set in init
-            configSection: null, // Will be set in init
-            progressSection: null, // Will be set in init
-            activityListSection: null, // Will be set in init
-            activityListContainer: null, // Will be set in init
-            activityCardTemplate: null, // Will be set in init
-            activityCount: null, // Will be set in init
-            filterButtons: null, // Will be set in init
-            resetButton: null, // Will be set in init
-            statusLog: null, // Will be set in init
-            stravaUserInfo: null, // Will be set in init
-            progressBar: null, // Will be set in init
-            progressPercentage: null, // Will be set in init
-            completedDistance: null, // Will be set in init
-            totalDistance: null, // Will be set in init
-            mainMap: null, // Will be set in init
-            mainLayoutContainer: null, // Will be set in init
-            loginScreenWrapper: null, // Will be set in init
-            statusLogDetails: null, // Will be set in init
-            leftColumn: null, // Will be set in init
-            rightColumn: null, // Will be set in init
-            centerColumn: null, // Will be set in init
-            activitiesLoadingSpinner: null // New: Activities loading spinner
+            clientId: null,
+            clientSecret: null,
+            connectButton: null,
+            configSection: null,
+            progressSection: null,
+            activityListSection: null,
+            activityListContainer: null,
+            activityCardTemplate: null,
+            activityCount: null,
+            filterButtons: null,
+            resetButton: null,
+            statusLog: null,
+            stravaUserInfo: null,
+            progressBar: null,
+            progressPercentage: null,
+            completedDistance: null,
+            totalDistance: null,
+            mainMap: null,
+            mainLayoutContainer: null,
+            loginScreenWrapper: null,
+            statusLogDetails: null,
+            leftColumn: null,
+            rightColumn: null,
+            centerColumn: null,
+            activitiesLoadingSpinner: null
         };
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
@@ -294,9 +295,11 @@
         // Log function
         const log = (message, type = 'info') => {
             // Ensure UIElements.statusLog is available before trying to use it
-            if (!UIlements.statusLog) {
-                console.warn("Status log element not yet available.", message);
-                return;
+            // This check makes the log function safe to call even before all DOM elements are wired up.
+            if (!UIElements.statusLog) {
+                // If statusLog is null, use console as a fallback for early messages
+                console.warn("Status log element not yet available, logging to console:", message);
+                return; // Prevent further errors trying to access properties of null
             }
             const now = new Date().toLocaleTimeString();
             UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-800')}">${message}</span></p>`;
@@ -307,7 +310,7 @@
         // Sleep utility
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
        
-        // Function to update grid-template-columns based on status log state and screen size
+        // Function to update grid-template-columns based on screen size
         function updateGridLayout() {
             // Ensure UIElements are initialized before using
             if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.rightColumn || !UIElements.leftColumn) {
@@ -316,10 +319,9 @@
 
             const isMobile = window.innerWidth < 767; // Corrected breakpoint to match CSS @media (max-width: 767px)
 
-            let columns;
             if (isMobile) {
-                columns = '1fr'; // Single column for mobile
-                // Ensure right and left columns are displayed as blocks and not sticky/h-screen on mobile
+                // Set styles for mobile (single column, non-sticky)
+                UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
                 UIElements.rightColumn.style.display = 'block';
                 UIElements.leftColumn.style.display = 'block';
                 UIElements.rightColumn.style.position = 'static';
@@ -331,11 +333,10 @@
                 UIElements.leftColumn.style.overflowY = 'visible';
 
             } else { // Desktop layout
-                // 2 columns: left (map/log stack) and right (activities)
-                columns = `2fr 1fr`;
-                // Ensure right and left columns are displayed as grid items and sticky on desktop
-                UIElements.rightColumn.style.display = 'block'; // Or 'initial' if it was flex before
-                UIElements.leftColumn.style.display = 'block'; // Or 'initial'
+                // Set styles for desktop (2 columns, sticky sidebars)
+                UIElements.mainLayoutContainer.style.gridTemplateColumns = `2fr 1fr`;
+                UIElements.rightColumn.style.display = 'block';
+                UIElements.leftColumn.style.display = 'block';
                 UIElements.rightColumn.style.position = 'sticky';
                 UIElements.rightColumn.style.height = '100vh';
                 UIElements.rightColumn.style.overflowY = 'auto';
@@ -344,7 +345,6 @@
                 UIElements.leftColumn.style.height = '100vh'; // The flex-grow within it handles internal height
                 UIElements.leftColumn.style.overflowY = 'auto';
             }
-            UIElements.mainLayoutContainer.style.gridTemplateColumns = columns;
         }
 
         // Check inputs function
@@ -581,14 +581,14 @@
             });
         }
 
-        // Analyze Single Activity function (now uses Web Worker)
+        // Analyze Single Activity function
         async function analyzeSingleActivity(activity, button) {
             button.disabled = true;
             button.innerHTML = `<span class="loader"></span>Analyzing...`;
             const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
            
             log(`Starting analysis for activity: "${activity.name}"`);
-            const stream = await getActivityStream(activity.id); // Get stream data (cached or fetched)
+            const stream = await getActivityStream(activity.id);
            
             if (!stream || stream.length === 0) {
                 log(`No stream data for activity ${activity.id}. Skipping analysis.`, 'error');
@@ -653,7 +653,7 @@
             while (true) {
                 try {
                     log(`Requesting page ${page} of activities...`);
-                    const response = await fetch(`https://www.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
+                    const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
                     if (!response.ok) {
                         const errorText = await response.text();
                         throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorText}`);
@@ -811,6 +811,7 @@
         // Initialize function (called on DOMContentLoaded)
         const init = async () => {
             // Populate UIElements dictionary with references
+            // It's critical that these are assigned AFTER the DOM content is loaded
             UIElements.clientId = document.getElementById('clientId');
             UIElements.clientSecret = document.getElementById('clientSecret');
             UIElements.connectButton = document.getElementById('connect-button');
@@ -849,7 +850,7 @@
 
                         // Find the analyze button for this activity to update its state
                         const analyzeBtn = document.querySelector(`[data-analyze-btn][onclick*="${activityId}"]`);
-                        if (analyzeBtn) {
+                        if (analyzeBtn) { // Re-select to ensure it's the current button instance
                             analyzeBtn.textContent = 'Analyzed';
                             analyzeBtn.disabled = true;
                         }
@@ -913,7 +914,7 @@
 
             // Status log details toggle listener (can be added here as statusLogDetails is guaranteed to exist now)
             UIElements.statusLogDetails.addEventListener('toggle', () => {
-                // map.invalidateSize() is handled by the window resize listener now
+                // Map invalidateSize is handled by the window resize listener now
             });
            
             // Initial call to updateGridLayout on load to set correct mobile/desktop state
