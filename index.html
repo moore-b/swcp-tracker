@@ -114,21 +114,10 @@
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
        
-        // --- DOM ELEMENTS ---
-        const clientIdInput = document.getElementById('clientId');
-        const clientSecretInput = document.getElementById('clientSecret');
-        const connectButton = document.getElementById('connect-button');
-        const configSection = document.getElementById('config-section');
-        const progressSection = document.getElementById('progress-section');
-        const analyzeButton = document.getElementById('analyze-button');
-        const analyzeButtonText = document.getElementById('analyze-button-text');
-        const resetButton = document.getElementById('reset-button');
-        const statusLog = document.getElementById('status-log');
-        const stravaUserInfo = document.getElementById('strava-user-info');
-        const progressBar = document.getElementById('progress-bar');
-        const progressPercentage = document.getElementById('progress-percentage');
-        const completedDistanceEl = document.getElementById('completed-distance');
-        const totalDistanceEl = document.getElementById('total-distance');
+        // --- DOM ELEMENTS (declared early) ---
+        let clientIdInput, clientSecretInput, connectButton, configSection, progressSection, analyzeButton,
+            analyzeButtonText, resetButton, statusLog, stravaUserInfo, progressBar,
+            progressPercentage, completedDistanceEl, totalDistanceEl;
 
         // --- GLOBAL STATE ---
         let map;
@@ -146,9 +135,35 @@
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         // --- CORE LOGIC ---
+        // ** FIX ** All code that interacts with the DOM is now inside window.onload
         window.onload = async () => {
+            // Assign DOM elements now that the document is loaded
+            clientIdInput = document.getElementById('clientId');
+            clientSecretInput = document.getElementById('clientSecret');
+            connectButton = document.getElementById('connect-button');
+            configSection = document.getElementById('config-section');
+            progressSection = document.getElementById('progress-section');
+            analyzeButton = document.getElementById('analyze-button');
+            analyzeButtonText = document.getElementById('analyze-button-text');
+            resetButton = document.getElementById('reset-button');
+            statusLog = document.getElementById('status-log');
+            stravaUserInfo = document.getElementById('strava-user-info');
+            progressBar = document.getElementById('progress-bar');
+            progressPercentage = document.getElementById('progress-percentage');
+            completedDistanceEl = document.getElementById('completed-distance');
+            totalDistanceEl = document.getElementById('total-distance');
+
             try {
                 log('Page loaded. Initializing...');
+               
+                // Set up event listeners
+                clientIdInput.addEventListener('input', checkInputs);
+                clientSecretInput.addEventListener('input', checkInputs);
+                connectButton.addEventListener('click', connectToStrava);
+                resetButton.addEventListener('click', resetProgress);
+                analyzeButton.addEventListener('click', analyzeAllActivities);
+               
+                // Continue with initialization
                 clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
                 clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
                 checkInputs();
@@ -169,17 +184,18 @@
                 }
             } catch (e) {
                 log(`A critical error occurred on page load: ${e.message}`, 'error');
+                console.error(e);
             }
         };
 
         function checkInputs() {
-            connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
+            if (connectButton) {
+                connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
+            }
         }
-        clientIdInput.addEventListener('input', checkInputs);
-        clientSecretInput.addEventListener('input', checkInputs);
        
         // --- STRAVA AUTHENTICATION ---
-        connectButton.addEventListener('click', () => {
+        function connectToStrava() {
             log('Connect button clicked! Preparing to redirect...');
             try {
                 sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
@@ -191,7 +207,7 @@
             } catch (e) {
                 log(`An error occurred in the connect function: ${e.message}`, 'error');
             }
-        });
+        }
 
         async function getAccessToken(code) {
             try {
@@ -280,17 +296,14 @@
             updateProgress(completedPoints, false);
         }
        
-        resetButton.addEventListener('click', () => {
-            // ** FIX ** Removed unsupported 'confirm()' dialog which can break scripts.
+        function resetProgress() {
             localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
             localStorage.removeItem(COMPLETED_POINTS_KEY);
             log('Progress has been reset. All activities will be re-analyzed on the next run.', 'success');
             updateProgress([], false);
-        });
+        }
 
         // --- MAIN ANALYSIS LOGIC ---
-        analyzeButton.addEventListener('click', analyzeAllActivities);
-
         async function analyzeAllActivities() {
             log('Analysis started...');
             setLoading(true);
@@ -396,6 +409,10 @@
        
         function findOverlappingPoints(activityLine) {
             const matchedPoints = [];
+            if (!swcpGeoJSON) {
+                log('SWCP path data not loaded yet, cannot find overlaps.', 'error');
+                return [];
+            }
             for (const pointCoords of activityLine.geometry.coordinates) {
                  const point = turf.point(pointCoords);
                  const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point, {units: 'meters'});
@@ -413,4 +430,40 @@
             let percentage = 0;
 
             if (completedPoints.length > 1) {
-                const uniquePoints = completedPoints.reduce((
+                const uniquePoints = completedPoints.reduce((acc, point) => {
+                    if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) {
+                        acc.push(point);
+                    }
+                    return acc;
+                }, []);
+               
+                uniquePoints.sort((a, b) => {
+                    const locA = turf.nearestPointOnLine(swcpGeoJSON, a).properties.location;
+                    const locB = turf.nearestPointOnLine(swcpGeoJSON, b).properties.location;
+                    return locA - locB;
+                });
+
+                if (uniquePoints.length > 1) {
+                    const completedLine = turf.lineString(uniquePoints);
+                    totalCompletedDistance = turf.length(completedLine, { units: 'kilometers' });
+                   
+                    const leafletPoints = uniquePoints.map(p => [p[1], p[0]]);
+                    L.polyline(leafletPoints, { color: 'green', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+
+                    percentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
+                }
+            }
+           
+            completedDistanceEl.textContent = totalCompletedDistance.toFixed(2);
+            progressPercentage.textContent = percentage.toFixed(2) + '%';
+            progressBar.style.width = `${percentage}%`;
+
+            if (isNewAnalysis && completedPoints.length > 1) {
+                 log(`Total progress updated: ${totalCompletedDistance.toFixed(2)} km (${percentage.toFixed(2)}%)`, 'success');
+            } else if (!isNewAnalysis && completedPoints.length < 2) {
+                log('No progress to display.', 'info');
+            }
+        }
+    </script>
+</body>
+</html>
