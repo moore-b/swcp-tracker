@@ -3,8 +3,6 @@
 // Import the Turf.js library into the worker's scope
 // IMPORTANT: The path to turf.min.js here must be accessible from where your worker script is served.
 // If your worker.js is in the same folder as index.html, and unpkg.com is allowed, this is fine.
-// If your worker is in a 'js' subfolder, you might need '../../unpkg.com/@turf/turf@6/turf.min.js' or similar relative path.
-// For simplicity, using the direct CDN link here.
 importScripts('https://unpkg.com/@turf/turf@6/turf.min.js');
 
 let swcpGeoJSON = null; // To store the main path GeoJSON
@@ -24,9 +22,6 @@ function findOverlappingPoints(activityLine) {
    
     const activityLength = turf.length(activityLine, {units: 'meters'});
     const numSamples = Math.max(2, Math.ceil(activityLength / ACTIVITY_SAMPLE_INTERVAL_METERS));
-   
-    // In a worker, console.log is visible in the browser's DevTools console under the 'Worker' context
-    // console.log(`Worker: Sampling activity route for analysis (${numSamples} points)...`);
    
     for (let i = 0; i <= numSamples; i++) {
         const distance = (i / numSamples) * activityLength;
@@ -52,7 +47,6 @@ self.onmessage = function(e) {
             // Receive the main SWCP GeoJSON once
             try {
                 swcpGeoJSON = JSON.parse(data.swcpGeoJSONString);
-                // console.log("Worker: SWCP GeoJSON initialized.");
             } catch (error) {
                 console.error("Worker: Error parsing SWCP GeoJSON:", error);
             }
