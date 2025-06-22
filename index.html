@@ -15,14 +15,23 @@
     <style>
         body {
             font-family: 'Inter', sans-serif;
-            /* Background Image for the entire app */
-            background-image: url('background.png');
-            background-size: cover;
-            background-position: center center;
-            background-attachment: fixed;
-            background-repeat: no-repeat;
+            /* Remove background from body, it's now on #app-background div */
             background-color: #f3f4f6; /* Fallback if image fails or for initial load */
         }
+       
+        #app-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-image: url('background.png'); /* Applied here */
+            background-size: cover;
+            background-position: center center;
+            background-repeat: no-repeat;
+            z-index: -1; /* Ensure it stays behind all content */
+        }
+
         #map {
             height: 700px;
             width: 100%;
@@ -109,8 +118,8 @@
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
             background-color: rgba(255, 255, 255, 0.7); /* White with 70% opacity */
-            backdrop-filter: blur(8px); /* Apply blur effect */
-            -webkit-backdrop-filter: blur(8px); /* For Safari compatibility */
+            backdrop-filter: blur(4px); /* Adjusted blur amount to 4px */
+            -webkit-backdrop-filter: blur(4px); /* For Safari compatibility */
             box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
         }
 
@@ -150,7 +159,7 @@
                 grid-template-rows: auto auto auto auto; /* Stack Header, Map content, Activities, Status Log */
                 padding: 1rem; /* More padding on mobile */
             }
-            /* Reorder for mobile: Header first, then Map, then Activities, then Status Log */
+            /* Reorder for mobile: Map first, then Activities, then Status Log */
             #header-tile {
                 grid-row: 1;
             }
@@ -246,12 +255,14 @@
 </head>
 <body class="bg-gray-50 text-gray-800">
 
-    <div id="login-screen-wrapper" class="min-h-screen flex items-center justify-center bg-gray-50">
+    <div id="app-background"></div>
+
+    <div id="login-screen-wrapper" class="min-h-screen flex items-center justify-center">
         <div id="config-section" class="p-8 rounded-lg shadow-xl max-w-md w-full text-center blurred-tile-background">
             <h2 class="text-3xl font-bold text-gray-900 mb-6 border-b pb-4">Connect to Strava</h2>
             <div class="space-y-4 mb-6">
                 <div><label for="clientId" class="block text-sm font-medium text-gray-700 text-left">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
-                <div><label for="clientSecret" class="block text-sm font-medium text-gray-700 text-left">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
+                <div><label for="clientSecret" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500"></div>
             </div>
             <button id="connect-button" class="w-full btn-base btn-strava">Connect with Strava</button>
         </div>
@@ -292,7 +303,7 @@
                 <div id="status-log" class="flex-grow overflow-y-auto"></div> </details>
         </div>
 
-        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto p-6 rounded-lg shadow-lg blurred-tile-background">
+        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto blurred-tile-background">
             <div id="activity-list-section" class="mt-8 md:mt-0">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
@@ -302,7 +313,7 @@
                     </div>
                 </div>
                 <div class="mb-4">
-                    <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
+                    <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
                 </div>
                 <button id="refresh-activities-btn" class="w-full btn-base btn-strava mb-4">Refresh Activities</button>
                 <div id="activities-loading-spinner" class="flex justify-center items-center h-32">
@@ -350,9 +361,9 @@
         const CACHED_ACTIVITIES_KEY = 'swcp_cached_activities';
         const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
         const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour (adjust as needed for 24 * 60 * 60 * 1000 for 24 hours)
+        const BACKGROUND_IMAGE_PATH = 'background.png'; // Path to background image
 
         // UIElements (defined globally to be accessible by all functions)
-        // These are populated in the init() function after DOMContentLoaded
         const UIElements = {
             clientId: null,
             clientSecret: null,
@@ -382,7 +393,9 @@
             activitySearchBox: null,
             mapLoadingOverlay: null,
             refreshActivitiesBtn: null,
-            headerTile: null // New reference for the header tile
+            headerTile: null,
+            appBackground: null, // New reference for the background div
+            initialLoadingScreen: null // New reference for the initial loading overlay
         };
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
@@ -392,10 +405,7 @@
 
         // Log function
         const log = (message, type = 'info') => {
-            // Ensure UIElements.statusLog is available before trying to use it.
-            // This prevents errors if log is called very early, before UIElements are populated.
             if (!UIElements.statusLog) {
-                // If statusLog is null, use console as a fallback for early messages
                 console.warn("Status log element not yet available, logging to console:", message);
                 return;
             }
@@ -410,7 +420,6 @@
        
         // Function to update grid-template-columns based on screen size
         function updateGridLayout() {
-            // Ensure UIElements are initialized before using
             if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.rightColumn || !UIElements.leftColumn || !UIElements.headerTile || !UIElements.centerColumn) {
                 return;
             }
@@ -1103,6 +1112,8 @@
             UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
             UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
             UIElements.headerTile = document.getElementById('header-tile');
+            UIElements.appBackground = document.getElementById('app-background'); // Reference to the new background div
+            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen'); // Reference to the initial loading screen
 
             log('App initialized.');
 
@@ -1181,24 +1192,53 @@
             const urlParams = new URLSearchParams(window.location.search);
             const authCode = urlParams.get('code');
 
-            if (authCode) {
-                await getAccessToken(authCode);
-            } else if (sessionStorage.getItem('stravaAccessToken')) {
-                await showMainApp();
-            } else {
-                if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
-                if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
-                log('Please connect to Strava.');
-            }
+            // Preload background image
+            const bgImage = new Image();
+            bgImage.src = BACKGROUND_IMAGE_PATH;
 
-            // Status log details toggle listener (can be added here as statusLogDetails is guaranteed to exist now)
-            if (UIElements.statusLogDetails) {
-                UIElements.statusLogDetails.addEventListener('toggle', () => {
-                    // map.invalidateSize() is handled by the window resize listener now
-                });
-            } else {
-                log("Warning: Status log details element not found.", "warn");
-            }
+            bgImage.onload = async () => {
+                // Background image loaded, now show the appropriate screen
+                if (UIElements.appBackground) {
+                    UIElements.appBackground.style.backgroundImage = `url('${BACKGROUND_IMAGE_PATH}')`;
+                }
+                log('Background image loaded successfully.', 'success');
+
+                if (authCode) {
+                    await getAccessToken(authCode);
+                } else if (sessionStorage.getItem('stravaAccessToken')) {
+                    await showMainApp();
+                } else {
+                    if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
+                    if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
+                    log('Please connect to Strava.');
+                }
+               
+                // Hide initial loading screen once everything is ready to display
+                if (UIElements.initialLoadingScreen) {
+                    UIElements.initialLoadingScreen.style.display = 'none';
+                }
+                log('Initial app setup complete and visible.', 'success');
+            };
+
+            bgImage.onerror = () => {
+                log('Error loading background image. Proceeding without it.', 'error');
+                // Proceed without background image if it fails to load
+                if (authCode) {
+                    getAccessToken(authCode);
+                } else if (sessionStorage.getItem('stravaAccessToken')) {
+                    showMainApp();
+                } else {
+                    if (UIElements.loginScreenWrapper) UIElements.loginScreenWrapper.style.display = 'flex';
+                    if (UIElements.mainLayoutContainer) UIElements.mainLayoutContainer.style.display = 'none';
+                    log('Please connect to Strava.');
+                }
+               
+                // Hide initial loading screen even if background fails
+                if (UIElements.initialLoadingScreen) {
+                    UIElements.initialLoadingScreen.style.display = 'none';
+                }
+                log('Initial app setup complete (background image failed to load).', 'success');
+            };
            
             // Initial call to updateGridLayout on load to set correct mobile/desktop state
             updateGridLayout();
