@@ -117,9 +117,9 @@
 
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
-            background-color: rgba(0, 0, 0, 0.4); /* Grey tint with 40% opacity */
-            backdrop-filter: blur(3px); /* Adjusted blur amount to 3px */
-            -webkit-backdrop-filter: blur(3px); /* For Safari compatibility */
+            background-color: rgba(0, 0, 0, 0.4) !important; /* Grey tint with 40% opacity, !important to ensure it applies */
+            backdrop-filter: blur(5px); /* Adjusted blur amount to 5px for more distinctness */
+            -webkit-backdrop-filter: blur(5px); /* For Safari compatibility */
             box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.2), 0 6px 10px -2px rgba(0, 0, 0, 0.1); /* More pronounced shadow */
         }
 
@@ -325,7 +325,7 @@
     </div>
 
     <template id="activity-card-template">
-        <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
+        <div class="bg-white p-4 rounded-xl shadow-md border border-gray-200">
              <div class="flex justify-between items-start">
                 <div>
                     <h3 class="font-bold text-lg" data-name>Activity Name</h3>
@@ -364,6 +364,7 @@
         const BACKGROUND_IMAGE_PATH = 'background.webp'; // Updated to .webp
 
         // UIElements (defined globally to be accessible by all functions)
+        // These are populated in the init() function after DOMContentLoaded
         const UIElements = {
             clientId: null,
             clientSecret: null,
@@ -405,7 +406,10 @@
 
         // Log function
         const log = (message, type = 'info') => {
+            // Ensure UIElements.statusLog is available before trying to use it.
+            // This prevents errors if log is called very early, before UIElements are populated.
             if (!UIElements.statusLog) {
+                // If statusLog is null, use console as a fallback for early messages
                 console.warn("Status log element not yet available, logging to console:", message);
                 return;
             }
@@ -420,6 +424,7 @@
        
         // Function to update grid-template-columns based on screen size
         function updateGridLayout() {
+            // Ensure UIElements are initialized before using
             if (!UIElements.mainLayoutContainer || !UIElements.statusLogDetails || !UIElements.rightColumn || !UIElements.leftColumn || !UIElements.headerTile || !UIElements.centerColumn) {
                 return;
             }
