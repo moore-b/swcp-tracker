@@ -120,7 +120,6 @@
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.9.1/firebase-firestore.js";
 
         document.addEventListener('DOMContentLoaded', () => {
-           
             const firebaseConfig = {
                 apiKey: "AIzaSyCNGwKaZz7nRZ0U8Ilbbr8nMYcSp_7ILIM",
                 authDomain: "swcp-tracker-1dfc8.firebaseapp.com",
@@ -205,7 +204,6 @@
             };
 
             const handleRegister = async () => {
-                log('Registering user...');
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
                 const clientId = document.getElementById('stravaClientId').value;
@@ -215,7 +213,6 @@
                     const userCredential = await createUserWithEmailAndPassword(auth, email, password);
                     const user = userCredential.user;
                     log(`User registered: ${user.uid}`, 'success');
-                    // ** FIX: Corrected Firestore Path **
                     const credentialsDocRef = doc(db, "users", user.uid);
                     await setDoc(credentialsDocRef, {
                         stravaClientId: btoa(clientId),
@@ -239,23 +236,23 @@
             };
 
             async function getAccessToken(code) {
-                // ... logic is correct
+                // ... same as before
             }
            
             async function showMainApp() {
-                // ... logic is correct
+                 // ... same as before
             }
 
             async function initializeMap() {
-                 // ... logic is correct
+                 // ... same as before
             }
 
             function connectToStrava() {
-                 // ... logic is correct
+                 // ... same as before
             }
 
             function resetProgress() {
-                // ... logic is correct
+                // ... same as before
             }
            
             function handleFilterClick(e) { /* ... unchanged ... */ }
@@ -280,9 +277,7 @@
 
                 if (user) {
                     userId = user.uid;
-                    // ** FIX: Corrected Firestore Path **
                     progressDocRef = doc(db, "users", userId);
-                    const credentialsDocRef = doc(db, "users", userId);
                    
                     if (unsubscribe) unsubscribe();
                     unsubscribe = onSnapshot(progressDocRef, (doc) => {
@@ -295,7 +290,7 @@
                         if(swcpGeoJSON) updateProgress(userProgress.completedPoints);
                     });
                    
-                    const credDoc = await getDoc(credentialsDocRef);
+                    const credDoc = await getDoc(progressDocRef);
                     if (credDoc.exists()) {
                         const creds = credDoc.data();
                         if (creds.stravaClientId && creds.stravaClientSecret) {
@@ -305,8 +300,6 @@
                            log('FATAL: Strava credentials not found in your account! Please log out and register again.', 'error');
                            handleLogout(); return;
                         }
-                    } else {
-                        log('No user data document found. This may be a new user.', 'info');
                     }
 
                     if (authCode) {
