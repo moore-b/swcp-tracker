@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SW Coast Path Tracker</title>
-   
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
@@ -14,7 +14,7 @@
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        #map { height: 700px; width: 100%; border-radius: 0.5rem; } /* Increased height */
+        #map { height: 700px; width: 100%; border-radius: 0.5rem; } 
         .activity-map { height: 200px; width: 100%; border-radius: 0.5rem; background-color: #f3f4f6; }
         .btn-strava { background-color: #FC5200; }
         .btn-strava:hover { background-color: #e04a00; }
@@ -24,8 +24,7 @@
             display: inline-block; margin-right: 10px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        /* Removed details/summary specific styles as status log is now always visible */
-
+        
         .filter-btn {
             padding: 0.5rem 1rem;
             border: 1px solid #d1d5db;
@@ -41,15 +40,112 @@
             color: #ffffff;
             border-color: #3b82f6;
         }
+
+        /* --- CSS Grid Layout --- */
+        #main-layout-container {
+            display: grid;
+            /* Default on small screens: Status Log (fixed) + Main Content (flex) */
+            grid-template-columns: 250px 1fr; 
+            gap: 1rem; /* Gap between columns */
+            min-height: 100vh;
+        }
+
+        @media (min-width: 768px) { /* md breakpoint and up */
+            #main-layout-container {
+                /* 3 columns: Status Log (fixed) + Map/Content (flex) + Activities (fixed) */
+                grid-template-columns: 250px 1fr 300px; 
+            }
+        }
+
+        /* State for Map Expansion (triggered by button) */
+        #main-layout-container.map-expanded {
+            /* Hide left column, map/center expands into its space */
+            grid-template-columns: 0px 1fr 300px; 
+        }
+        #main-layout-container.map-expanded #left-column {
+            display: none; /* Explicitly hide the left column */
+        }
+
+        /* Status log details summary styling for expand/collapse indicator */
+        #status-log-details > summary {
+            cursor: pointer;
+            list-style: none; /* Remove default marker */
+            position: sticky;
+            top: 0;
+            background-color: inherit; /* Ensure background color matches parent */
+            z-index: 10; /* Keep it above scrolling content */
+        }
+        #status-log-details > summary::-webkit-details-marker {
+            display: none;
+        }
+        #status-log-details > summary::before {
+            content: '+ '; /* Custom expand indicator */
+            margin-right: 0.5rem;
+            display: inline-block;
+            transition: transform 0.2s;
+        }
+        #status-log-details[open] > summary::before {
+            content: '- '; /* Custom collapse indicator */
+            transform: rotate(0deg); /* No rotation needed for +/- */
+        }
+
+        /* --- Custom Scrollbar Styles (Webkit browsers like Chrome, Safari, Edge) --- */
+        /* Thin scrollbar for the entire body */
+        body::-webkit-scrollbar {
+            width: 8px;
+        }
+        body::-webkit-scrollbar-track {
+            background: #f1f1f1; /* Light grey track */
+        }
+        body::-webkit-scrollbar-thumb {
+            background-color: #888;
+            border-radius: 4px;
+        }
+        body::-webkit-scrollbar-thumb:hover {
+            background-color: #555;
+        }
+
+        /* Less noticeable scrollbars for internal scrollable divs */
+        #left-column::-webkit-scrollbar,
+        #status-log::-webkit-scrollbar,
+        #right-column::-webkit-scrollbar,
+        #activity-list-container::-webkit-scrollbar {
+            width: 6px; /* Thinner scrollbar */
+        }
+        #left-column::-webkit-scrollbar-track,
+        #status-log::-webkit-scrollbar-track,
+        #right-column::-webkit-scrollbar-track,
+        #activity-list-container::-webkit-scrollbar-track {
+            background: transparent; /* Invisible track */
+        }
+        #left-column::-webkit-scrollbar-thumb,
+        #status-log::-webkit-scrollbar-thumb,
+        #right-column::-webkit-scrollbar-thumb,
+        #activity-list-container::-webkit-scrollbar-thumb {
+            background-color: rgba(136, 136, 136, 0.5); /* Semi-transparent thumb */
+            border-radius: 3px;
+        }
+        #left-column::-webkit-scrollbar-thumb:hover,
+        #status-log::-webkit-scrollbar-thumb:hover,
+        #right-column::-webkit-scrollbar-thumb:hover,
+        #activity-list-container::-webkit-scrollbar-thumb:hover {
+            background-color: rgba(85, 85, 85, 0.7); /* Darker on hover */
+        }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
-    <div class="container mx-auto p-4 md:p-8 max-w-6xl flex flex-col md:flex-row"> <div class="md:w-1/4 md:pr-4 sticky top-0 md:h-screen overflow-y-auto pb-4"> <div id="status-log-section" class="bg-gray-900 text-white font-mono text-sm rounded-lg p-4 h-full flex flex-col"> <h2 class="text-xl font-semibold mb-2 text-white">Status Log</h2>
-                <div id="status-log" class="flex-grow overflow-y-auto"></div> </div>
+    <div id="main-layout-container">
+
+        <div id="left-column" class="sticky top-0 h-screen overflow-y-auto bg-gray-900 text-white font-mono text-sm">
+            <details open id="status-log-details" class="h-full flex flex-col">
+                <summary class="text-xl font-semibold p-4">Status Log</summary>
+                <div id="status-log" class="flex-grow p-4 overflow-y-auto"></div>
+            </details>
         </div>
 
-        <div id="main-content" class="md:w-3/4 md:pl-4 mt-4 md:mt-0"> <header class="text-center mb-8">
+        <div id="center-column" class="relative p-4 md:p-8"> 
+            <header class="text-center mb-8">
                 <h1 class="text-4xl font-bold text-gray-900">South West Coast Path Tracker</h1>
                 <p class="mt-2 text-lg text-gray-600">Log your progress on the 630-mile journey.</p>
             </header>
@@ -75,15 +171,16 @@
                 </div>
                 <h3 class="text-xl font-semibold mb-3">Master Map</h3>
                 <div id="map"></div>
+                <button id="toggle-map-size-button" class="absolute top-4 right-4 bg-gray-700 text-white px-3 py-1 rounded-md text-sm hover:bg-gray-600 z-20">Expand Map</button>
                 <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
             </div>
+        </div>
 
-            <div id="activity-list-section" class="hidden mt-8">
+        <div id="right-column" class="md:block hidden sticky top-0 h-screen overflow-y-auto p-4"> <div id="activity-list-section" class="mt-8 md:mt-0"> 
                 <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-semibold">Your Walks & Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
+                    <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2> 
                     <div id="filter-buttons" class="flex space-x-2">
                         <button data-filter="all" class="filter-btn active">All</button>
-                        <button data-filter="Walk" class="filter-btn">Walks</button>
                         <button data-filter="Hike" class="filter-btn">Hikes</button>
                     </div>
                 </div>
@@ -122,9 +219,10 @@
         document.addEventListener('DOMContentLoaded', () => {
             const SWCP_GEOJSON_URL = 'routes.geojson';
             const DISTANCE_THRESHOLD_METERS = 100;
+            const ACTIVITY_SAMPLE_INTERVAL_METERS = 50; 
             const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
             const COMPLETED_POINTS_KEY = 'swcp_completed_points';
-            const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_'; // New prefix for stream cache
+            const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_'; 
 
             const UIElements = {
                 clientId: document.getElementById('clientId'),
@@ -145,20 +243,25 @@
                 completedDistance: document.getElementById('completed-distance'),
                 totalDistance: document.getElementById('total-distance'),
                 mainMap: document.getElementById('map'),
+                mainLayoutContainer: document.getElementById('main-layout-container'), 
+                toggleMapSizeButton: document.getElementById('toggle-map-size-button'), 
+                statusLogDetails: document.getElementById('status-log-details'), 
+                leftColumn: document.getElementById('left-column'), 
+                rightColumn: document.getElementById('right-column') 
             };
 
             let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
+            let isMapExpanded = false; 
 
             const log = (message, type = 'info') => {
                 const now = new Date().toLocaleTimeString();
-                // Adjust text color based on type for better visibility in dark log
                 UIElements.statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-200')}">${message}</span></p>`;
                 UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
                 if (type === 'error') console.error(message);
             };
 
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
-           
+            
             const init = async () => {
                 log('App initialized.');
                 UIElements.clientId.addEventListener('input', checkInputs);
@@ -166,9 +269,9 @@
                 UIElements.connectButton.addEventListener('click', connectToStrava);
                 UIElements.resetButton.addEventListener('click', resetProgress);
                 UIElements.filterButtons.addEventListener('click', handleFilterClick);
-               
+                
                 UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
-                UIElements.clientSecret.value = sessionStorage.getItem('straentSecret') || ''; // Corrected typo
+                UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || ''; 
                 checkInputs();
 
                 const urlParams = new URLSearchParams(window.location.search);
@@ -177,12 +280,37 @@
                 if (authCode) await getAccessToken(authCode);
                 else if (sessionStorage.getItem('stravaAccessToken')) await showMainApp();
                 else log('Please connect to Strava.');
+
+                // Event listener for map expansion button
+                UIElements.toggleMapSizeButton.addEventListener('click', () => {
+                    isMapExpanded = !isMapExpanded;
+                    if (isMapExpanded) {
+                        UIElements.mainLayoutContainer.classList.add('map-expanded');
+                        UIElements.toggleMapSizeButton.textContent = 'Collapse Map';
+                    } else {
+                        UIElements.mainLayoutContainer.classList.remove('map-expanded');
+                        UIElements.toggleMapSizeButton.textContent = 'Expand Map';
+                    }
+                    // Invalidate map size after layout change to ensure it renders correctly
+                    mainMap.invalidateSize(); 
+                });
+
+                // Event listener for status log collapse (details element)
+                UIElements.statusLogDetails.addEventListener('toggle', () => {
+                    // Invalidate map size to ensure it redraws correctly if the surrounding container changes size
+                    mainMap.invalidateSize();
+                });
+
+                // It's good practice to invalidate map size on window resize too
+                window.addEventListener('resize', () => {
+                    mainMap.invalidateSize();
+                });
             };
-           
+            
             function checkInputs() {
                 if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
             }
-       
+        
             function connectToStrava() {
                 sessionStorage.setItem('stravaClientId', UIElements.clientId.value.trim());
                 sessionStorage.setItem('stravaClientSecret', UIElements.clientSecret.value.trim());
@@ -211,17 +339,17 @@
                     } else { log(`Error getting access token: ${data.message}`, 'error'); }
                 } catch (error) { log(`Network error: ${error.message}`, 'error'); }
             }
-           
+            
             async function showMainApp() {
                 UIElements.configSection.style.display = 'none';
                 UIElements.progressSection.style.display = 'block';
                 UIElements.activityListSection.style.display = 'block';
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-               
+                
                 await initializeMap();
                 loadProgressFromStorage();
-               
+                
                 allFetchedActivities = await fetchAllActivities();
                 if (allFetchedActivities) renderActivityList(allFetchedActivities);
             }
@@ -238,7 +366,7 @@
                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                     const data = await response.json();
                     if (!data.features || data.features.length === 0) throw new Error('GeoJSON file is empty or invalid.');
-                   
+                    
                     swcpTotalDistance = 0;
                     // Ensure all features are LineStrings and combine their coordinates for total length calculation
                     const allCoordinates = data.features.reduce((coords, feature) => {
@@ -255,24 +383,24 @@
                         }
                         return coords; // Skip other geometry types
                     }, []);
-                   
+                    
                     // Create a single LineString from all coordinates for `nearestPointOnLine`
                     // This assumes the routes.geojson lines are meant to form one continuous path
                     swcpGeoJSON = turf.lineString(allCoordinates).geometry;
-                   
+                    
                     const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
                     mainMap.fitBounds(leafletGeoJson.getBounds());
                     UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
                     log('Master map loaded.', 'success');
                 } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); }
             }
-           
+            
             function loadProgressFromStorage() {
                 const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
                 log(`Loaded ${completedPoints.length} completed points from storage.`);
                 updateProgress(completedPoints);
             }
-           
+            
             function resetProgress() {
                 if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
                     localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
@@ -292,15 +420,16 @@
 
             function handleFilterClick(e) {
                 if (e.target.tagName !== 'BUTTON') return;
-               
+                
                 const filter = e.target.dataset.filter;
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
 
                 let filteredActivities;
-                if (filter === 'all') {
+                // 'all' filter will now mean all *Hike* activities
+                if (filter === 'all') { 
                     filteredActivities = allFetchedActivities;
-                } else {
+                } else { // Specifically 'Hike' (though currently 'all' is also 'Hike' only)
                     filteredActivities = allFetchedActivities.filter(act => act.type === filter);
                 }
                 renderActivityList(filteredActivities);
@@ -311,28 +440,29 @@
                 UIElements.activityListContainer.innerHTML = '';
                 UIElements.activityCount.textContent = `(${activities.length} found)`;
                 const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
-               
+                
                 activities.forEach(activity => {
                     const card = UIElements.activityCardTemplate.content.cloneNode(true);
                     const cardDiv = card.querySelector('.bg-white');
                     const nameEl = cardDiv.querySelector('[data-name]');
                     const typeEl = cardDiv.querySelector('[data-type]');
-                   
+                    
                     nameEl.textContent = activity.name;
-                    typeEl.textContent = activity.type;
+                    // Type will always be Hike now based on filtering, but keeping for completeness
+                    typeEl.textContent = activity.type; 
                     typeEl.className = `text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${activity.type === 'Hike' ? 'text-emerald-600 bg-emerald-200' : 'text-sky-600 bg-sky-200'} ml-2`;
 
                     cardDiv.querySelector('[data-date]').textContent = new Date(activity.start_date).toLocaleDateString();
                     cardDiv.querySelector('[data-distance]').innerHTML = `<strong>Distance:</strong> ${(activity.distance / 1000).toFixed(2)} km`;
                     cardDiv.querySelector('[data-time]').innerHTML = `<strong>Moving Time:</strong> ${new Date(activity.moving_time * 1000).toISOString().substr(11, 8)}`;
                     cardDiv.querySelector('[data-elevation]').innerHTML = `<strong>Elevation Gain:</strong> ${activity.total_elevation_gain.toFixed(0)} m`;
-                   
+                    
                     const mapEl = cardDiv.querySelector('[data-map-id]');
                     mapEl.id = `map-${activity.id}`;
-                   
+                    
                     const analyzeBtn = cardDiv.querySelector('[data-analyze-btn]');
                     const updateBtn = cardDiv.querySelector('[data-update-btn]');
-                   
+                    
                     if (processedIds.has(activity.id)) {
                         analyzeBtn.textContent = 'Analyzed';
                         analyzeBtn.disabled = true;
@@ -342,7 +472,7 @@
                     updateBtn.onclick = () => updateSingleTitle(activity, updateBtn, nameEl);
 
                     UIElements.activityListContainer.appendChild(card);
-                   
+                    
                     if(activity.map.summary_polyline) {
                         const latlngs = polyline.decode(activity.map.summary_polyline);
                         const activityMap = L.map(mapEl.id, { scrollWheelZoom: false }).setView(latlngs[0] || [50.5, -4.0], 13);
@@ -359,26 +489,25 @@
                 button.disabled = true;
                 button.innerHTML = `<span class="loader"></span>Analyzing...`;
                 const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
-               
+                
                 log(`Starting analysis for activity: "${activity.name}"`);
                 const stream = await getActivityStream(activity.id); // This now includes caching logic
-               
+                
                 let newlyCompletedPoints = [];
                 if (stream) {
-                    log('Analyzing activity path against SWCP...'); // More specific log
                     // Turf.js expects [lon, lat], Strava stream is [lat, lon]
                     const activityLine = turf.lineString(stream.map(p => [p[1], p[0]]));
-                    newlyCompletedPoints = findOverlappingPoints(activityLine);
+                    // Call the modified findOverlappingPoints that uses sampling
+                    newlyCompletedPoints = findOverlappingPoints(activityLine); 
                     log(`-> Found ${newlyCompletedPoints.length} matching points on SWCP.`, 'success');
                 } else {
                     log(`Could not retrieve stream for activity ${activity.id}. Skipping analysis.`, 'error');
                 }
-               
+                
                 if (newlyCompletedPoints.length > 0) {
                     const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
                     const allCompletedPoints = oldCompletedPoints.concat(newlyCompletedPoints);
-                    // THIS IS THE CRUCIAL LINE FOR PERSISTENCE:
-                    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
+                    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints)); 
                     updateProgress(allCompletedPoints);
                 }
                 processedIds.add(activity.id);
@@ -433,35 +562,36 @@
                             throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorText}`);
                         }
                         const activities = await response.json();
-                       
+                        
                         if (activities.length === 0) {
                             log(`No more activities found after page ${page-1}.`);
                             break; // No more activities to fetch
                         }
-                       
+                        
                         allRawActivities.push(...activities);
                         log(`Fetched ${activities.length} activities from page ${page}. Total fetched so far: ${allRawActivities.length}`);
-                       
+                        
                         page++;
                         // Add a small delay to avoid hitting Strava API rate limits too quickly
-                        await sleep(100);
+                        await sleep(100); 
 
                     } catch(e) {
                         log(`Failed to fetch activities: ${e.message}`, 'error');
                         return null; // Indicate failure
                     }
                 }
-               
-                const relevantActivities = allRawActivities.filter(a => ['Walk', 'Hike'].includes(a.type));
+                
+                // Filter for only 'Hike' activities
+                const relevantActivities = allRawActivities.filter(a => ['Hike'].includes(a.type)); 
                 if (relevantActivities.length > 0) {
-                    log(`Successfully fetched ${relevantActivities.length} relevant activities (Walks/Hikes).`, 'success');
+                    log(`Successfully fetched ${relevantActivities.length} relevant activities (Hikes only).`, 'success');
                 } else {
-                    log('No relevant activities (Walks/Hikes) found on Strava within fetched data.', 'info');
+                    log('No relevant activities (Hikes) found on Strava within fetched data.', 'info');
                 }
                 return relevantActivities;
             }
-           
-            // Modified to use caching
+            
+            // Modified to include caching logic
             async function getActivityStream(activityId) {
                 const accessToken = sessionStorage.getItem('stravaAccessToken');
                 const cacheKey = ACTIVITY_STREAMS_CACHE_PREFIX + activityId;
@@ -476,7 +606,6 @@
                 try {
                     const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=latlng&key_by_type=true`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
                     if (!response.ok) {
-                        // Log full error response for debugging, but only error message to user
                         const errorData = await response.text();
                         log(`Failed to fetch stream for activity ${activityId}. Status: ${response.status}. Response: ${errorData}`, 'error');
                         return null;
@@ -492,18 +621,30 @@
                     return null;
                 }
             }
-           
+            
+            // Modified to sample activity points for faster analysis
             function findOverlappingPoints(activityLine) {
                 const matchedPoints = [];
                 if (!swcpGeoJSON) return []; // Ensure SWCP GeoJSON is loaded
-               
-                for (const pointCoords of activityLine.geometry.coordinates) {
-                   const point = turf.point(pointCoords);
-                   const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point);
-                   
-                   if (turf.distance(point, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
+                
+                const activityLength = turf.length(activityLine, {units: 'meters'});
+                // Calculate number of samples based on interval, ensuring at least 2 points (start and end)
+                // This balances precision with performance. Adjust ACTIVITY_SAMPLE_INTERVAL_METERS if needed.
+                const numSamples = Math.max(2, Math.ceil(activityLength / ACTIVITY_SAMPLE_INTERVAL_METERS)); 
+                
+                log(`Sampling activity route for analysis (${numSamples} points)...`);
+                
+                for (let i = 0; i <= numSamples; i++) {
+                    const distance = (i / numSamples) * activityLength; // Distribute samples evenly along the length
+                    const sampledPoint = turf.along(activityLine, distance, {units: 'meters'});
+                    
+                    if (!sampledPoint) continue; // Skip if turf.along returns null for edge cases or invalid geometry
+
+                    const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, sampledPoint);
+                    
+                    if (turf.distance(sampledPoint, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
                         matchedPoints.push(nearestPointOnLine.geometry.coordinates);
-                   }
+                    }
                 }
                 return matchedPoints;
             }
@@ -518,7 +659,7 @@
                     UIElements.completedDistance.textContent = "0.00";
                     UIElements.progressPercentage.textContent = "0.00%";
                     UIElements.progressBar.style.width = "0%";
-                    return;
+                    return; 
                 }
 
                 // 1. De-duplicate points based on proximity
@@ -535,14 +676,14 @@
                     const point = turf.point(pointCoords);
                     if (!swcpGeoJSON) {
                         log("SWCP GeoJSON not loaded, cannot calculate nearest point location for sorting.", "error");
-                        return null;
+                        return null; 
                     }
                     const nearestOnSWCP = turf.nearestPointOnLine(swcpGeoJSON, point);
                     return {
                         coords: pointCoords,
-                        location: nearestOnSWCP.properties.location
+                        location: nearestOnSWCP.properties.location 
                     };
-                }).filter(p => p !== null);
+                }).filter(p => p !== null); 
 
                 uniquePointsWithLocation.sort((a, b) => a.location - b.location);
                 log(`Points sorted by location on SWCP.`);
@@ -552,7 +693,7 @@
                 let currentSegmentPoints = [];
 
                 if (uniquePointsWithLocation.length > 0) {
-                    currentSegmentPoints.push(uniquePointsWithLocation[0].coords);
+                    currentSegmentPoints.push(uniquePointsWithLocation[0].coords); 
 
                     for (let i = 1; i < uniquePointsWithLocation.length; i++) {
                         const prevPoint = uniquePointsWithLocation[i - 1];
@@ -561,12 +702,12 @@
                         const distanceAlongSWCP = currPoint.location - prevPoint.location;
 
                         if (distanceAlongSWCP > MAX_GAP_DISTANCE_KM || distanceAlongSWCP < 0) {
-                            if (currentSegmentPoints.length > 1) {
+                            if (currentSegmentPoints.length > 1) { 
                                 segments.push(currentSegmentPoints);
                             }
-                            currentSegmentPoints = [currPoint.coords];
+                            currentSegmentPoints = [currPoint.coords]; 
                         } else {
-                            currentSegmentPoints.push(currPoint.coords);
+                            currentSegmentPoints.push(currPoint.coords); 
                         }
                     }
                     if (currentSegmentPoints.length > 1) {
@@ -579,9 +720,9 @@
                 segments.forEach(segmentCoords => {
                     const segmentLine = turf.lineString(segmentCoords);
                     totalCompletedDistance += turf.length(segmentLine, { units: 'kilometers' });
-                   
+                    
                     const leafletCoords = segmentCoords.map(coord => [coord[1], coord[0]]);
-                    L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+                    L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer); 
                 });
 
                 currentPercentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : 0;
