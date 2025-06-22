@@ -9,7 +9,6 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js' defer></script>
-    <!-- Polyline decoding library for Strava maps -->
     <script src="https://unpkg.com/@mapbox/polyline@1.1.1/src/polyline.js"></script>
 
 
@@ -33,7 +32,7 @@
             display: none;
         }
         details > summary::before {
-            content: '▶';
+            content: '';
             margin-right: 0.5rem;
             display: inline-block;
             transition: transform 0.2s;
@@ -78,8 +77,8 @@
 
             <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
                 <div class="flex justify-between items-center mb-4 border-b pb-3">
-                     <h2 class="text-2xl font-semibold">Overall Progress</h2>
-                     <div id="strava-user-info" class="text-right"></div>
+                    <h2 class="text-2xl font-semibold">Overall Progress</h2>
+                    <div id="strava-user-info" class="text-right"></div>
                 </div>
                 <div class="mb-6">
                     <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
@@ -258,10 +257,24 @@
                     if (!data.features || data.features.length === 0) throw new Error('GeoJSON file is empty or invalid.');
                    
                     swcpTotalDistance = 0;
+                    // Ensure all features are LineStrings and combine their coordinates for total length calculation
                     const allCoordinates = data.features.reduce((coords, feature) => {
-                        swcpTotalDistance += turf.length(feature, { units: 'kilometers' });
-                        return coords.concat(feature.geometry.coordinates);
+                        if (feature.geometry.type === 'LineString') {
+                            swcpTotalDistance += turf.length(feature, { units: 'kilometers' });
+                            return coords.concat(feature.geometry.coordinates);
+                        } else if (feature.geometry.type === 'MultiLineString') {
+                             feature.geometry.coordinates.forEach(lineCoords => {
+                                 const line = turf.lineString(lineCoords);
+                                 swcpTotalDistance += turf.length(line, { units: 'kilometers' });
+                                 coords.push(...lineCoords);
+                             });
+                             return coords;
+                        }
+                        return coords; // Skip other geometry types
                     }, []);
+                   
+                    // Create a single LineString from all coordinates for `nearestPointOnLine`
+                    // This assumes the routes.geojson lines are meant to form one continuous path
                     swcpGeoJSON = turf.lineString(allCoordinates).geometry;
                    
                     const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
@@ -334,7 +347,7 @@
                         analyzeBtn.textContent = 'Analyzed';
                         analyzeBtn.disabled = true;
                     } else {
-                         analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn);
+                           analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn);
                     }
                     updateBtn.onclick = () => updateSingleTitle(activity, updateBtn, nameEl);
 
@@ -346,7 +359,7 @@
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
                         const activityLine = L.polyline(latlngs, {color: '#FC5200'}).addTo(activityMap);
                         if (latlngs.length > 0) {
-                             setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
+                                setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
                         }
                     }
                 });
@@ -360,6 +373,7 @@
                 const stream = await getActivityStream(activity.id);
                 let newlyCompletedPoints = [];
                 if (stream) {
+                    // Turf.js expects [lon, lat], Strava stream is [lat, lon]
                     const activityLine = turf.lineString(stream.map(p => [p[1], p[0]]));
                     newlyCompletedPoints = findOverlappingPoints(activityLine);
                     log(`-> Found ${newlyCompletedPoints.length} matching points.`, 'success');
@@ -368,6 +382,7 @@
                 if (newlyCompletedPoints.length > 0) {
                     const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
                     const allCompletedPoints = oldCompletedPoints.concat(newlyCompletedPoints);
+                    // THIS IS THE CRUCIAL LINE FOR PERSISTENCE:
                     localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
                     updateProgress(allCompletedPoints);
                 }
@@ -403,7 +418,7 @@
                         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${accessToken}` },
                         body: JSON.stringify({ name: newTitle })
                     });
-                     if (!response.ok) log(`Failed to update activity ${id}. Status: ${response.status}`, 'error');
+                    if (!response.ok) log(`Failed to update activity ${id}. Status: ${response.status}`, 'error');
                 } catch(e) { log(`Error updating activity ${id}: ${e.message}`, 'error'); }
             }
 
@@ -439,13 +454,21 @@
            
             function findOverlappingPoints(activityLine) {
                 const matchedPoints = [];
-                if (!swcpGeoJSON) return [];
+                if (!swcpGeoJSON) return []; // Ensure SWCP GeoJSON is loaded
+               
+                // Densify the activity line to ensure we check enough points against the SWCP
+                // turf.along is good for getting points along a line at intervals.
+                // However, for overlap detection, a simpler approach is to iterate points of activityLine
+                // and find nearest on SWCP. The original method is actually fine for this.
                 for (const pointCoords of activityLine.geometry.coordinates) {
-                     const point = turf.point(pointCoords);
-                     const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point, {units: 'meters'});
-                     if (turf.distance(point, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
+                   const point = turf.point(pointCoords);
+                   // Find the nearest point on the SWCP path for the current activity point
+                   const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point);
+                   
+                   // If the distance between the activity point and its nearest point on the SWCP is within threshold
+                   if (turf.distance(point, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
                         matchedPoints.push(nearestPointOnLine.geometry.coordinates);
-                     }
+                   }
                 }
                 return matchedPoints;
             }
@@ -453,18 +476,91 @@
             function updateProgress(completedPoints) {
                 if (completedSegmentsLayer) completedSegmentsLayer.clearLayers();
                 let totalCompletedDistance = 0;
-                if (completedPoints.length > 1) {
-                    const uniquePoints = completedPoints.reduce((acc, point) => {
-                        if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) acc.push(point);
-                        return acc;
-                    }, []);
-                    uniquePoints.sort((a, b) => turf.nearestPointOnLine(swcpGeoJSON, a).properties.location - turf.nearestPointOnLine(swcpGeoJSON, b).properties.location);
-                    if (uniquePoints.length > 1) {
-                        const completedLine = turf.lineString(uniquePoints);
-                        totalCompletedDistance = turf.length(completedLine, { units: 'kilometers' });
-                        L.geoJSON(completedLine, { style: { color: 'green', weight: 5, opacity: 0.8 } }).addTo(completedSegmentsLayer);
+                // Define a maximum gap to consider points as part of the same contiguous segment
+                // If two 'completed' points are separated by more than this distance along the SWCP,
+                // they are treated as belonging to different completed segments.
+                const MAX_GAP_DISTANCE_KM = 0.2; // 200 meters
+
+                if (completedPoints.length === 0) {
+                    currentPercentage = 0;
+                    UIElements.completedDistance.textContent = "0.00";
+                    UIElements.progressPercentage.textContent = "0.00%";
+                    UIElements.progressBar.style.width = "0%";
+                    return; // No points, no progress
+                }
+
+                // 1. De-duplicate points based on proximity
+                const uniquePoints = completedPoints.reduce((acc, point) => {
+                    // Check if a similar point (within 20 meters) already exists to prevent duplicates
+                    if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'meters'}) < 20)) {
+                        acc.push(point);
+                    }
+                    return acc;
+                }, []);
+                log(`Unique points after deduplication: ${uniquePoints.length}`);
+
+                // 2. Sort unique points by their location along the entire SWCP path
+                // This is crucial for correctly identifying contiguous segments.
+                const uniquePointsWithLocation = uniquePoints.map(pointCoords => {
+                    const point = turf.point(pointCoords);
+                    if (!swcpGeoJSON) {
+                        log("SWCP GeoJSON not loaded, cannot calculate nearest point location for sorting.", "error");
+                        return null;
+                    }
+                    const nearestOnSWCP = turf.nearestPointOnLine(swcpGeoJSON, point);
+                    // The 'location' property is the distance along the line from its start
+                    return {
+                        coords: pointCoords,
+                        location: nearestOnSWCP.properties.location
+                    };
+                }).filter(p => p !== null);
+
+                // Sort by location on the main SWCP line
+                uniquePointsWithLocation.sort((a, b) => a.location - b.location);
+                log(`Points sorted by location on SWCP.`);
+
+                // 3. Group sorted points into contiguous segments
+                let segments = [];
+                let currentSegmentPoints = [];
+
+                if (uniquePointsWithLocation.length > 0) {
+                    currentSegmentPoints.push(uniquePointsWithLocation[0].coords); // Start the first segment
+
+                    for (let i = 1; i < uniquePointsWithLocation.length; i++) {
+                        const prevPoint = uniquePointsWithLocation[i - 1];
+                        const currPoint = uniquePointsWithLocation[i];
+
+                        // Calculate the distance along the SWCP between the current and previous point
+                        const distanceAlongSWCP = currPoint.location - prevPoint.location;
+
+                        // If the gap along the SWCP is too large, or points are out of order,
+                        // consider this a new, non-contiguous segment.
+                        if (distanceAlongSWCP > MAX_GAP_DISTANCE_KM || distanceAlongSWCP < 0) {
+                            if (currentSegmentPoints.length > 1) { // Only add segments with at least 2 points
+                                segments.push(currentSegmentPoints);
+                            }
+                            currentSegmentPoints = [currPoint.coords]; // Start a new segment with the current point
+                        } else {
+                            currentSegmentPoints.push(currPoint.coords); // Continue the current segment
+                        }
+                    }
+                    // Add the very last segment after the loop finishes
+                    if (currentSegmentPoints.length > 1) {
+                        segments.push(currentSegmentPoints);
                     }
                 }
+                log(`Identified ${segments.length} contiguous segments.`);
+
+                // 4. Calculate total distance and draw each identified segment
+                segments.forEach(segmentCoords => {
+                    const segmentLine = turf.lineString(segmentCoords);
+                    totalCompletedDistance += turf.length(segmentLine, { units: 'kilometers' });
+                   
+                    // Leaflet Polyline expects [lat, lng] coordinates
+                    const leafletCoords = segmentCoords.map(coord => [coord[1], coord[0]]);
+                    L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer); // Changed color to orange
+                });
+
                 currentPercentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : 0;
                 UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
                 UIElements.progressPercentage.textContent = `${currentPercentage}%`;
