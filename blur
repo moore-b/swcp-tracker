@@ -117,7 +117,7 @@
 
         /* --- Translucent & Blurred Tile Backgrounds --- */
         .blurred-tile-background {
-    background-color: rgba(255, 255, 255, 0.85); /* White with 70% opacity */
+    background-color: rgba(0, 0, 0, 0.35); /* White with 70% opacity */
     backdrop-filter: blur(10px); /* Increase the blur amount */
     -webkit-backdrop-filter: blur(10px); /* For Safari compatibility */
     box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05); /* shadow-lg */
