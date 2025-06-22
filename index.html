@@ -9,14 +9,13 @@
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
     <script src='https://unpkg.com/@turf/turf@6/turf.min.js' defer></script>
-    <!-- Polyline decoding library for Strava maps -->
     <script src="https://unpkg.com/@mapbox/polyline@1.1.1/src/polyline.js"></script>
-
 
     <style>
         body { font-family: 'Inter', sans-serif; }
-        #map { height: 400px; width: 100%; border-radius: 0.5rem; }
-        .activity-map { height: 200px; width: 100%; border-radius: 0.5rem; background-color: #f3f4f6; }
+        #map, .activity-map { border-radius: 0.5rem; background-color: #f3f4f6; }
+        #map { height: 400px; width: 100%; }
+        .activity-map { height: 200px; width: 100%; }
         .btn-strava { background-color: #FC5200; }
         .btn-strava:hover { background-color: #e04a00; }
         .loader {
@@ -25,89 +24,66 @@
             display: inline-block; margin-right: 10px;
         }
         @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
-        details > summary {
-            cursor: pointer;
-            list-style: none;
-        }
-        details > summary::-webkit-details-marker {
-            display: none;
-        }
-        details > summary::before {
-            content: '▶';
-            margin-right: 0.5rem;
-            display: inline-block;
-            transition: transform 0.2s;
-        }
-        details[open] > summary::before {
-            transform: rotate(90deg);
-        }
-        .filter-btn {
-            padding: 0.5rem 1rem;
-            border: 1px solid #d1d5db;
-            border-radius: 0.5rem;
-            background-color: #ffffff;
-            transition: background-color 0.2s;
-        }
-        .filter-btn:hover {
-            background-color: #f3f4f6;
-        }
-        .filter-btn.active {
-            background-color: #3b82f6;
-            color: #ffffff;
-            border-color: #3b82f6;
-        }
+        details > summary { cursor: pointer; list-style: none; }
+        details > summary::-webkit-details-marker { display: none; }
+        details > summary::before { content: '▶'; margin-right: 0.5rem; display: inline-block; transition: transform 0.2s; }
+        details[open] > summary::before { transform: rotate(90deg); }
+        .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background-color: #ffffff; transition: background-color 0.2s; }
+        .filter-btn:hover { background-color: #f3f4f6; }
+        .filter-btn.active { background-color: #3b82f6; color: #ffffff; border-color: #3b82f6; }
     </style>
 </head>
 <body class="bg-gray-50 text-gray-800">
 
     <div class="container mx-auto p-4 md:p-8 max-w-4xl">
-        <header class="text-center mb-8">
-            <h1 class="text-4xl font-bold text-gray-900">South West Coast Path Tracker</h1>
-            <p class="mt-2 text-lg text-gray-600">Log your progress on the 630-mile journey.</p>
+        <header class="flex justify-between items-center mb-8">
+            <div class="text-left">
+                <h1 class="text-4xl font-bold text-gray-900">SW Coast Path Tracker</h1>
+                <p class="mt-2 text-lg text-gray-600">Log your progress on the 630-mile journey.</p>
+            </div>
+            <button id="logout-button" class="hidden bg-gray-200 hover:bg-gray-300 text-gray-800 font-bold py-2 px-4 rounded-lg">Logout</button>
         </header>
 
         <main id="main-content">
-            <div id="config-section" class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-3">1. Connect to Strava</h2>
-                <div class="space-y-4">
-                    <div><label for="clientId" class="block text-sm font-medium text-gray-700">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
-                    <div><label for="clientSecret" class="block text-sm font-medium text-gray-700">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
+            <!-- New Auth Section -->
+            <div id="auth-section" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                <div id="auth-container">
+                    <!-- Login/Register forms will be inserted here -->
                 </div>
-                <button id="connect-button" class="mt-6 w-full btn-strava text-white font-bold py-3 px-4 rounded-lg transition" disabled>Connect with Strava</button>
             </div>
 
-            <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-4 border-b pb-3">
-                     <h2 class="text-2xl font-semibold">Overall Progress</h2>
-                     <div id="strava-user-info" class="text-right"></div>
-                </div>
-                <div class="mb-6">
-                    <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
-                    <p class="text-sm text-gray-500">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
-                    <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
-                </div>
-                <h3 class="text-xl font-semibold mb-3">Master Map</h3>
-                <div id="map"></div>
-                <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
-            </div>
-
-            <div id="activity-list-section" class="hidden mt-8">
-                <div class="flex justify-between items-center mb-4">
-                    <h2 class="text-2xl font-semibold">Your Walks & Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
-                    <div id="filter-buttons" class="flex space-x-2">
-                        <button data-filter="all" class="filter-btn active">All</button>
-                        <button data-filter="Walk" class="filter-btn">Walks</button>
-                        <button data-filter="Hike" class="filter-btn">Hikes</button>
+            <!-- Main App Content (hidden by default) -->
+            <div id="app-content" class="hidden">
+                <div id="progress-section" class="bg-white p-6 rounded-lg shadow-md">
+                     <div class="flex justify-between items-center mb-4 border-b pb-3">
+                         <h2 class="text-2xl font-semibold">Overall Progress</h2>
+                         <div id="strava-user-info" class="text-right"></div>
                     </div>
+                    <div class="mb-6">
+                        <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
+                        <p class="text-sm text-gray-500">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Master Map</h3>
+                    <div id="map"></div>
+                    <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
                 </div>
-                <div id="activity-list-container" class="space-y-4"></div>
+
+                <div id="activity-list-section" class="mt-8">
+                    <div class="flex justify-between items-center mb-4">
+                        <h2 class="text-2xl font-semibold">Your Walks & Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
+                        <div id="filter-buttons" class="flex space-x-2">
+                            <button data-filter="all" class="filter-btn active">All</button>
+                            <button data-filter="Walk" class="filter-btn">Walks</button>
+                            <button data-filter="Hike" class="filter-btn">Hikes</button>
+                        </div>
+                    </div>
+                    <div id="activity-list-container" class="space-y-4"></div>
+                </div>
             </div>
 
             <div id="status-log-section" class="mt-8">
-                <details>
-                    <summary class="text-xl font-semibold mb-2">Status Log</summary>
-                    <div id="status-log" class="bg-gray-900 text-white font-mono text-sm rounded-lg p-4 h-48 overflow-y-auto"></div>
-                </details>
+                <details><summary class="text-xl font-semibold mb-2">Status Log</summary><div id="status-log" class="bg-gray-900 text-white font-mono text-sm rounded-lg p-4 h-48 overflow-y-auto"></div></details>
             </div>
         </main>
     </div>
@@ -115,41 +91,41 @@
     <template id="activity-card-template">
         <div class="bg-white p-4 rounded-lg shadow-md border border-gray-200">
              <div class="flex justify-between items-start">
-                <div>
-                    <h3 class="font-bold text-lg" data-name>Activity Name</h3>
-                    <p class="text-sm text-gray-500 mb-2" data-date>Date</p>
-                </div>
-                <span data-type class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200 ml-2">Type</span>
+                <div><h3 class="font-bold text-lg" data-name></h3><p class="text-sm text-gray-500 mb-2" data-date></p></div>
+                <span data-type class="text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full text-blue-600 bg-blue-200 ml-2"></span>
             </div>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div><div class="activity-map" data-map-id></div></div>
                 <div>
-                    <ul class="text-sm space-y-1">
-                        <li data-distance><strong>Distance:</strong> 0.00 km</li>
-                        <li data-time><strong>Moving Time:</strong> 0h 0m</li>
-                        <li data-elevation><strong>Elevation Gain:</strong> 0 m</li>
-                    </ul>
+                    <ul class="text-sm space-y-1"><li data-distance></li><li data-time></li><li data-elevation></li></ul>
                     <div class="mt-4 space-y-2">
-                        <button data-analyze-btn class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300">Analyze for SWCP</button>
+                        <button data-analyze-btn class="w-full bg-blue-500 hover:bg-blue-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition disabled:bg-gray-300">Analyze</button>
                         <button data-update-btn class="w-full bg-green-500 hover:bg-green-600 text-white text-sm font-bold py-2 px-3 rounded-lg transition">Update Title</button>
                     </div>
                 </div>
             </div>
         </div>
     </template>
+   
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+        import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-    <script>
+        const firebaseConfig = typeof __firebase_config !== 'undefined' ? JSON.parse(__firebase_config) : {};
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+       
         document.addEventListener('DOMContentLoaded', () => {
             const SWCP_GEOJSON_URL = 'routes.geojson';
             const DISTANCE_THRESHOLD_METERS = 100;
-            const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
-            const COMPLETED_POINTS_KEY = 'swcp_completed_points';
            
             const UIElements = {
-                clientId: document.getElementById('clientId'),
-                clientSecret: document.getElementById('clientSecret'),
-                connectButton: document.getElementById('connect-button'),
-                configSection: document.getElementById('config-section'),
+                authSection: document.getElementById('auth-section'),
+                authContainer: document.getElementById('auth-container'),
+                appContent: document.getElementById('app-content'),
+                logoutButton: document.getElementById('logout-button'),
                 progressSection: document.getElementById('progress-section'),
                 activityListSection: document.getElementById('activity-list-section'),
                 activityListContainer: document.getElementById('activity-list-container'),
@@ -167,6 +143,10 @@
             };
 
             let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
+            let userId = null;
+            let progressDocRef = null;
+            let userProgress = { completedPoints: [], processedIds: [] };
+            let unsubscribe;
 
             const log = (message, type = 'info') => {
                 const now = new Date().toLocaleTimeString();
@@ -177,36 +157,81 @@
 
             const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
            
-            const init = async () => {
-                log('App initialized.');
-                UIElements.clientId.addEventListener('input', checkInputs);
-                UIElements.clientSecret.addEventListener('input', checkInputs);
-                UIElements.connectButton.addEventListener('click', connectToStrava);
-                UIElements.resetButton.addEventListener('click', resetProgress);
-                UIElements.filterButtons.addEventListener('click', handleFilterClick);
+            const renderAuthForm = (isLogin = true) => {
+                const stravaFields = `
+                    <div class="mt-4 pt-4 border-t">
+                        <h3 class="text-lg font-semibold text-gray-700 mb-2">Strava API Credentials</h3>
+                        <div><label for="stravaClientId" class="block text-sm font-medium">Client ID</label><input type="text" id="stravaClientId" class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"></div>
+                        <div class="mt-2"><label for="stravaClientSecret" class="block text-sm font-medium">Client Secret</label><input type="password" id="stravaClientSecret" class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"></div>
+                    </div>`;
+
+                UIElements.authContainer.innerHTML = `
+                    <h2 class="text-2xl font-semibold mb-4">${isLogin ? 'Login' : 'Register'}</h2>
+                    <div><label for="email" class="block text-sm font-medium">Email</label><input type="email" id="email" class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"></div>
+                    <div class="mt-2"><label for="password" class="block text-sm font-medium">Password</label><input type="password" id="password" class="mt-1 block w-full px-3 py-2 border rounded-md shadow-sm"></div>
+                    ${isLogin ? '' : stravaFields}
+                    <button id="auth-submit-button" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg">${isLogin ? 'Login' : 'Register'}</button>
+                    <p class="mt-4 text-center text-sm">
+                        ${isLogin ? "Don't have an account?" : "Already have an account?"}
+                        <button id="auth-toggle-button" class="font-medium text-blue-600 hover:underline">${isLogin ? 'Register' : 'Login'}</button>
+                    </p>
+                `;
                
-                UIElements.clientId.value = sessionStorage.getItem('stravaClientId') || '';
-                UIElements.clientSecret.value = sessionStorage.getItem('stravaClientSecret') || '';
-                checkInputs();
+                document.getElementById('auth-submit-button').onclick = isLogin ? handleLogin : handleRegister;
+                document.getElementById('auth-toggle-button').onclick = () => renderAuthForm(!isLogin);
+            };
 
-                const urlParams = new URLSearchParams(window.location.search);
-                const authCode = urlParams.get('code');
+            const handleRegister = async () => {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                const clientId = document.getElementById('stravaClientId').value;
+                const clientSecret = document.getElementById('stravaClientSecret').value;
 
-                if (authCode) await getAccessToken(authCode);
-                else if (sessionStorage.getItem('stravaAccessToken')) await showMainApp();
-                else log('Please connect to Strava.');
+                if (!email || !password || !clientId || !clientSecret) {
+                    log('All fields are required for registration.', 'error');
+                    return;
+                }
+
+                try {
+                    log('Registering new user...');
+                    const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+                    const user = userCredential.user;
+                    log(`User registered successfully: ${user.uid}`, 'success');
+
+                    const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                    const credentialsDocRef = doc(db, "artifacts", appId, "users", user.uid, "credentials", "strava");
+                    await setDoc(credentialsDocRef, {
+                        clientId: btoa(clientId),
+                        clientSecret: btoa(clientSecret)
+                    });
+                    log('Strava credentials saved securely.', 'success');
+                } catch (error) {
+                    log(`Registration failed: ${error.message}`, 'error');
+                }
             };
            
-            function checkInputs() {
-                if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
-            }
-       
-            function connectToStrava() {
-                sessionStorage.setItem('stravaClientId', UIElements.clientId.value.trim());
-                sessionStorage.setItem('stravaClientSecret', UIElements.clientSecret.value.trim());
-                const redirectUri = window.location.origin + window.location.pathname;
-                window.location.href = `https://www.strava.com/oauth/authorize?client_id=${sessionStorage.getItem('stravaClientId')}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
-            }
+            const handleLogin = async () => {
+                const email = document.getElementById('email').value;
+                const password = document.getElementById('password').value;
+                try {
+                    log('Logging in...');
+                    await signInWithEmailAndPassword(auth, email, password);
+                    log('Login successful!', 'success');
+                } catch (error) {
+                    log(`Login failed: ${error.message}`, 'error');
+                }
+            };
+
+            const handleLogout = async () => {
+                if (unsubscribe) unsubscribe();
+                await signOut(auth);
+                sessionStorage.clear();
+                log('Logged out.');
+                UIElements.appContent.style.display = 'none';
+                UIElements.logoutButton.style.display = 'none';
+                UIElements.authSection.style.display = 'block';
+                renderAuthForm();
+            };
 
             async function getAccessToken(code) {
                 log('Exchanging authorization code for access token...');
@@ -222,84 +247,145 @@
                     });
                     const data = await response.json();
                     if (data.access_token) {
-                        log('Success! Access Token received.', 'success');
+                        log('Success! Strava Access Token received.', 'success');
                         sessionStorage.setItem('stravaAccessToken', data.access_token);
-                        sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                        window.location.href = window.location.pathname;
-                    } else { log(`Error getting access token: ${data.message}`, 'error'); }
-                } catch (error) { log(`Network error: ${error.message}`, 'error'); }
+                        sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete)); // Also save athlete info
+                        window.location.href = window.location.pathname; // Redirect to clean URL
+                    } else { log(`Error getting Strava access token: ${data.message}`, 'error'); }
+                } catch (error) { log(`Network error during token exchange: ${error.message}`, 'error'); }
             }
            
+            const init = () => {
+                log('App initialized.');
+                UIElements.logoutButton.addEventListener('click', handleLogout);
+
+                onAuthStateChanged(auth, async (user) => {
+                    if (user) {
+                        userId = user.uid;
+                        log(`Authenticated with user ID: ${userId}`, "success");
+                       
+                        const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
+                        progressDocRef = doc(db, "artifacts", appId, "users", userId, "swcp_progress", "main");
+                        const credentialsDocRef = doc(db, "artifacts", appId, "users", userId, "credentials", "strava");
+
+                        unsubscribe = onSnapshot(progressDocRef, (doc) => {
+                            userProgress = doc.exists() ? doc.data() : { completedPoints: [], processedIds: [] };
+                            log('Cloud progress data loaded/updated.');
+                            updateProgress(userProgress.completedPoints || []);
+                        });
+                       
+                        const credDoc = await getDoc(credentialsDocRef);
+                        if (credDoc.exists()) {
+                            const creds = credDoc.data();
+                            sessionStorage.setItem('stravaClientId', atob(creds.clientId));
+                            sessionStorage.setItem('stravaClientSecret', atob(creds.clientSecret));
+                            log('Strava credentials loaded from cloud.', 'success');
+                        } else {
+                            log('Strava credentials not found in cloud. Please register them.', 'error');
+                            handleLogout();
+                            return;
+                        }
+                       
+                        UIElements.authSection.style.display = 'none';
+                        UIElements.appContent.style.display = 'block';
+                        UIElements.logoutButton.style.display = 'block';
+
+                        const urlParams = new URLSearchParams(window.location.search);
+                        const authCode = urlParams.get('code');
+                        if (authCode) {
+                            await getAccessToken(authCode);
+                        }
+                        await showMainApp();
+
+                    } else {
+                        userId = null;
+                        if (unsubscribe) unsubscribe();
+                        UIElements.appContent.style.display = 'none';
+                        UIElements.logoutButton.style.display = 'none';
+                        UIElements.authSection.style.display = 'block';
+                        log('No user logged in. Showing login form.');
+                        renderAuthForm();
+                    }
+                });
+            };
+
+            function checkInputs() {
+                if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
+            }
+       
+            function connectToStrava() {
+                const clientId = document.getElementById('stravaClientId')?.value || sessionStorage.getItem('stravaClientId');
+                const clientSecret = document.getElementById('stravaClientSecret')?.value || sessionStorage.getItem('stravaClientSecret');
+
+                if(!clientId || !clientSecret) {
+                    log('Could not find Strava Credentials to initiate connection.', 'error');
+                    return;
+                }
+
+                sessionStorage.setItem('stravaClientId', clientId.trim());
+                sessionStorage.setItem('stravaClientSecret', clientSecret.trim());
+                const redirectUri = window.location.origin + window.location.pathname;
+                window.location.href = `https://www.strava.com/oauth/authorize?client_id=${sessionStorage.getItem('stravaClientId')}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
+            }
+
             async function showMainApp() {
-                UIElements.configSection.style.display = 'none';
-                UIElements.progressSection.style.display = 'block';
-                UIElements.activityListSection.style.display = 'block';
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
                
                 await initializeMap();
-                loadProgressFromStorage();
                
-                allFetchedActivities = await fetchAllActivities();
-                if (allFetchedActivities) renderActivityList(allFetchedActivities);
+                // If we don't have a Strava Access Token, prompt to connect
+                if (!sessionStorage.getItem('stravaAccessToken')) {
+                    const connectContainer = document.createElement('div');
+                    connectContainer.className = 'my-4 p-4 bg-blue-100 border-l-4 border-blue-500 text-blue-700';
+                    connectContainer.innerHTML = `<p class="font-bold">Connect to Strava</p><p>Your account is set up, but you need to connect to Strava to fetch your activities.</p>`;
+                    const connectBtn = document.createElement('button');
+                    connectBtn.className = 'mt-2 btn-strava text-white font-bold py-2 px-4 rounded';
+                    connectBtn.textContent = 'Connect with Strava';
+                    connectBtn.onclick = connectToStrava;
+                    connectContainer.appendChild(connectBtn);
+                    UIElements.activityListContainer.innerHTML = '';
+                    UIElements.activityListContainer.appendChild(connectContainer);
+                } else {
+                    allFetchedActivities = await fetchAllActivities();
+                    if (allFetchedActivities) renderActivityList(allFetchedActivities);
+                }
             }
 
             async function initializeMap() {
-                log('Initializing master map...');
-                mainMap = L.map(UIElements.mainMap).setView([50.5, -4.0], 7);
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mainMap);
-                completedSegmentsLayer = L.layerGroup().addTo(mainMap);
+                 if (mainMap) return;
+                 log('Initializing master map...');
+                 mainMap = L.map(UIElements.mainMap).setView([50.5, -4.0], 7);
+                 L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mainMap);
+                 completedSegmentsLayer = L.layerGroup().addTo(mainMap);
 
-                log('Fetching SWCP route from your GeoJSON file...');
-                try {
-                    const response = await fetch(SWCP_GEOJSON_URL);
-                    if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
-                    const data = await response.json();
-                    if (!data.features || data.features.length === 0) throw new Error('GeoJSON file is empty or invalid.');
-                   
-                    swcpTotalDistance = 0;
-                    const allCoordinates = data.features.reduce((coords, feature) => {
-                        swcpTotalDistance += turf.length(feature, { units: 'kilometers' });
-                        return coords.concat(feature.geometry.coordinates);
-                    }, []);
-                    swcpGeoJSON = turf.lineString(allCoordinates).geometry;
-                   
-                    const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
-                    mainMap.fitBounds(leafletGeoJson.getBounds());
-                    UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
-                    log('Master map loaded.', 'success');
-                } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); }
-            }
-           
-            function loadProgressFromStorage() {
-                const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                log(`Loaded ${completedPoints.length} completed points from storage.`);
-                updateProgress(completedPoints);
-            }
-           
-            function resetProgress() {
-                if (confirm("Are you sure you want to reset all progress? This cannot be undone.")) {
-                    localStorage.removeItem(PROCESSED_ACTIVITIES_KEY);
-                    localStorage.removeItem(COMPLETED_POINTS_KEY);
-                    log('Progress reset.', 'success');
-                    updateProgress([]);
-                    renderActivityList(allFetchedActivities); // Re-render with original list
-                }
+                 log('Fetching SWCP route from your GeoJSON file...');
+                 try {
+                     const response = await fetch(SWCP_GEOJSON_URL);
+                     if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+                     const data = await response.json();
+                     if (!data.features || data.features.length === 0) throw new Error('GeoJSON file is empty or invalid.');
+                     
+                     swcpTotalDistance = 0;
+                     const allCoordinates = data.features.reduce((coords, feature) => {
+                         swcpTotalDistance += turf.length(feature, { units: 'kilometers' });
+                         return coords.concat(feature.geometry.coordinates);
+                     }, []);
+                     swcpGeoJSON = turf.lineString(allCoordinates).geometry;
+                     
+                     const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
+                     mainMap.fitBounds(leafletGeoJson.getBounds());
+                     UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
+                     log('Master map loaded.', 'success');
+                 } catch(e) { log(`Failed to load map data: ${e.message}`, 'error'); }
             }
 
             function handleFilterClick(e) {
                 if (e.target.tagName !== 'BUTTON') return;
-               
                 const filter = e.target.dataset.filter;
                 document.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
                 e.target.classList.add('active');
-
-                let filteredActivities;
-                if (filter === 'all') {
-                    filteredActivities = allFetchedActivities;
-                } else {
-                    filteredActivities = allFetchedActivities.filter(act => act.type === filter);
-                }
+                const filteredActivities = filter === 'all' ? allFetchedActivities : allFetchedActivities.filter(act => act.type === filter);
                 renderActivityList(filteredActivities);
             }
 
@@ -307,26 +393,22 @@
                 log(`Rendering ${activities.length} activities...`);
                 UIElements.activityListContainer.innerHTML = '';
                 UIElements.activityCount.textContent = `(${activities.length} found)`;
-                const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+                const processedIds = new Set(userProgress.processedIds || []);
                
                 activities.forEach(activity => {
                     const card = UIElements.activityCardTemplate.content.cloneNode(true);
                     const cardDiv = card.querySelector('.bg-white');
                     const nameEl = cardDiv.querySelector('[data-name]');
                     const typeEl = cardDiv.querySelector('[data-type]');
-                   
                     nameEl.textContent = activity.name;
                     typeEl.textContent = activity.type;
                     typeEl.className = `text-xs font-semibold inline-block py-1 px-2 uppercase rounded-full ${activity.type === 'Hike' ? 'text-emerald-600 bg-emerald-200' : 'text-sky-600 bg-sky-200'} ml-2`;
-
                     cardDiv.querySelector('[data-date]').textContent = new Date(activity.start_date).toLocaleDateString();
                     cardDiv.querySelector('[data-distance]').innerHTML = `<strong>Distance:</strong> ${(activity.distance / 1000).toFixed(2)} km`;
                     cardDiv.querySelector('[data-time]').innerHTML = `<strong>Moving Time:</strong> ${new Date(activity.moving_time * 1000).toISOString().substr(11, 8)}`;
                     cardDiv.querySelector('[data-elevation]').innerHTML = `<strong>Elevation Gain:</strong> ${activity.total_elevation_gain.toFixed(0)} m`;
-                   
                     const mapEl = cardDiv.querySelector('[data-map-id]');
                     mapEl.id = `map-${activity.id}`;
-                   
                     const analyzeBtn = cardDiv.querySelector('[data-analyze-btn]');
                     const updateBtn = cardDiv.querySelector('[data-update-btn]');
                    
@@ -337,17 +419,13 @@
                          analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn);
                     }
                     updateBtn.onclick = () => updateSingleTitle(activity, updateBtn, nameEl);
-
                     UIElements.activityListContainer.appendChild(card);
-                   
                     if(activity.map.summary_polyline) {
                         const latlngs = polyline.decode(activity.map.summary_polyline);
                         const activityMap = L.map(mapEl.id, { scrollWheelZoom: false }).setView(latlngs[0] || [50.5, -4.0], 13);
                         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
                         const activityLine = L.polyline(latlngs, {color: '#FC5200'}).addTo(activityMap);
-                        if (latlngs.length > 0) {
-                             setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
-                        }
+                        if (latlngs.length > 0) setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
                     }
                 });
             }
@@ -355,7 +433,7 @@
             async function analyzeSingleActivity(activity, button) {
                 button.disabled = true;
                 button.innerHTML = `<span class="loader"></span>Analyzing...`;
-                const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+                const processedIds = new Set(userProgress.processedIds || []);
                 log(`Analyzing: "${activity.name}"`);
                 const stream = await getActivityStream(activity.id);
                 let newlyCompletedPoints = [];
@@ -365,23 +443,21 @@
                     log(`-> Found ${newlyCompletedPoints.length} matching points.`, 'success');
                 }
                
-                if (newlyCompletedPoints.length > 0) {
-                    const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                    const allCompletedPoints = oldCompletedPoints.concat(newlyCompletedPoints);
-                    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
-                    updateProgress(allCompletedPoints);
-                }
-                processedIds.add(activity.id);
-                localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
+                const currentProgress = {
+                    completedPoints: [...(userProgress.completedPoints || []), ...newlyCompletedPoints],
+                    processedIds: [...(userProgress.processedIds || []), activity.id]
+                };
+
+                await setDoc(progressDocRef, currentProgress);
+                log('Progress saved to the cloud.', 'success');
                 button.textContent = 'Analyzed';
             }
 
-             async function updateSingleTitle(activity, button, nameEl) {
+            async function updateSingleTitle(activity, button, nameEl) {
                 button.disabled = true;
                 button.innerHTML = `<span class="loader"></span>Updating...`;
                 const cleanName = activity.name.replace(/SWCP \d+\.\d+% \| /g, '');
                 const newTitle = `SWCP ${currentPercentage}% | ${cleanName}`;
-
                 if (activity.name === newTitle) {
                     log(`Title for "${cleanName}" is already up to date.`, 'info');
                 } else {
@@ -389,7 +465,7 @@
                     await updateActivity(activity.id, newTitle);
                     log('Title updated on Strava.', 'success');
                     nameEl.textContent = newTitle;
-                    activity.name = newTitle; // Update the activity object in memory
+                    activity.name = newTitle;
                 }
                 button.textContent = 'Updated';
                 setTimeout(() => { button.textContent = 'Update Title'; button.disabled = false; }, 2000);
@@ -453,7 +529,7 @@
             function updateProgress(completedPoints) {
                 if (completedSegmentsLayer) completedSegmentsLayer.clearLayers();
                 let totalCompletedDistance = 0;
-                if (completedPoints.length > 1) {
+                if (completedPoints && completedPoints.length > 1) {
                     const uniquePoints = completedPoints.reduce((acc, point) => {
                         if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'kilometers'}) < 0.02)) acc.push(point);
                         return acc;
@@ -471,6 +547,7 @@
                 UIElements.progressBar.style.width = `${currentPercentage}%`;
             }
 
+            // Start the application
             init();
         });
     </script>
