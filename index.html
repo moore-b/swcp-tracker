@@ -114,9 +114,6 @@
         import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
         import { getFirestore, doc, getDoc, setDoc, onSnapshot } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js";
 
-        // ** STARTUP FIX **
-        // All logic is now wrapped in a DOMContentLoaded listener to ensure the page is ready.
-        // The startup sequence is simplified and made more robust.
         document.addEventListener('DOMContentLoaded', () => {
             const SWCP_GEOJSON_URL = 'routes.geojson';
             const DISTANCE_THRESHOLD_METERS = 100;
@@ -200,10 +197,7 @@
             const handleLogin = async () => {
                 const email = document.getElementById('email').value;
                 const password = document.getElementById('password').value;
-                try {
-                    await signInWithEmailAndPassword(auth, email, password);
-                    log('Login successful!', 'success');
-                } catch (error) { log(`Login failed: ${error.message}`, 'error'); }
+                try { await signInWithEmailAndPassword(auth, email, password); } catch (error) { log(`Login failed: ${error.message}`, 'error'); }
             };
 
             const handleLogout = async () => {
@@ -230,7 +224,7 @@
                         log('Success! Strava Access Token received.', 'success');
                         sessionStorage.setItem('stravaAccessToken', data.access_token);
                         sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                        window.location.href = window.location.pathname;
+                        window.history.pushState({}, document.title, window.location.pathname); // Clear URL
                     } else { log(`Error getting Strava access token: ${data.message}`, 'error'); }
                 } catch (error) { log(`Network error during token exchange: ${error.message}`, 'error'); }
             }
@@ -238,6 +232,7 @@
             async function showMainApp() {
                 const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete') || '{}');
                 if(athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+               
                 await initializeMap();
                 allFetchedActivities = await fetchAllActivities();
                 if (allFetchedActivities) renderActivityList(allFetchedActivities);
@@ -245,16 +240,14 @@
 
             async function initializeMap() {
                  if (mainMap) return;
-                 log('Initializing master map...');
                  mainMap = L.map(UIElements.mainMap).setView([50.5, -4.0], 7);
                  L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mainMap);
                  completedSegmentsLayer = L.layerGroup().addTo(mainMap);
-                 log('Fetching SWCP route from your GeoJSON file...');
                  try {
                      const response = await fetch(SWCP_GEOJSON_URL);
                      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                      const data = await response.json();
-                     if (!data.features || data.features.length === 0) throw new Error('GeoJSON file is empty or invalid.');
+                     if (!data.features || data.features.length === 0) throw new Error('GeoJSON file is empty.');
                      swcpTotalDistance = 0;
                      const allCoordinates = data.features.reduce((coords, feature) => {
                          swcpTotalDistance += turf.length(feature, { units: 'kilometers' });
@@ -274,6 +267,8 @@
                 const redirectUri = window.location.origin + window.location.pathname;
                 window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
             }
+           
+            // --- All other functions (resetProgress, filterClick, renderList, analyze, etc.) are unchanged ---
 
             function resetProgress() {
                 if (confirm("Are you sure? This will delete your progress from the cloud.")) {
@@ -409,6 +404,16 @@
 
             // Centralized Auth State Manager
             onAuthStateChanged(auth, async (user) => {
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
+               
+                // If there's a Strava code in the URL, we need to handle it first.
+                if (authCode && user) {
+                    await getAccessToken(authCode);
+                    // The page will reload after this, and the standard flow will take over.
+                    return;
+                }
+
                 if (user) {
                     userId = user.uid;
                     const appId = typeof __app_id !== 'undefined' ? __app_id : 'default-app-id';
@@ -427,9 +432,8 @@
                         const creds = credDoc.data();
                         sessionStorage.setItem('stravaClientId', atob(creds.clientId));
                         sessionStorage.setItem('stravaClientSecret', atob(creds.clientSecret));
-                        log('Strava credentials loaded.', 'success');
                     } else {
-                        log('Strava credentials not found in cloud!', 'error');
+                        log('FATAL: Strava credentials not found in cloud!', 'error');
                         handleLogout();
                         return;
                     }
@@ -437,11 +441,7 @@
                     UIElements.authSection.style.display = 'none';
                     UIElements.logoutButton.style.display = 'block';
 
-                    const urlParams = new URLSearchParams(window.location.search);
-                    const authCode = urlParams.get('code');
-                    if (authCode) {
-                        await getAccessToken(authCode);
-                    } else if (!sessionStorage.getItem('stravaAccessToken')) {
+                    if (!sessionStorage.getItem('stravaAccessToken')) {
                         UIElements.appContent.style.display = 'none';
                         UIElements.stravaConnectSection.style.display = 'block';
                     } else {
