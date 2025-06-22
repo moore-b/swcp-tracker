@@ -14,14 +14,17 @@
    
     <!-- GPX parsing library -->
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gpx-parse/0.10.3/gpx-parse.min.js"></script>
+   
+    <!-- Turf.js for geographic calculations (distance, nearest point on line, etc.) -->
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
 
     <style>
         /* Custom styles for a better look */
         body {
-            font-family: 'Inter', sans-serif; /* Using a Google Font, loaded via Tailwind config */
+            font-family: 'Inter', sans-serif;
         }
         #map {
-            height: 400px;
+            height: 500px; /* Increased height for better view */
             width: 100%;
             border-radius: 0.5rem;
             box-shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
@@ -34,6 +37,21 @@
         }
         .btn-strava:hover {
             background-color: #e04a00;
+        }
+        /* Add a spinner for the analyze button */
+        .loader {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #3498db;
+            border-radius: 50%;
+            width: 24px;
+            height: 24px;
+            animation: spin 1s linear infinite;
+            display: inline-block;
+            margin-right: 10px;
+        }
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
         }
     </style>
 </head>
@@ -78,16 +96,17 @@
                 </div>
                
                 <div class="mb-6">
-                    <p class="text-lg">Overall Completion: <span id="progress-percentage" class="font-bold text-blue-600">0%</span></p>
+                    <p class="text-lg">Overall Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
+                     <p class="text-sm text-gray-500">Completed Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
                     <div class="w-full bg-gray-200 rounded-full h-4 mt-2">
-                        <div id="progress-bar" class="bg-blue-600 h-4 rounded-full" style="width: 0%"></div>
+                        <div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div>
                     </div>
                 </div>
 
                 <h3 class="text-xl font-semibold mb-3">Map of the Path</h3>
                 <div id="map"></div>
-                 <button id="analyze-button" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105">
-                    Analyze My Strava Activities
+                 <button id="analyze-button" class="mt-6 w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-4 rounded-lg transition duration-300 ease-in-out transform hover:scale-105 flex items-center justify-center disabled:bg-gray-400 disabled:cursor-not-allowed">
+                    <span id="analyze-button-text">Analyze My Strava Activities</span>
                 </button>
             </div>
 
@@ -104,10 +123,8 @@
 
     <script>
         // --- CONFIGURATION ---
-        // This is the URL of the official GPX file for the South West Coast Path.
-        // I found this via the National Trails website. It's a large file, so it might take a moment to load.
-        // To avoid issues with cross-origin requests (CORS), we're using a CORS proxy.
         const SWCP_GPX_URL = 'https://api.allorigins.win/raw?url=https://www.nationaltrail.co.uk/fs/i/gpx/south-west-coast-path.gpx';
+        const DISTANCE_THRESHOLD_METERS = 100; // How close a point needs to be to the path to count (in meters)
        
         // --- DOM ELEMENTS ---
         const clientIdInput = document.getElementById('clientId');
@@ -116,106 +133,81 @@
         const configSection = document.getElementById('config-section');
         const progressSection = document.getElementById('progress-section');
         const analyzeButton = document.getElementById('analyze-button');
+        const analyzeButtonText = document.getElementById('analyze-button-text');
         const statusLog = document.getElementById('status-log');
         const stravaUserInfo = document.getElementById('strava-user-info');
+        const progressBar = document.getElementById('progress-bar');
+        const progressPercentage = document.getElementById('progress-percentage');
+        const completedDistanceEl = document.getElementById('completed-distance');
+        const totalDistanceEl = document.getElementById('total-distance');
 
-        let map; // To hold the map instance
-        let swcpPolyline; // To hold the path layer on the map
-       
+        // --- GLOBAL STATE ---
+        let map;
+        let swcpGeoJSON; // We'll store the path as GeoJSON for Turf.js
+        let swcpTotalDistance = 0;
+        let completedSegmentsLayer; // A layer group to hold all our green completed lines
+
         // --- LOGGING FUNCTION ---
         function log(message, type = 'info') {
             const now = new Date().toLocaleTimeString();
             const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-300');
             statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${color}">${message}</span></p>`;
-            statusLog.scrollTop = statusLog.scrollHeight; // Auto-scroll to bottom
+            statusLog.scrollTop = statusLog.scrollHeight;
         }
 
         // --- CORE LOGIC ---
-
-        // This function runs as soon as the page loads.
         window.onload = async () => {
             log('Page loaded. Ready for action.');
-
-            // Check if Client ID and Secret are already in browser's session storage
             clientIdInput.value = sessionStorage.getItem('stravaClientId') || '';
             clientSecretInput.value = sessionStorage.getItem('stravaClientSecret') || '';
             checkInputs();
 
-            // Part 2 of the login flow: Check if the URL has a "code" from Strava.
             const urlParams = new URLSearchParams(window.location.search);
             const authCode = urlParams.get('code');
 
             if (authCode) {
-                log('Authorization code found in URL. Attempting to get access token.');
+                log('Authorization code found. Getting access token...');
                 await getAccessToken(authCode);
             }
            
-            // If we have an access token (either new or from a previous session), show the progress section.
             if (sessionStorage.getItem('stravaAccessToken')) {
-                log('Existing access token found. Showing progress section.');
+                log('Access token found. Showing progress section.', 'success');
                 showProgressSection();
             } else {
                 log('No access token. Waiting for user to connect.');
             }
         };
 
-        // Enable the connect button only when both fields have text.
         function checkInputs() {
-            if (clientIdInput.value.trim() !== '' && clientSecretInput.value.trim() !== '') {
-                connectButton.disabled = false;
-            } else {
-                connectButton.disabled = true;
-            }
+            connectButton.disabled = !(clientIdInput.value.trim() && clientSecretInput.value.trim());
         }
         clientIdInput.addEventListener('input', checkInputs);
         clientSecretInput.addEventListener('input', checkInputs);
        
         // --- STRAVA AUTHENTICATION ---
-       
-        // Step 1: Redirect user to Strava to grant permission.
         connectButton.addEventListener('click', () => {
-            log('Connect button clicked. Redirecting to Strava for authorization...');
-           
-            const clientId = clientIdInput.value.trim();
-            const clientSecret = clientSecretInput.value.trim();
-           
-            // Store the ID and Secret in the browser's session storage.
-            // This way, you don't have to re-enter them if you refresh the page.
-            sessionStorage.setItem('stravaClientId', clientId);
-            sessionStorage.setItem('stravaClientSecret', clientSecret);
-
-            // This is the URL of our own page. Strava will send the user back here.
-            // For local testing, 'http://127.0.0.1:5500/index.html' or similar is fine if you use a Live Server.
-            // When you deploy to Render, you will need to change this!
+            log('Redirecting to Strava for authorization...');
+            sessionStorage.setItem('stravaClientId', clientIdInput.value.trim());
+            sessionStorage.setItem('stravaClientSecret', clientSecretInput.value.trim());
             const redirectUri = window.location.origin + window.location.pathname;
-
-            // These are the permissions we're asking for.
-            // activity:read_all lets us see all your activities.
-            // activity:write lets us update the titles later.
             const scope = 'read,activity:read_all,activity:write';
-
-            const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
-           
+            const authUrl = `https://www.strava.com/oauth/authorize?client_id=${clientIdInput.value.trim()}&redirect_uri=${redirectUri}&response_type=code&scope=${scope}`;
             window.location.href = authUrl;
         });
 
-        // Step 2: Exchange the auth code for an access token.
         async function getAccessToken(code) {
             const clientId = sessionStorage.getItem('stravaClientId');
             const clientSecret = sessionStorage.getItem('stravaClientSecret');
 
             if (!clientId || !clientSecret) {
-                log('Error: Client ID or Secret not found in session storage. Please enter them again.', 'error');
+                log('Error: Client ID/Secret not found.', 'error');
                 return;
             }
 
-            // We have to send a POST request to Strava's token endpoint.
             try {
                 const response = await fetch('https://www.strava.com/oauth/token', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
+                    headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         client_id: clientId,
                         client_secret: clientSecret,
@@ -223,127 +215,223 @@
                         grant_type: 'authorization_code',
                     }),
                 });
-
                 const data = await response.json();
-
                 if (data.access_token) {
                     log('Success! Access Token received.', 'success');
                     sessionStorage.setItem('stravaAccessToken', data.access_token);
                     sessionStorage.setItem('stravaRefreshToken', data.refresh_token);
                     sessionStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-                   
-                    // Clean the code from the URL and reload to a clean state
-                    window.location.href = window.location.pathname;
+                    window.location.href = window.location.pathname; // Clean URL
                 } else {
                     log(`Error getting access token: ${data.message}`, 'error');
-                    console.error(data);
                 }
             } catch (error) {
-                log(`A network error occurred: ${error.message}`, 'error');
-                console.error(error);
+                log(`Network error during token exchange: ${error.message}`, 'error');
             }
         }
        
         // --- UI AND MAP LOGIC ---
-
-        // This function hides the config and shows the main progress view.
         function showProgressSection() {
             configSection.style.display = 'none';
             progressSection.style.display = 'block';
 
-            // Display user info
             const athlete = JSON.parse(sessionStorage.getItem('stravaAthlete'));
             if(athlete) {
-                stravaUserInfo.innerHTML = `
-                    <p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>
-                    <p class="text-sm text-gray-500">${athlete.city}, ${athlete.country}</p>
-                `;
+                stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
             }
-
             initializeMap();
         }
 
-        // Sets up the Leaflet map and loads the SWCP path.
         async function initializeMap() {
             log('Initializing map...');
-            // Create a map centered roughly on the South West.
             map = L.map('map').setView([50.5, -4.0], 8);
-
-            // Add a tile layer from OpenStreetMap.
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
                 attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
             }).addTo(map);
 
-            log('Map initialized. Fetching SWCP route data...');
-           
+            completedSegmentsLayer = L.layerGroup().addTo(map); // Add layer for our progress
+
+            log('Fetching SWCP route data...');
             try {
                 const response = await fetch(SWCP_GPX_URL);
-                if (!response.ok) {
-                    throw new Error(`HTTP error! status: ${response.status}`);
-                }
+                if (!response.ok) throw new Error(`HTTP error! status: ${response.status}`);
                 const gpxData = await response.text();
-               
                 log('Route data received. Parsing GPX file...', 'success');
                
-                // Use the gpx-parse library to convert the GPX text into a usable object.
                 gpxParse.parseGpx(gpxData, (error, data) => {
-                    if (error) {
-                        log(`Error parsing GPX file: ${error}`, 'error');
-                        return;
-                    }
+                    if (error) throw new Error(`GPX Parse Error: ${error}`);
                    
-                    log('GPX parsed successfully. Drawing path on map.', 'success');
+                    log('GPX parsed. Drawing path and calculating total distance.', 'success');
+                    const points = data.tracks[0].segments[0].map(p => [p.lon, p.lat]); // Turf uses [lon, lat]
                    
-                    // The parser gives us an array of tracks, each with segments of points.
-                    const points = data.tracks[0].segments[0].map(p => [p.lat, p.lon]);
+                    // Create a GeoJSON LineString for Turf.js
+                    swcpGeoJSON = turf.lineString(points);
                    
-                    // Create a blue line (Polyline) from the points and add it to the map.
-                    swcpPolyline = L.polyline(points, { color: 'blue', weight: 3 }).addTo(map);
+                    // Calculate total distance of the path
+                    swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
+                    totalDistanceEl.textContent = swcpTotalDistance.toFixed(2);
                    
-                    // Zoom the map to fit the entire path.
+                    // Create a Leaflet-compatible polyline and add to map
+                    const leafletPoints = points.map(p => [p[1], p[0]]); // Leaflet uses [lat, lon]
+                    const swcpPolyline = L.polyline(leafletPoints, { color: 'blue', weight: 3, opacity: 0.7 }).addTo(map);
                     map.fitBounds(swcpPolyline.getBounds());
                 });
 
             } catch(e) {
-                log(`Failed to fetch SWCP GPX file: ${e.message}`, 'error');
+                log(`Failed to load or parse SWCP GPX file: ${e.message}`, 'error');
             }
         }
        
-        // --- Placeholder for Phase 3 ---
-        analyzeButton.addEventListener('click', () => {
-            log('Analysis started. Fetching your Strava activities...');
-            // In the next phase, this function will fetch activities from Strava,
-            // get the GPX for each one, and compare it to the 'swcpPolyline' on the map.
-            alert("Activity analysis is part of the next phase. For now, we've successfully connected to Strava and drawn the path!");
-            fetchActivities();
-        });
+        // --- MAIN ANALYSIS LOGIC ---
+        analyzeButton.addEventListener('click', analyzeAllActivities);
 
-        async function fetchActivities() {
-            const accessToken = sessionStorage.getItem('stravaAccessToken');
-            if (!accessToken) {
-                log('Not connected to Strava.', 'error');
+        async function analyzeAllActivities() {
+            log('Analysis started...');
+            setLoading(true);
+
+            const walks = await fetchAllActivities();
+            if (!walks || walks.length === 0) {
+                log('No recent walks or hikes found to analyze.', 'info');
+                setLoading(false);
                 return;
             }
 
-            try {
-                // We'll fetch the last 30 activities as a test.
-                const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?per_page=30`, {
-                    headers: {
-                        'Authorization': `Bearer ${accessToken}`
+            log(`Found ${walks.length} walks/hikes. Analyzing each one for path segments...`);
+            let allCompletedSegments = [];
+
+            for (const activity of walks) {
+                log(`Fetching route for activity: "${activity.name}"...`);
+                const stream = await getActivityStream(activity.id);
+                if (stream) {
+                    const activityPoints = stream.map(p => [p[1], p[0]]); // convert to [lon, lat] for turf
+                    const activityLine = turf.lineString(activityPoints);
+                    const matchedSegments = findOverlappingSegments(activityLine);
+                    if (matchedSegments.length > 0) {
+                        log(`Found ${matchedSegments.length} matching segment(s) in "${activity.name}"`, 'success');
+                        allCompletedSegments.push(...matchedSegments);
                     }
-                });
-                const activities = await response.json();
-                if (response.ok) {
-                    log(`Successfully fetched ${activities.length} activities.`, 'success');
-                    // We will only look at Walks and Hikes
-                    const walks = activities.filter(a => ['Walk', 'Hike'].includes(a.type));
-                    log(`Found ${walks.length} walks/hikes. Check the browser console (F12) to see them.`);
-                    console.log('Walks/Hikes found:', walks);
-                } else {
-                    log(`Error fetching activities: ${activities.message}`, 'error');
                 }
-            } catch(e) {
-                log(`A network error occurred while fetching activities: ${e.message}`, 'error');
+            }
+
+            log('Analysis complete. Drawing matched segments on map.');
+            drawCompletedSegments(allCompletedSegments);
+            setLoading(false);
+        }
+
+        function setLoading(isLoading) {
+             if (isLoading) {
+                analyzeButton.disabled = true;
+                analyzeButtonText.innerHTML = '<span class="loader"></span>Analyzing...';
+            } else {
+                analyzeButton.disabled = false;
+                analyzeButtonText.innerHTML = 'Analyze My Strava Activities';
+            }
+        }
+
+        async function fetchAllActivities() {
+            const accessToken = sessionStorage.getItem('stravaAccessToken');
+            let allActivities = [];
+            let page = 1;
+            const perPage = 50; // Fetch 50 at a time
+           
+            while(true) {
+                try {
+                    log(`Fetching activities page ${page}...`);
+                    const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, {
+                        headers: { 'Authorization': `Bearer ${accessToken}` }
+                    });
+                    if (!response.ok) {
+                        const errorData = await response.json();
+                        throw new Error(`API Error: ${errorData.message}`);
+                    }
+                    const activities = await response.json();
+                    if (activities.length === 0) {
+                        break; // No more activities to fetch
+                    }
+                    allActivities.push(...activities);
+                    page++;
+                } catch(e) {
+                    log(`Failed to fetch activities: ${e.message}`, 'error');
+                    return null;
+                }
+            }
+            const walks = allActivities.filter(a => ['Walk', 'Hike'].includes(a.type));
+            return walks;
+        }
+
+        async function getActivityStream(activityId) {
+            const accessToken = sessionStorage.getItem('stravaAccessToken');
+            try {
+                const response = await fetch(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=latlng&key_by_type=true`, {
+                     headers: { 'Authorization': `Bearer ${accessToken}` }
+                });
+                if (!response.ok) return null;
+                const data = await response.json();
+                return data.latlng ? data.latlng.data : null;
+            } catch (e) {
+                log(`Error fetching stream for activity ${activityId}: ${e.message}`, 'error');
+                return null;
+            }
+        }
+       
+        function findOverlappingSegments(activityLine) {
+            const matchedSegments = [];
+            for (const segment of activityLine.geometry.coordinates) {
+                 const point = turf.point(segment);
+                 const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, point, {units: 'meters'});
+                 const distance = turf.distance(point, nearestPointOnLine, {units: 'meters'});
+
+                 if (distance < DISTANCE_THRESHOLD_METERS) {
+                    // This point is on the path. We will simply store the point on the master path.
+                    // This avoids creating messy overlapping lines and simplifies distance calculation.
+                    matchedSegments.push(nearestPointOnLine.geometry.coordinates);
+                 }
+            }
+            return matchedSegments;
+        }
+
+        function drawCompletedSegments(completedPoints) {
+            if (completedPoints.length < 2) {
+                log('Not enough matched points to draw a path.', 'info');
+                return;
+            }
+
+            // Important: Sort points to ensure they are in order along the path
+            // The 'location' property from nearestPointOnLine is the distance along the line
+            // While we didn't store the full object, Turf returns points in [lon, lat] format.
+            // A simple sort by longitude will approximate the path order for now.
+            // A more robust solution would involve more complex path ordering logic.
+            completedPoints.sort((a, b) => a[0] - b[0]);
+           
+            // Remove duplicate points that are too close to each other
+            const uniquePoints = completedPoints.reduce((acc, point) => {
+                if (!acc.some(p => turf.distance(turf.point(p), turf.point(point)) < 0.01)) { // 10 meters
+                    acc.push(point);
+                }
+                return acc;
+            }, []);
+
+
+            if (uniquePoints.length > 1) {
+                const completedLine = turf.lineString(uniquePoints);
+                const completedDistance = turf.length(completedLine, { units: 'kilometers' });
+               
+                // For now, let's just draw the result. We'll handle combining old/new progress later.
+                completedSegmentsLayer.clearLayers(); // Clear previous analysis
+                const leafletPoints = uniquePoints.map(p => [p[1], p[0]]); // convert for leaflet
+                L.polyline(leafletPoints, { color: 'green', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+
+                // Update UI
+                const totalCompleted = completedDistance; // In a future version, we'd add this to a running total
+                const percentage = (totalCompleted / swcpTotalDistance) * 100;
+               
+                completedDistanceEl.textContent = totalCompleted.toFixed(2);
+                progressPercentage.textContent = percentage.toFixed(2) + '%';
+                progressBar.style.width = `${percentage}%`;
+
+                log(`Total matched distance: ${totalCompleted.toFixed(2)} km (${percentage.toFixed(2)}%)`, 'success');
+            } else {
+                 log('No significant sections of the path were matched.', 'info');
             }
         }
 
