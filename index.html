@@ -44,17 +44,50 @@
         /* --- CSS Grid Layout --- */
         #main-layout-container {
             display: grid;
-            /* Default on small screens: Status Log (fixed) + Main Content (flex) */
-            grid-template-columns: 250px 1fr;
-            gap: 0.25rem; /* Narrower gap applied universally */
+            /* 2 columns: Left (map/log stack) takes 1fr, Right (activities) fixed 300px */
+            grid-template-columns: 1fr 300px;
+            gap: 0.25rem; /* Very narrow gap between columns */
             min-height: 100vh;
         }
 
-        @media (min-width: 768px) { /* md breakpoint and up */
+        /* For smaller screens, stack columns vertically */
+        @media (max-width: 767px) { /* Adjust breakpoint if needed for mobile/tablet */
             #main-layout-container {
-                /* 3 columns: Status Log (fixed) + Map/Content (flex) + Activities (fixed) */
-                grid-template-columns: 250px 1fr 300px;
+                grid-template-columns: 1fr; /* Single column layout for smaller screens */
+                grid-template-rows: auto auto auto; /* Map/Log wrapper, then Activities */
             }
+            #right-column { /* Hide activities column explicitly if it's meant to be below */
+                display: block !important; /* Ensure it shows, but stacked */
+                height: auto !important; /* Remove h-screen on mobile for stacking */
+                position: static !important; /* Remove sticky on mobile for stacking */
+                overflow-y: visible !important; /* Allow normal scrolling */
+            }
+            #left-area-wrapper {
+                grid-template-rows: auto auto; /* Stack map and log on mobile too */
+                height: auto; /* Allow content to define height */
+            }
+            #center-column {
+                height: auto; /* Allow content to define height */
+                overflow-y: visible; /* Allow normal scrolling */
+            }
+            #left-column { /* Status log on mobile */
+                height: auto !important;
+                position: static !important;
+                overflow-y: visible !important;
+            }
+            /* Adjust padding for mobile to be less extreme */
+            #center-column, #right-column {
+                padding: 1rem;
+            }
+        }
+
+
+        /* Nested Grid for Map and Status Log on the left */
+        #left-area-wrapper {
+            display: grid;
+            /* Map takes 1fr (remaining height), Status Log takes auto height (its content height) */
+            grid-template-rows: 1fr auto;
+            gap: 0.25rem; /* Gap between map and status log */
         }
 
         /* Status log details summary styling for expand/collapse indicator */
@@ -128,45 +161,47 @@
 
     <div id="main-layout-container">
 
-        <div id="left-column" class="sticky top-0 h-screen overflow-y-auto bg-gray-900 text-white font-mono text-sm">
-            <details open id="status-log-details" class="h-full flex flex-col">
-                <summary class="text-xl font-semibold p-4 sticky top-0 bg-gray-900 z-10">Status Log</summary>
-                <div id="status-log" class="flex-grow p-4 overflow-y-auto"></div>
-            </details>
-        </div>
+        <div id="left-area-wrapper">
 
-        <div id="center-column" class="relative p-4 md:p-8">
-            <header class="text-center mb-8">
-                <h1 class="text-4xl font-bold text-gray-900">South West Coast Path Tracker</h1>
-                <p class="mt-2 text-lg text-gray-600">Log your progress on the 630-mile journey.</p>
-            </header>
+            <div id="center-column" class="p-4 md:p-8 overflow-y-auto">
+                <header class="text-center mb-8">
+                    <h1 class="text-4xl font-bold text-gray-900">South West Coast Path Tracker</h1>
+                    <p class="mt-2 text-lg text-gray-600">Log your progress on the 630-mile journey.</p>
+                </header>
 
-            <div id="config-section" class="bg-white p-6 rounded-lg shadow-md mb-8">
-                <h2 class="text-2xl font-semibold mb-4 border-b pb-3">1. Connect to Strava</h2>
-                <div class="space-y-4">
-                    <div><label for="clientId" class="block text-sm font-medium text-gray-700">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
-                    <div><label for="clientSecret" class="block text-sm font-medium text-gray-700">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
+                <div id="config-section" class="bg-white p-6 rounded-lg shadow-md mb-8">
+                    <h2 class="text-2xl font-semibold mb-4 border-b pb-3">1. Connect to Strava</h2>
+                    <div class="space-y-4">
+                        <div><label for="clientId" class="block text-sm font-medium text-gray-700">Client ID</label><input type="text" id="clientId" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
+                        <div><label for="clientSecret" class="block text-sm font-medium text-gray-700">Client Secret</label><input type="password" id="clientSecret" class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm"></div>
+                    </div>
+                    <button id="connect-button" class="mt-6 w-full btn-strava text-white font-bold py-3 px-4 rounded-lg transition" disabled>Connect with Strava</button>
                 </div>
-                <button id="connect-button" class="mt-6 w-full btn-strava text-white font-bold py-3 px-4 rounded-lg transition" disabled>Connect with Strava</button>
+
+                <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
+                    <div class="flex justify-between items-center mb-4 border-b pb-3">
+                        <h2 class="text-2xl font-semibold">Overall Progress</h2>
+                        <div id="strava-user-info" class="text-right"></div>
+                    </div>
+                    <div class="mb-6">
+                        <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
+                        <p class="text-sm text-gray-500">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
+                        <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
+                    </div>
+                    <h3 class="text-xl font-semibold mb-3">Master Map</h3>
+                    <div id="map"></div>
+                    <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
+                </div>
             </div>
 
-            <div id="progress-section" class="hidden bg-white p-6 rounded-lg shadow-md">
-                <div class="flex justify-between items-center mb-4 border-b pb-3">
-                    <h2 class="text-2xl font-semibold">Overall Progress</h2>
-                    <div id="strava-user-info" class="text-right"></div>
-                </div>
-                <div class="mb-6">
-                    <p class="text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
-                    <p class="text-sm text-gray-500">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
-                    <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
-                </div>
-                <h3 class="text-xl font-semibold mb-3">Master Map</h3>
-                <div id="map"></div>
-                <div class="text-right mt-2"><button id="reset-button" class="text-sm text-red-600 hover:underline">Reset All Progress</button></div>
+            <div id="left-column" class="bg-gray-900 text-white font-mono text-sm"> <details open id="status-log-details" class="h-full flex flex-col">
+                    <summary class="text-xl font-semibold p-4 sticky top-0 bg-gray-900 z-10">Status Log</summary>
+                    <div id="status-log" class="flex-grow p-4 overflow-y-auto"></div>
+                </details>
             </div>
         </div>
 
-        <div id="right-column" class="md:block hidden sticky top-0 h-screen overflow-y-auto p-4"> <div id="activity-list-section" class="mt-8 md:mt-0">
+        <div id="right-column" class="sticky top-0 h-screen overflow-y-auto p-4"> <div id="activity-list-section" class="mt-8 md:mt-0">
                 <div class="flex justify-between items-center mb-4">
                     <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
                     <div id="filter-buttons" class="flex space-x-2">
@@ -235,16 +270,15 @@
                 mainMap: document.getElementById('map'),
                 mainLayoutContainer: document.getElementById('main-layout-container'),
                 statusLogDetails: document.getElementById('status-log-details'),
-                leftColumn: document.getElementById('left-column'),
-                rightColumn: document.getElementById('right-column')
+                leftColumn: document.getElementById('left-column'), // This is now the status log's content wrapper
+                rightColumn: document.getElementById('right-column'),
+                centerColumn: document.getElementById('center-column') // This is now the map's content wrapper
             };
 
             let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
            
             // Define column widths for responsiveness and state
-            const statusLogWidthOpen = '250px';
-            const statusLogWidthClosed = '0px'; // For fully hidden
-            const activityListWidth = '300px'; // Activities column width
+            const activityListWidth = '300px';
 
             const log = (message, type = 'info') => {
                 const now = new Date().toLocaleTimeString();
@@ -274,47 +308,18 @@
                 else if (sessionStorage.getItem('stravaAccessToken')) await showMainApp();
                 else log('Please connect to Strava.');
 
-                // Event listener for status log collapse (details element)
+                // Status log details toggle listener remains
                 UIElements.statusLogDetails.addEventListener('toggle', () => {
-                    updateGridLayout(); // Call a new function to update grid columns
-                    mainMap.invalidateSize(); // Invalidate map size after layout change
+                    // map.invalidateSize() is crucial for Leaflet to redraw correctly after container size changes
+                    mainMap.invalidateSize();
                 });
 
-                // Update layout on initial load to ensure correct state
-                updateGridLayout();
-
-                // It's good practice to invalidate map size on window resize too
+                // Invalidate map size on window resize
                 window.addEventListener('resize', () => {
-                    updateGridLayout(); // Re-evaluate layout on resize
                     mainMap.invalidateSize();
                 });
             };
            
-            // Function to update grid-template-columns based on status log state and screen size
-            function updateGridLayout() {
-                const isStatusLogOpen = UIElements.statusLogDetails.open;
-                const isMobile = window.innerWidth < 768; // Tailwind's 'md' breakpoint
-
-                let columns;
-                if (isMobile) {
-                    // On mobile, only two columns: status log and main content
-                    columns = isStatusLogOpen ? `${statusLogWidthOpen} 1fr` : `${statusLogWidthClosed} 1fr`;
-                    // Ensure right column is always hidden on mobile
-                    UIElements.rightColumn.style.display = 'none';
-                } else { // Desktop layout
-                    // 3 columns: status log, main content (map), activities
-                    columns = isStatusLogOpen
-                        ? `${statusLogWidthOpen} 1fr ${activityListWidth}`
-                        : `${statusLogWidthClosed} 1fr ${activityListWidth}`;
-                    // Ensure right column is visible on desktop
-                    UIElements.rightColumn.style.display = 'block';
-                }
-                UIElements.mainLayoutContainer.style.gridTemplateColumns = columns;
-
-                // Adjust display of left column if its width is 0px
-                UIElements.leftColumn.style.display = isStatusLogOpen ? 'block' : 'none';
-            }
-
             function checkInputs() {
                 if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
             }
