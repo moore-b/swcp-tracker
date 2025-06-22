@@ -288,10 +288,13 @@
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
        
+        // Web Worker instance for analysis
+        let analysisWorker = null;
+
         // Log function
         const log = (message, type = 'info') => {
             // Ensure UIElements.statusLog is available before trying to use it
-            if (!UIElements.statusLog) {
+            if (!UIlements.statusLog) {
                 console.warn("Status log element not yet available.", message);
                 return;
             }
@@ -473,6 +476,12 @@
                 }, []);
                
                 swcpGeoJSON = turf.lineString(allCoordinates).geometry;
+
+                // Send SWCP GeoJSON to the worker for initial setup
+                if (analysisWorker) {
+                    analysisWorker.postMessage({ type: 'init_swcp', swcpGeoJSONString: JSON.stringify(swcpGeoJSON) });
+                    log('SWCP GeoJSON sent to worker for initialization.');
+                }
                
                 const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
                 mainMap.fitBounds(leafletGeoJson.getBounds());
@@ -572,33 +581,32 @@
             });
         }
 
-        // Analyze Single Activity function
+        // Analyze Single Activity function (now uses Web Worker)
         async function analyzeSingleActivity(activity, button) {
             button.disabled = true;
             button.innerHTML = `<span class="loader"></span>Analyzing...`;
             const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
            
             log(`Starting analysis for activity: "${activity.name}"`);
-            const stream = await getActivityStream(activity.id);
+            const stream = await getActivityStream(activity.id); // Get stream data (cached or fetched)
            
-            let newlyCompletedPoints = [];
-            if (stream) {
-                const activityLine = turf.lineString(stream.map(p => [p[1], p[0]]));
-                newlyCompletedPoints = findOverlappingPoints(activityLine);
-                log(`-> Found ${newlyCompletedPoints.length} matching points on SWCP.`, 'success');
-            } else {
-                log(`Could not retrieve stream for activity ${activity.id}. Skipping analysis.`, 'error');
+            if (!stream || stream.length === 0) {
+                log(`No stream data for activity ${activity.id}. Skipping analysis.`, 'error');
+                button.textContent = 'No data';
+                return;
             }
-           
-            if (newlyCompletedPoints.length > 0) {
-                const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                const allCompletedPoints = oldCompletedPoints.concat(newlyCompletedPoints);
-                localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
-                updateProgress(allCompletedPoints);
-            }
-            processedIds.add(activity.id);
-            localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
-            button.textContent = 'Analyzed';
+
+            log('Sending activity data to worker for analysis...');
+
+            // Send activity data to the worker
+            analysisWorker.postMessage({
+                type: 'analyze_activity',
+                activityId: activity.id,
+                activityLineCoords: stream.map(p => [p[1], p[0]]) // Send coordinates directly
+            });
+
+            // The rest of the logic will be handled by the analysisWorker.onmessage listener
+            // (see init() for worker setup and listener)
         }
 
         // Update Single Title function
@@ -645,7 +653,7 @@
             while (true) {
                 try {
                     log(`Requesting page ${page} of activities...`);
-                    const response = await fetch(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
+                    const response = await fetch(`https://www.com/api/v3/athlete/activities?page=${page}&per_page=${perPage}`, { headers: { 'Authorization': `Bearer ${accessToken}` }});
                     if (!response.ok) {
                         const errorText = await response.text();
                         throw new Error(`HTTP error! Status: ${response.status}. Message: ${errorText}`);
@@ -709,30 +717,13 @@
             }
         }
        
-        // Find Overlapping Points function
+        // This function is now in the Web Worker, but still here as a placeholder for understanding.
+        // It's not called directly from the main thread anymore for analysis.
+        /*
         function findOverlappingPoints(activityLine) {
-            const matchedPoints = [];
-            if (!swcpGeoJSON) return [];
-           
-            const activityLength = turf.length(activityLine, {units: 'meters'});
-            const numSamples = Math.max(2, Math.ceil(activityLength / ACTIVITY_SAMPLE_INTERVAL_METERS));
-           
-            log(`Sampling activity route for analysis (${numSamples} points)...`);
-           
-            for (let i = 0; i <= numSamples; i++) {
-                const distance = (i / numSamples) * activityLength;
-                const sampledPoint = turf.along(activityLine, distance, {units: 'meters'});
-               
-                if (!sampledPoint) continue;
-
-                const nearestPointOnLine = turf.nearestPointOnLine(swcpGeoJSON, sampledPoint);
-               
-                if (turf.distance(sampledPoint, nearestPointOnLine, {units: 'meters'}) < DISTANCE_THRESHOLD_METERS) {
-                    matchedPoints.push(nearestPointOnLine.geometry.coordinates);
-                }
-            }
-            return matchedPoints;
+            // ... (Logic moved to swcp_analysis_worker.js)
         }
+        */
 
         // Update Progress function
         function updateProgress(completedPoints) {
@@ -827,7 +818,7 @@
             UIElements.progressSection = document.getElementById('progress-section');
             UIElements.activityListSection = document.getElementById('activity-list-section');
             UIElements.activityListContainer = document.getElementById('activity-list-container');
-            UIElements.activityCardTemplate = document.getElementById('activity-card-template'); // template element needs .content.cloneNode(true)
+            UIElements.activityCardTemplate = document.getElementById('activity-card-template');
             UIElements.activityCount = document.getElementById('activity-count');
             UIElements.filterButtons = document.getElementById('filter-buttons');
             UIElements.resetButton = document.getElementById('reset-button');
@@ -847,6 +838,54 @@
             UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
 
             log('App initialized.');
+
+            // Initialize Web Worker
+            if (window.Worker) {
+                analysisWorker = new Worker('swcp_analysis_worker.js'); // Path to your worker file
+                analysisWorker.onmessage = function(e) {
+                    if (e.data.type === 'result') {
+                        const activityId = e.data.activityId;
+                        const matchedPoints = e.data.matchedPoints;
+
+                        // Find the analyze button for this activity to update its state
+                        const analyzeBtn = document.querySelector(`[data-analyze-btn][onclick*="${activityId}"]`);
+                        if (analyzeBtn) {
+                            analyzeBtn.textContent = 'Analyzed';
+                            analyzeBtn.disabled = true;
+                        }
+
+                        // Update progress and persist
+                        if (matchedPoints.length > 0) {
+                            const oldCompletedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
+                            const allCompletedPoints = oldCompletedPoints.concat(matchedPoints);
+                            localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allCompletedPoints));
+                            updateProgress(allCompletedPoints);
+                        }
+
+                        const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+                        processedIds.add(activityId);
+                        localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
+                        log(`Analysis complete for activity ${activityId}. Found ${matchedPoints.length} matching points.`, 'success');
+                    } else if (e.data.type === 'error') {
+                        log(`Worker Error: ${e.data.message}`, 'error');
+                        console.error("Worker Error:", e.data.message);
+                        // Re-enable the analyze button if there was an error
+                        const analyzeBtn = document.querySelector(`[data-analyze-btn][onclick*="${e.data.activityId}"]`);
+                        if (analyzeBtn) {
+                             analyzeBtn.textContent = 'Analyze for SWCP';
+                             analyzeBtn.disabled = false;
+                        }
+                    }
+                };
+                analysisWorker.onerror = function(error) {
+                    log(`Worker encountered an error: ${error.message}`, 'error');
+                    console.error("Worker Error:", error);
+                };
+                log('Web Worker initialized successfully.');
+            } else {
+                log('Your browser does not support Web Workers. Performance may be impacted.', 'error');
+            }
+
 
             // Add event listeners (now that UIElements are populated)
             UIElements.clientId.addEventListener('input', checkInputs);
@@ -874,12 +913,13 @@
 
             // Status log details toggle listener (can be added here as statusLogDetails is guaranteed to exist now)
             UIElements.statusLogDetails.addEventListener('toggle', () => {
-                // mainMap.invalidateSize() is handled by the window resize listener now
+                // map.invalidateSize() is handled by the window resize listener now
             });
            
             // Initial call to updateGridLayout on load to set correct mobile/desktop state
             updateGridLayout();
             // Add resize listener to window for responsive layout updates
+            // (mainMap.invalidateSize() is called inside showMainApp after map is ready)
             window.addEventListener('resize', updateGridLayout);
         };
 
