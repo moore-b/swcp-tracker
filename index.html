@@ -8,15 +8,16 @@
     <!-- Tailwind CSS for styling -->
     <script src="https://cdn.tailwindcss.com"></script>
    
+    <!-- ** FIX ** Added 'defer' to ensure scripts load before they are used -->
     <!-- Leaflet.js for maps -->
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
-    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin="" defer></script>
    
     <!-- GPX parsing library -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/gpx-parse/0.10.3/gpx-parse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/gpx-parse/0.10.3/gpx-parse.min.js" defer></script>
    
     <!-- Turf.js for geographic calculations -->
-    <script src='https://unpkg.com/@turf/turf@6/turf.min.js'></script>
+    <script src='https://unpkg.com/@turf/turf@6/turf.min.js' defer></script>
 
     <style>
         body { font-family: 'Inter', sans-serif; }
@@ -109,7 +110,8 @@
 
     <script>
         // --- CONFIGURATION & CONSTANTS ---
-        const SWCP_GPX_URL = './swcp.gpx';
+        // ** FIX ** Updated to match your new filename.
+        const SWCP_GPX_URL = 'swcp.gpx';
         const DISTANCE_THRESHOLD_METERS = 100;
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -127,6 +129,7 @@
 
         // --- HELPER FUNCTIONS ---
         const log = (message, type = 'info') => {
+            if (!statusLog) return;
             const now = new Date().toLocaleTimeString();
             const color = type === 'error' ? 'text-red-400' : (type === 'success' ? 'text-green-400' : 'text-gray-300');
             statusLog.innerHTML += `<p><span class="text-gray-500">${now}:</span> <span class="${color}">${message}</span></p>`;
@@ -135,7 +138,6 @@
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         // --- CORE LOGIC ---
-        // ** FIX ** All code that interacts with the DOM is now inside window.onload
         window.onload = async () => {
             // Assign DOM elements now that the document is loaded
             clientIdInput = document.getElementById('clientId');
@@ -261,11 +263,15 @@
             log('Fetching SWCP route data from local file...');
             try {
                 const response = await fetch(SWCP_GPX_URL);
-                if (!response.ok) throw new Error(`HTTP error! Could not find GPX file. Did you upload it to GitHub? Status: ${response.status}`);
+                if (!response.ok) throw new Error(`HTTP error! Could not find GPX file. Did you upload it with the correct name? Status: ${response.status}`);
                 const gpxData = await response.text();
                 log('Route data received. Parsing GPX file...', 'success');
                
                 return new Promise((resolve, reject) => {
+                    // Check if gpxParse is available
+                    if (typeof gpxParse === 'undefined') {
+                        return reject(new Error('GPX parsing library failed to load.'));
+                    }
                     gpxParse.parseGpx(gpxData, (error, data) => {
                         if (error) {
                             reject(new Error(`GPX Parse Error: ${error}`));
@@ -286,6 +292,7 @@
                 });
             } catch(e) {
                 log(e.message, 'error');
+                console.error(e);
             }
         }
        
