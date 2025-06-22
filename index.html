@@ -213,6 +213,9 @@
                         <button data-filter="Hike" class="filter-btn">Hikes</button>
                     </div>
                 </div>
+                <div class="mb-4">
+                    <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 bg-white border border-gray-300 rounded-md shadow-sm">
+                </div>
                 <div id="activities-loading-spinner" class="flex justify-center items-center h-32">
                     <div class="loader mr-3"></div> <span class="text-gray-500">Loading activities...</span>
                 </div>
@@ -287,7 +290,7 @@
             rightColumn: null,
             centerColumn: null,
             activitiesLoadingSpinner: null,
-            activitySearchBox: null // New: Search box
+            activitySearchBox: null // New reference for the search input
         };
 
         let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
@@ -698,8 +701,8 @@
             }
         }
 
-        // Update Activity function (This was the old update title function, renamed here)
-        /* Original function renamed to addDescriptionToStrava
+        // This was the old update title function, kept here as a placeholder for completeness
+        /*
         async function updateActivity(id, newTitle) {
             const accessToken = sessionStorage.getItem('stravaAccessToken');
             try {
@@ -926,7 +929,7 @@
             UIElements.rightColumn = document.getElementById('right-column');
             UIElements.centerColumn = document.getElementById('center-column');
             UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
-            UIElements.activitySearchBox = document.getElementById('activity-search-box'); // New reference
+            UIElements.activitySearchBox = document.getElementById('activity-search-box'); // New reference for the search input
 
             log('App initialized.');
 
