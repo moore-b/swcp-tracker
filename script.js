@@ -1,4 +1,4 @@
-// Constants (No changes here)
+// Constants
 const SWCP_GEOJSON_URL = 'routes.geojson';
 const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
 const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -38,7 +38,7 @@ const log = (message, type = 'info') => {
 
     p.innerHTML = `<span class="text-gray-500">${now}:</span> <span class="${className}">${message}</span>`;
     UIElements.statusLog.appendChild(p);
-    UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
+    UIlements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
 };
 
 /**
@@ -614,7 +614,8 @@ async function getActivityStream(activityId) {
             localStorage.setItem(cacheKey, JSON.stringify(data));
         }
         return data;
-    } catch (e) {
+    }
+    catch (e) {
         log(`Failed to fetch stream for ${activityId}: ${e.message}`, 'error');
         return null;
     }
@@ -864,7 +865,7 @@ const init = async () => {
         UIElements.loginScreenWrapper.classList.remove('hidden'); // Show login screen on error
     } else if (authCode) {
         // We've been redirected back from Strava with a code
-        UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating with Strava...</span></div>`;
+        UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating...</span></div>`;
         UIElements.loginScreenWrapper.classList.remove('hidden');
         await getAccessToken(authCode);
     } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
