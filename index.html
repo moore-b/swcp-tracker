@@ -260,7 +260,8 @@
                 UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
                 UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
                 UIElements.activitiesSection.style.gridColumn = '2'; UIElements.activitiesSection.style.gridRow = '1 / span 4';
-                UIElements.activitiesSection.style.position = 'sticky'; UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
+                UIElements.activitiesSection.style.position = 'sticky';
+                UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
             }
         }
 
@@ -331,9 +332,21 @@
 
         function initializeMapAndData() {
             log('Initializing map...');
-            mainMap = L.map('map').setView([50.5, -4.0], 7);
+           
+            // FIX: Define the geographic boundaries for the map
+            const corner1 = L.latLng(49.8, -6.0);
+            const corner2 = L.latLng(51.3, -1.7);
+            const bounds = L.latLngBounds(corner1, corner2);
+
+            // FIX: Initialize the map with constraints to improve performance
+            mainMap = L.map('map', {
+                maxBounds: bounds,    // Restrict panning outside of the SW peninsula
+                minZoom: 8            // Prevent zooming out too far
+            });
+           
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mainMap);
             completedSegmentsLayer = L.layerGroup().addTo(mainMap);
+
             swcpDataPromise = loadSwcpData();
         }
 
@@ -356,7 +369,7 @@
                 if (analysisWorker) analysisWorker.postMessage({ type: 'init_swcp', swcpGeoJSONString: JSON.stringify(swcpGeoJSON), swcpTotalDistance });
                
                 const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
-                mainMap.fitBounds(leafletGeoJson.getBounds());
+                mainMap.fitBounds(leafletGeoJson.getBounds()); // Set initial view to the path
                 UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
                 log('SWCP route rendered on map.');
             } catch(e) {
@@ -370,7 +383,6 @@
             await swcpDataPromise;
             const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
             if (completedPoints.length > 0) {
-                // On initial load, we send all points to the worker to calculate progress
                 analysisWorker.postMessage({ type: 'process_activity', activityId: 'initial_load', activityStream: [], existingPoints: completedPoints });
             }
         }
@@ -514,7 +526,6 @@
             if (cachedData && timestamp && (Date.now() - timestamp < CACHE_EXPIRY_MS)) {
                 return JSON.parse(cachedData);
             }
-
             log('Fetching all activities from Strava...');
             let activities = [];
             for (let page = 1; page < 10; page++) {
@@ -552,7 +563,6 @@
             UIElements.completedDistance.textContent = totalDistance.toFixed(2);
             UIElements.progressPercentage.textContent = `${percentage}%`;
             UIElements.progressBar.style.width = `${percentage}%`;
-
             localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints));
         }
        
@@ -588,6 +598,10 @@
                 UIElements[key] = document.getElementById(id);
             });
            
+            if (!UIElements.connectButton) {
+                alert("DIAGNOSTIC: CRITICAL ERROR! The script could not find the 'Connect with Strava' button. Please check the button's ID in the HTML is 'connect-button'.");
+                return;
+            }
             log('App initialized.');
 
             try {
@@ -598,6 +612,7 @@
                     if (!payload) return;
                     const { activityId, error } = payload;
                     const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id='${activityId}']`);
+                   
                     if (type === 'result') {
                         log(`Received processed data for ${activityId}. Updating UI.`, 'success');
                         if (analyzeBtn) {
