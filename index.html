@@ -570,7 +570,7 @@
         }
        
         // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', async () => {
+        const main = async () => {
             // 1. Link UI Elements explicitly.
             const elementIds = ['initialLoadingScreen', 'loginScreenWrapper', 'configSection', 'clientId', 'clientSecret', 'connectButton', 'mainLayoutContainer', 'headerSection', 'progressSummarySection', 'stravaUserInfo', 'completedDistance', 'totalDistance', 'progressPercentage', 'progressBar', 'resetButton', 'mapSection', 'map', 'mapLoadingOverlay', 'statusLogSectionContainer', 'statusLogDetails', 'statusLog', 'activitiesSection', 'activityCount', 'activitySearchBox', 'refreshActivitiesBtn', 'activitiesLoadingSpinner', 'activityListContainer', 'activityCardTemplate'];
             let allElementsFound = true;
@@ -654,7 +654,9 @@
             } else {
                 UIElements.loginScreenWrapper.classList.remove('hidden');
             }
-        });
+        };
+       
+        main(); // Run the application now that the script at the end of the body is being parsed.
     </script>
 </body>
 </html>
