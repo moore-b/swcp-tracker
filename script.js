@@ -324,25 +324,23 @@ async function loadSwcpData() {
         }
         const data = await response.json(); // This will throw if the response is not valid JSON
        
-        // --- CRITICAL CHANGE HERE ---
-        // Extract coordinates, ensuring only [longitude, latitude] pairs are used
-        // Your GeoJSON has [lon, lat, elev], so we need to map to [lon, lat]
-        const allCoordinates = data.features.reduce((coords, feature) => {
+        // --- CRITICAL FIX FOR 3D COORDINATES IN GEOJSON ---
+        // Extract coordinates, ensuring only [longitude, latitude] pairs are used for Turf.js
+        const allCoordinates = [];
+        data.features.forEach(feature => {
             if (feature.geometry && feature.geometry.coordinates) {
                 if (feature.geometry.type === 'LineString') {
                     // Map 3D coordinates to 2D [lon, lat]
-                    return coords.concat(feature.geometry.coordinates.map(c => [c[0], c[1]]));
+                    feature.geometry.coordinates.forEach(c => allCoordinates.push([c[0], c[1]]));
                 }
                 else if (feature.geometry.type === 'MultiLineString') {
                     // For MultiLineString, iterate through each sub-lineString
-                    const subLineCoords = feature.geometry.coordinates.map(subLine =>
-                        subLine.map(c => [c[0], c[1]]) // Map 3D to 2D for each point in sub-line
-                    );
-                    return coords.concat(...subLineCoords); // Flatten the array of arrays
+                    feature.geometry.coordinates.forEach(subLine => {
+                        subLine.forEach(c => allCoordinates.push([c[0], c[1]])); // Map 3D to 2D for each point in sub-line
+                    });
                 }
             }
-            return coords;
-        }, []);
+        });
 
         // The filter for length === 2 is now appropriate because we explicitly extracted 2D points
         const validCoordinates = allCoordinates.filter(c =>
@@ -367,7 +365,8 @@ async function loadSwcpData() {
        
         // Add the GeoJSON data to the Leaflet map
         if (mainMap) { // Ensure mainMap is initialized before adding GeoJSON
-            // Re-use original data for rendering, as Leaflet can handle 3D points
+            // For Leaflet rendering, we can use the original data as Leaflet can often handle 3D points
+            // Or explicitly map to 2D if preferred, but original L.geoJSON usually handles it gracefully
             const leafletGeoJson = L.geoJSON(data, {
                 style: { color: 'blue', weight: 3, opacity: 0.7 }
             }).addTo(mainMap);
@@ -517,7 +516,16 @@ function renderActivityList(activities) {
                     }).setView(latlngs[0], 13);
                    
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
-                    L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap).fitBounds(latlngs); // Use fitBounds with polyline
+                    L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap);
+                   
+                    // --- FIX FOR MINI-MAP FITBOUNDS ERROR ---
+                    // Call fitBounds on the map object, not the polyline
+                    activityMap.fitBounds(latlngs);
+                   
+                    // --- FIX FOR OFFSETWIDTH ERROR ---
+                    // Invalidate size immediately after map is likely rendered or container is sized
+                    activityMap.invalidateSize();
+
                 } else {
                     mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">No valid polyline data for map.</div>';
                 }
