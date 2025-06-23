@@ -97,14 +97,14 @@
         </div>
         <div id="activities-section" class="p-6 rounded-lg shadow-lg blurred-tile-background">
              <div class="flex justify-between items-center mb-4">
-                <h2 class="text-2xl font-semibold">Your Activities <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
+                <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
             </div>
             <div class="mb-4">
-                <input type="text" id="activity-search-box" placeholder="Search activities by title..." class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
+                <input type="text" id="activity-search-box" placeholder="Search hikes by title..." class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
             </div>
             <button id="refresh-activities-btn" class="w-full btn-base btn-strava mb-4">Refresh Activities</button>
             <div id="activities-loading-spinner" class="flex justify-center items-center h-32 hidden">
-                <div class="loader mr-3"></div> <span class="text-gray-500">Loading activities...</span>
+                <div class="loader mr-3"></div> <span class="text-gray-500">Loading hikes...</span>
             </div>
             <div id="activity-list-container" class="space-y-4"></div>
         </div>
@@ -142,8 +142,8 @@
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
         const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_';
-        const CACHED_ACTIVITIES_KEY = 'swcp_cached_activities';
-        const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
+        const CACHED_ACTIVITIES_KEY = 'swcp_cached_hikes';
+        const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_hikes_timestamp';
         const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
         const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
         const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
@@ -263,18 +263,17 @@
             }
         }
 
-        // --- THIS FUNCTION IS MODIFIED TO INCLUDE WALKS ---
         async function fetchAllActivities() {
-            const filterActivities = (activities) => activities.filter(a => ['Hike', 'Walk'].includes(a.type));
+            const filterHikes = (activities) => activities.filter(a => a.type === 'Hike');
 
             const cachedTimestamp = localStorage.getItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
             if (cachedTimestamp && (Date.now() - parseInt(cachedTimestamp) < CACHE_EXPIRY_MS)) {
-                log('Loading activities from cache.', 'info');
+                log('Loading hikes from cache.', 'info');
                 const cachedData = JSON.parse(localStorage.getItem(CACHED_ACTIVITIES_KEY) || '[]');
-                return filterActivities(cachedData);
+                return filterHikes(cachedData);
             }
 
-            log('Fetching all activities from Strava...');
+            log('Fetching all activities from Strava to find hikes...');
             let allActivities = [];
             let page = 1;
             while(true) {
@@ -288,13 +287,12 @@
                 await sleep(100);
             }
            
-            const relevantActivities = filterActivities(allActivities);
-            log(`Found ${relevantActivities.length} relevant activities (Hikes & Walks). Caching...`);
+            const relevantHikes = filterHikes(allActivities);
+            log(`Found ${relevantHikes.length} hikes out of ${allActivities.length} total activities. Caching...`);
            
-            // Note: We are now caching both hikes and walks.
-            localStorage.setItem(CACHED_ACTIVITIES_KEY, JSON.stringify(relevantActivities));
+            localStorage.setItem(CACHED_ACTIVITIES_KEY, JSON.stringify(relevantHikes));
             localStorage.setItem(CACHED_ACTIVITIES_TIMESTAMP_KEY, Date.now().toString());
-            return relevantActivities;
+            return relevantHikes;
         }
 
         async function getActivityStream(activityId) {
@@ -461,12 +459,6 @@
                
                 const typeEl = cardDiv.querySelector('[data-type]');
                 typeEl.textContent = activity.type;
-                typeEl.classList.remove('bg-blue-200', 'text-blue-600');
-                if (activity.type === 'Hike') {
-                    typeEl.classList.add('bg-emerald-200', 'text-emerald-600');
-                } else { // Walk
-                    typeEl.classList.add('bg-sky-200', 'text-sky-600');
-                }
                
                 const mapEl = cardDiv.querySelector('[data-map-id]');
                 mapEl.id = `map-${activity.id}`;
@@ -561,13 +553,30 @@
         }
        
         // --- INITIALIZATION ---
+        // This function now runs at the end of the file, after the browser has parsed all the HTML elements.
         async function main() {
             // 1. Link UI Elements explicitly.
-            const elementIds = ['initialLoadingScreen', 'loginScreenWrapper', 'configSection', 'clientId', 'clientSecret', 'connectButton', 'mainLayoutContainer', 'headerSection', 'progressSummarySection', 'stravaUserInfo', 'completedDistance', 'totalDistance', 'progressPercentage', 'progressBar', 'resetButton', 'mapSection', 'map', 'mapLoadingOverlay', 'statusLogSectionContainer', 'statusLogDetails', 'statusLog', 'activitiesSection', 'activityCount', 'activitySearchBox', 'refreshActivitiesBtn', 'activitiesLoadingSpinner', 'activityListContainer', 'activityCardTemplate'];
-            elementIds.forEach(id => {
-                const key = id.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
-                UIElements[key] = document.getElementById(id);
-            });
+            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
+            UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
+            UIElements.clientId = document.getElementById('clientId');
+            UIElements.clientSecret = document.getElementById('clientSecret');
+            UIElements.connectButton = document.getElementById('connect-button');
+            UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
+            UIElements.stravaUserInfo = document.getElementById('strava-user-info');
+            UIElements.completedDistance = document.getElementById('completed-distance');
+            UIElements.totalDistance = document.getElementById('total-distance');
+            UIElements.progressPercentage = document.getElementById('progress-percentage');
+            UIElements.progressBar = document.getElementById('progress-bar');
+            UIElements.resetButton = document.getElementById('reset-button');
+            UIElements.map = document.getElementById('map');
+            UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
+            UIElements.statusLog = document.getElementById('status-log');
+            UIElements.activityCount = document.getElementById('activity-count');
+            UIElements.activitySearchBox = document.getElementById('activity-search-box');
+            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
+            UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
+            UIElements.activityListContainer = document.getElementById('activity-list-container');
+            UIElements.activityCardTemplate = document.getElementById('activity-card-template');
 
             if (!UIElements.loginScreenWrapper || !UIElements.mainLayoutContainer) {
                 alert("A critical UI element is missing from the HTML, cannot start the application.");
@@ -642,7 +651,7 @@
             }
         }
        
-        main();
+        main(); // Run the application
     </script>
 </body>
 </html>
