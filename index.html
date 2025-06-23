@@ -266,7 +266,10 @@
         }
 
         function checkInputs() {
-            if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
+            if (UIElements.connectButton) {
+                const isDisabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
+                UIElements.connectButton.disabled = isDisabled;
+            }
         }
    
         function connectToStrava() {
@@ -335,7 +338,6 @@
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
                
-                // This is the robust way to handle the GeoJSON, combining all features.
                 const allCoordinates = data.features.reduce((coords, feature) => {
                     if (feature.geometry.type === 'LineString') {
                         return coords.concat(feature.geometry.coordinates);
@@ -583,9 +585,9 @@
             if (sortedPoints.length > 0) {
                 currentSegment.push(sortedPoints[0].coords);
                 for (let i = 1; i < sortedPoints.length; i++) {
-                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) {
+                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) { // Gap > 200m
                         if (currentSegment.length > 1) segments.push(currentSegment);
-                        currentSegment = [sortedPoints[i].coords]; // Start new segment with current point
+                        currentSegment = [sortedPoints[i].coords];
                     } else {
                         currentSegment.push(sortedPoints[i].coords);
                     }
@@ -636,7 +638,7 @@
         }
 
         const init = async () => {
-            // This explicit assignment is the most robust method and fixes the recurring error.
+            // This explicit assignment is the most robust method and fixes the recurring errors.
             UIElements.clientId = document.getElementById('clientId');
             UIElements.clientSecret = document.getElementById('clientSecret');
             UIElements.connectButton = document.getElementById('connect-button');
@@ -668,6 +670,12 @@
             UIElements.appBackground = document.getElementById('app-background');
             UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
            
+            // --- DIAGNOSTIC CHECK ---
+            if (!UIElements.connectButton) {
+                alert("DIAGNOSTIC: CRITICAL ERROR! The script could not find the 'Connect with Strava' button in the HTML. Please check the button's ID is set to 'connect-button'.");
+                return; // Stop initialization
+            }
+
             log('App initialized.');
 
             try {
@@ -708,9 +716,17 @@
             UIElements.activitySearchBox.addEventListener('input', filterActivities);
             UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
            
+            UIElements.clientId.addEventListener('input', checkInputs);
+            UIElements.clientSecret.addEventListener('input', checkInputs);
+           
             UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
             UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
             checkInputs();
+
+            // --- DIAGNOSTIC CHECK ---
+            if (UIElements.connectButton.disabled) {
+                alert("DIAGNOSTIC: The 'Connect with Strava' button is currently disabled. Please enter your Client ID and Client Secret into the input fields to enable it.");
+            }
 
             const authCode = new URLSearchParams(window.location.search).get('code');
             if (authCode) {
