@@ -18,87 +18,22 @@ body { font-family: 'Inter', sans-serif; background-color: #f3f4f6; }
 .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background-color: #ffffff; transition: background-color 0.2s; }
 .filter-btn:hover { background-color: #f3f4f6; }
 .filter-btn.active { background-color: #3b82f6; color: #ffffff; border-color: #3b82f6; }
-.blurred-tile-background { background-color: rgba(255, 255, 255, 0.7) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 6px 10px -2px rgba(0, 0, 0, 0.05); }
-
-/* DESKTOP LAYOUT (Default) */
+.blurred-tile-background { background-color: rgba(192, 192, 192, 0.5) !important; backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px); box-shadow: 0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 6px 10px -2px rgba(0, 0, 0, 0.05); }
 #main-layout-container { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto auto 1fr auto; gap: 1rem; min-height: 100vh; padding: 1rem; }
 #header-section { grid-column: 1; grid-row: 1; }
 #progress-summary-section { grid-column: 1; grid-row: 2; }
 #map-section { grid-column: 1; grid-row: 3; }
 #status-log-section-container { grid-column: 1; grid-row: 4; }
-#activities-drawer { grid-column: 2; grid-row: 1 / span 4; position: sticky; top: 1rem; height: calc(100vh - 2rem); overflow-y: auto; }
-#mobile-header { display: none; } /* Hide mobile header on desktop */
-
-/* MOBILE LAYOUT */
+#activities-section { grid-column: 2; grid-row: 1 / span 4; position: sticky; top: 1rem; height: calc(100vh - 2rem); overflow-y: auto; }
 @media (max-width: 1024px) {
-    body {
-        overflow: hidden; /* Prevent body scroll when drawer is open */
-    }
-    #main-layout-container {
-        display: flex; /* Use flexbox for simple stacking */
-        flex-direction: column;
-        padding: 0; /* Remove overall padding */
-        min-height: 100vh;
-        position: relative; /* For drawer positioning context */
-    }
-
-    #mobile-header {
-        display: flex; /* Show mobile header */
-        width: 100%;
-        position: sticky;
-        top: 0;
-        z-index: 20; /* Above map */
-    }
-   
-    #header-section,
-    #progress-summary-section,
-    #status-log-section-container {
-        display: none !important; /* Hide these sections by default on mobile */
-    }
-
-    #map-section {
-        flex-grow: 1; /* Map takes remaining vertical space */
-        height: auto; /* Allow map to adjust height */
-        padding: 0.5rem; /* Small padding around map */
-    }
-    #map {
-        height: calc(100vh - 60px); /* Adjust map height to fill viewport minus header */
-        border-radius: 0; /* Remove border-radius on map for full screen look */
-    }
-
-    /* ACTIVITIES DRAWER STYLING */
-    #activities-drawer {
-        position: fixed;
-        top: 0;
-        right: 0;
-        width: 85%; /* Make it less than 100% to show background */
-        max-width: 380px; /* Cap max width on larger mobile devices */
-        height: 100vh;
-        background-color: #f3f4f6; /* Match body background or slightly different */
-        box-shadow: -4px 0 15px rgba(0,0,0,0.2);
-        transform: translateX(100%); /* Hidden by default */
-        transition: transform 0.3s ease-out;
-        z-index: 30; /* Higher than map and mobile header */
-        overflow-y: auto; /* Enable scrolling for activities list */
-        padding: 1rem; /* Padding inside the drawer */
-        border-radius: 0; /* No border radius for full height slide */
-    }
-
-    #activities-drawer.open {
-        transform: translateX(0); /* Visible when open */
-    }
-
-    #activities-section { /* The content inside the drawer */
-        width: 100%; /* Take full width of drawer */
-        height: 100%; /* Take full height of drawer */
-        border-radius: 0; /* Remove specific rounded corners if inside drawer */
-        box-shadow: none; /* Remove shadow if drawer itself has one */
-        background-color: transparent; /* Make background transparent if drawer provides it */
-        padding: 0; /* Remove inner padding as drawer provides it */
-    }
+    #main-layout-container { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; }
+    #header-section, #progress-summary-section, #map-section, #status-log-section-container, #activities-section { grid-column: 1; }
+    #header-section { grid-row: 1; }
+    #progress-summary-section { grid-row: 2; }
+    #map-section { grid-row: 3; }
+    #activities-section { grid-row: 4; position: static; height: auto; overflow-y: visible; top: auto; }
+    #status-log-section-container { grid-row: 5; }
 }
-
-/* Status Log details for accessibility */
 #status-log-section-container > details > summary { cursor: pointer; list-style: none; }
 #status-log-section-container > details > summary::-webkit-details-marker { display: none; }
 #status-log-section-container > details > summary::before { content: '+ '; margin-right: 0.5rem; }
