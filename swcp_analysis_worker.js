@@ -9,7 +9,8 @@ const ACTIVITY_SAMPLE_INTERVAL_METERS = 100;
 
 // Listen for messages from the main script
 self.onmessage = function(e) {
-    const { type, activityId, activityLineCoords, swcpGeoJSONString } = e.data;
+    // Note the change here from activityLineCoords to rawStream
+    const { type, activityId, rawStream, swcpGeoJSONString } = e.data;
 
     if (type === 'init_swcp') {
         try {
@@ -23,24 +24,22 @@ self.onmessage = function(e) {
 
     if (type === 'analyze_activity') {
         if (!swcpGeoJSON) {
-            self.postMessage({
-                type: 'error',
-                payload: { activityId: activityId, error: 'SWCP GeoJSON not initialized in worker.' }
-            });
+            self.postMessage({ type: 'error', payload: { activityId, error: 'SWCP GeoJSON not initialized in worker.' } });
             return;
         }
         try {
+            // THE MAPPING NOW HAPPENS HERE, IN THE WORKER, NOT ON THE MAIN THREAD
+            const activityLineCoords = rawStream.map(p => [p[1], p[0]]);
             const activityLine = turf.lineString(activityLineCoords);
+
             const overlappingPoints = findOverlappingPoints(activityLine, activityId);
+           
             self.postMessage({
                 type: 'result',
-                payload: { activityId: activityId, overlappingPoints: overlappingPoints }
+                payload: { activityId, overlappingPoints }
             });
         } catch (error) {
-             self.postMessage({
-                type: 'error',
-                payload: { activityId: activityId, error: error.message }
-            });
+             self.postMessage({ type: 'error', payload: { activityId, error: error.message } });
         }
     }
 };
