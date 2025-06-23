@@ -422,7 +422,7 @@
                     currentSegment.push(curr.coords);
                 }
             }
-            if (currentSegment.length > 0) { // Push the last segment
+            if (currentSegment.length > 0) {
                 segments.push(currentSegment);
             }
 
@@ -523,7 +523,7 @@
         }
 
         // --- THIS IS THE CORRECTED FUNCTION ---
-        async function analyzeSingleActivity(activity, button) {
+        function analyzeSingleActivity(activity, button) {
             if (!analysisWorker) {
                 log('Error: Analysis worker is not available.', 'error');
                 button.textContent = 'Error: Worker Failed';
@@ -534,29 +534,31 @@
             button.innerHTML = `<span class="loader"></span>Queued...`;
             log(`Queuing analysis for: "${activity.name}"`);
 
-            // Use setTimeout to allow the browser to render the spinner before blocking the main thread.
-            setTimeout(async () => {
-                try {
-                    const stream = await getActivityStream(activity.id);
-                    if (!stream || stream.length === 0) {
-                        log(`No GPS data for activity ${activity.id}.`, 'error');
-                        button.textContent = 'No GPS Data';
-                        button.disabled = false; // Allow user to try again if it was a temp error
-                        return;
+            // Use requestAnimationFrame to ensure the UI has a chance to update before heavy work.
+            requestAnimationFrame(() => {
+                setTimeout(async () => {
+                    try {
+                        const stream = await getActivityStream(activity.id);
+                        if (!stream || stream.length === 0) {
+                            log(`No GPS data for activity ${activity.id}.`, 'error');
+                            button.textContent = 'No GPS Data';
+                            button.disabled = false;
+                            return;
+                        }
+                        log('Sending raw activity stream to worker...');
+                        // Offload the mapping and processing to the worker by sending raw data
+                        analysisWorker.postMessage({
+                            type: 'analyze_activity',
+                            activityId: activity.id,
+                            rawStream: stream
+                        });
+                    } catch (error) {
+                        log(`Failed to get stream for ${activity.id}: ${error.message}`, 'error');
+                        button.textContent = 'Error';
+                        button.disabled = false;
                     }
-
-                    log('Sending activity data to worker...');
-                    analysisWorker.postMessage({
-                        type: 'analyze_activity',
-                        activityId: activity.id,
-                        activityLineCoords: stream.map(p => [p[1], p[0]])
-                    });
-                } catch (error) {
-                    log(`Failed to get stream for ${activity.id}: ${error.message}`, 'error');
-                    button.textContent = 'Error';
-                    button.disabled = false;
-                }
-            }, 10); // A small 10ms delay is enough for the UI to update.
+                }, 0); // A minimal timeout to let the paint happen.
+            });
         }
        
         // --- INITIALIZATION ---
