@@ -50,8 +50,8 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 /**
  * Makes an authenticated call to the Strava API, with token refresh and retry logic.
  * @param {string} url - The API endpoint URL.
- * @param {RequestInit} options - Fetch options.
- * @param {number} retries - Number of retries for 401 errors (for token refresh).
+ * @param {RequestInit} options = {} - Fetch options.
+ * @param {number} retries = 1 - Number of retries for 401 errors (for token refresh).
  * @returns {Promise<Response|null>} The fetch response or null on critical failure.
  */
 async function makeStravaApiCall(url, options = {}, retries = 1) {
@@ -387,6 +387,11 @@ async function loadSwcpData() {
    
 /** Loads existing progress data from local storage and initiates re-calculation. */
 async function loadProgressFromStorage() {
+    // --- SHOW LOADING INDICATOR ---
+    if (UIElements.overallProgressLoading) {
+        UIElements.overallProgressLoading.classList.remove('hidden');
+    }
+
     await swcpDataPromise; // Ensure SWCP data is loaded before processing points
     const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     if (completedPoints.length > 0) {
@@ -397,10 +402,14 @@ async function loadProgressFromStorage() {
         } else {
             log('Analysis worker not available for initial progress calculation. Progress will not be loaded from storage.', 'error');
             updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
+            // Hide indicator if worker not available
+            if (UIElements.overallProgressLoading) UIElements.overallProgressLoading.classList.add('hidden');
         }
     } else {
         updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
         log('No existing progress found.', 'info');
+        // Hide indicator if no points to load
+        if (UIElements.overallProgressLoading) UIElements.overallProgressLoading.classList.add('hidden');
     }
 }
    
@@ -491,16 +500,17 @@ function renderActivityList(activities) {
         const analyzeBtn = card.querySelector('[data-analyze-btn]');
         analyzeBtn.dataset.activityId = activity.id;
        
-        // --- REANALYZE FUNCTIONALITY CHANGE ---
+        // --- REANALYZE FUNCTIONALITY & GREY STYLING ---
+        // Remove all previous color classes to ensure clean slate
+        analyzeBtn.classList.remove('btn-primary', 'btn-secondary', 'bg-gray-300', 'text-gray-700');
+       
         if (processedIds.has(String(activity.id))) {
-            analyzeBtn.textContent = 'Reanalyze'; // Change text to Reanalyze
-            analyzeBtn.classList.remove('btn-primary'); // Remove primary styling
-            analyzeBtn.classList.add('btn-secondary'); // Add secondary styling (green)
+            analyzeBtn.textContent = 'Reanalyze';
+            analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
             analyzeBtn.disabled = false; // Keep it clickable
         } else {
             analyzeBtn.textContent = 'Analyze for SWCP';
-            analyzeBtn.classList.add('btn-primary'); // Ensure primary styling for initial analyze
-            analyzeBtn.classList.remove('btn-secondary');
+            analyzeBtn.classList.add('btn-primary'); // Apply primary styling for initial analyze
             analyzeBtn.disabled = false;
         }
         analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn); // Always assign the handler
@@ -563,12 +573,16 @@ async function analyzeSingleActivity(activity, button) {
         alert('SWCP map data is still loading or failed to load. Please try again in a moment.');
         log('SWCP GeoJSON not available for analysis.', 'error');
         button.disabled = false; button.textContent = 'Analyze for SWCP'; // Revert button on error
+        // Clean up loader if not needed
+        button.innerHTML = 'Analyze for SWCP'; // Reset to simple text
         return;
     }
     if (!analysisWorker) {
         log('Analysis worker is offline or failed to initialize.', 'error');
         button.textContent = 'Error: Worker offline';
         button.disabled = false; // Revert button on error
+        // Clean up loader if not needed
+        button.innerHTML = 'Analyze for SWCP'; // Reset to simple text
         return;
     }
 
@@ -577,6 +591,8 @@ async function analyzeSingleActivity(activity, button) {
         button.textContent = 'API Error';
         log(`Failed to get activity stream for ${activity.id}.`, 'error');
         setTimeout(() => { button.disabled = false; button.textContent = 'Analyze for SWCP'; }, 3000); // Revert after delay
+        // Clean up loader if not needed
+        button.innerHTML = 'Analyze for SWCP'; // Reset to simple text
         return;
     }
     if (!stream.latlng || !stream.latlng.data || stream.latlng.data.length === 0) {
@@ -584,6 +600,8 @@ async function analyzeSingleActivity(activity, button) {
         button.textContent = 'No GPS Data';
         button.disabled = false; // Revert button
         log(`No GPS data found for activity ${activity.id}.`, 'warn');
+        // Clean up loader if not needed
+        button.innerHTML = 'No GPS Data'; // Reset to simple text
         return;
     }
    
@@ -598,23 +616,29 @@ async function analyzeSingleActivity(activity, button) {
         existingPoints: existingPoints // Send all existing points
     });
 
-    // --- FIX FOR LOADER ANIMATION ---
-    // Update progress text without replacing the whole innerHTML
-    const activityIdForProgress = String(activity.id); // Capture for closure
-    const originalOnMessage = analysisWorker.onmessage; // Store original handler temporarily
+    // --- FIX FOR LOADER ANIMATION (PART 2) ---
+    // Store original onmessage handler so we can restore it later.
+    // This allows analyzeSingleActivity to temporarily intercept progress updates for its specific button.
+    const originalOnMessage = analysisWorker.onmessage;
 
     analysisWorker.onmessage = (e) => {
-        originalOnMessage(e); // Call the original handler
+        // Always pass message to original handler first, so global logging and progress updates happen.
+        originalOnMessage(e);
+
         const { type, payload } = e.data;
-        if (type === 'progress' && payload.activityId === activityIdForProgress) {
+        // Only update THIS specific button's progress text
+        if (type === 'progress' && payload.activityId === String(activity.id)) {
             if (buttonTextSpan) {
                 buttonTextSpan.textContent = `Analyzing (${payload.progress}%)...`;
             }
         }
-        // When result is received, restore original onmessage handler
-        if (type === 'result' && payload.activityId === activityIdForProgress ||
-            type === 'error' && payload.activityId === activityIdForProgress) {
-            analysisWorker.onmessage = originalOnMessage;
+        // When analysis for THIS specific activity is done (result or error), restore the global handler
+        if ((type === 'result' || type === 'error') && payload.activityId === String(activity.id)) {
+            analysisWorker.onmessage = originalOnMessage; // Restore original handler
+            // After analysis is complete, remove the loader span, as the button text will be 'Analyzed'/'Reanalyze'
+            if (button.querySelector('.loader')) {
+                button.innerHTML = buttonTextSpan ? buttonTextSpan.textContent : (type === 'result' ? 'Reanalyze' : 'Analysis Failed');
+            }
         }
     };
 }
@@ -844,6 +868,8 @@ function initializeUIElements() {
     UIElements.progressSummarySection = document.getElementById('progress-summary-section');
     UIElements.appBackground = document.getElementById('app-background');
     UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
+    // --- NEW UI ELEMENT FOR PROGRESS LOADING ---
+    UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
 }
 
 
@@ -873,16 +899,21 @@ const init = async () => {
                 log(`Analysis complete for activity ${activityId}. Updating UI.`, 'success');
                 console.log("Worker Result Payload:", payload);
 
-                if (activityId !== 'initial_load') {
+                if (activityId !== 'initial_load') { // Don't modify button state for initial load (only for individual activity clicks)
                     if(analyzeBtn) {
                         analyzeBtn.textContent = 'Reanalyze';
-                        analyzeBtn.classList.remove('btn-primary');
-                        analyzeBtn.classList.add('btn-secondary');
+                        analyzeBtn.classList.remove('btn-primary', 'btn-secondary'); // Ensure clean slate
+                        analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
                         analyzeBtn.disabled = false;
                     }
                     const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
                     processedIds.add(activityId);
                     localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
+                } else {
+                    // --- HIDE OVERALL PROGRESS LOADING INDICATOR ---
+                    if (UIElements.overallProgressLoading) {
+                        UIElements.overallProgressLoading.classList.add('hidden');
+                    }
                 }
                 updateProgressUI(payload);
             } else if (type === 'error') {
@@ -892,16 +923,28 @@ const init = async () => {
                     analyzeBtn.disabled = false;
                 }
                 alert(`Analysis failed for activity ${activityId}: ${error}. Check console for details.`);
+                // Hide overall progress loading indicator also on initial load error
+                if (activityId === 'initial_load' && UIElements.overallProgressLoading) {
+                    UIElements.overallProgressLoading.classList.add('hidden');
+                }
             }
         };
 
         analysisWorker.onerror = (e) => {
             log(`Critical worker error: ${e.message || 'Unknown worker error'}`, 'error');
             alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
+            // Also hide progress indicator if worker crashes during initial load
+            if (UIElements.overallProgressLoading) {
+                UIElements.overallProgressLoading.classList.add('hidden');
+            }
         };
     } catch (e) {
         log(`Failed to initialize analysis worker: ${e.message}`, 'error');
         alert('Failed to load background analysis. Progress tracking might not work. Check console for "swcp_analysis_worker.js" errors.');
+        // Hide progress indicator if worker fails to initialize
+        if (UIElements.overallProgressLoading) {
+            UIElements.overallProgressLoading.classList.add('hidden');
+        }
     }
 
     // Event Listeners
