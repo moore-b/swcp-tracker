@@ -553,7 +553,10 @@
         }
 
         function updateProgressUI(payload) {
-            if (!completedSegmentsLayer) return;
+            if (!completedSegmentsLayer || !UIElements.completedDistance) {
+                console.error('UI elements for progress update are not ready.');
+                return;
+            }
             const { segments, totalDistance, percentage, newCompletedPoints } = payload;
            
             completedSegmentsLayer.clearLayers();
@@ -635,6 +638,7 @@
                 analysisWorker.onmessage = (e) => {
                     const { type, payload } = e.data;
                     if (!payload || !payload.activityId) return;
+                   
                     const { activityId, progress, error } = payload;
                     const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id='${activityId}']`);
                    
