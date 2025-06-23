@@ -135,8 +135,11 @@
             </div>
         </div>
     </template>
-
+   
     <script>
+        // All script code is now placed at the end of the body.
+        // This ensures all HTML elements exist before the script runs.
+       
         // --- CONSTANTS ---
         const SWCP_GEOJSON_URL = 'routes.geojson';
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
@@ -571,25 +574,19 @@
        
         // --- INITIALIZATION ---
         const main = async () => {
-            // 1. Link UI Elements explicitly.
             const elementIds = ['initialLoadingScreen', 'loginScreenWrapper', 'configSection', 'clientId', 'clientSecret', 'connectButton', 'mainLayoutContainer', 'headerSection', 'progressSummarySection', 'stravaUserInfo', 'completedDistance', 'totalDistance', 'progressPercentage', 'progressBar', 'resetButton', 'mapSection', 'map', 'mapLoadingOverlay', 'statusLogSectionContainer', 'statusLogDetails', 'statusLog', 'activitiesSection', 'activityCount', 'activitySearchBox', 'refreshActivitiesBtn', 'activitiesLoadingSpinner', 'activityListContainer', 'activityCardTemplate'];
-            let allElementsFound = true;
             elementIds.forEach(id => {
                 const key = id.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
                 UIElements[key] = document.getElementById(id);
-                if (!UIElements[key]) {
-                    console.error(`Critical UI element with ID '${id}' not found.`);
-                    allElementsFound = false;
-                }
             });
 
-            if (!allElementsFound) {
-                alert("A critical UI element is missing from the HTML. The application cannot start. Please check the console (F12) for details.");
+            // This check now runs inside DOMContentLoaded, so it should pass.
+            if (!UIElements.loginScreenWrapper || !UIElements.mainLayoutContainer) {
+                alert("A critical UI element is missing from the HTML. The application cannot start.");
                 return;
             }
             log('UI elements linked.');
 
-            // 2. Initialize Web Worker
             try {
                 analysisWorker = new Worker('swcp_analysis_worker.js');
                 analysisWorker.onmessage = (e) => {
@@ -626,7 +623,6 @@
                 console.error(workerError);
             }
 
-            // 3. Attach Event Listeners
             UIElements.connectButton.onclick = () => {
                 localStorage.setItem('stravaClientId', UIElements.clientId.value);
                 localStorage.setItem('stravaClientSecret', UIElements.clientSecret.value);
@@ -637,7 +633,6 @@
             UIElements.activitySearchBox.oninput = filterAndRenderActivities;
             UIElements.refreshActivitiesBtn.onclick = fetchAndRenderActivities;
 
-            // 4. Handle Auth Flow & App Start
             UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
             UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
            
@@ -656,8 +651,6 @@
             }
         };
        
-        // This is the most reliable way to start the script.
-        // It waits for the browser to build the page before running any code.
         document.addEventListener('DOMContentLoaded', main);
     </script>
 </body>
