@@ -371,7 +371,6 @@
             if (swcpGeoJSON) { updateProgress(completedPoints); }
         }
 
-        // --- THIS IS THE CORRECTED FUNCTION ---
         function updateProgress(completedPoints) {
             if (!swcpGeoJSON || !completedSegmentsLayer) {
                 log('Cannot update progress, map or data not ready.', 'warn');
@@ -386,7 +385,6 @@
                 return;
             }
 
-            // 1. De-duplicate points to reduce noise and improve performance
             const uniquePoints = completedPoints.reduce((acc, point) => {
                 if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), { units: 'meters' }) < 20)) {
                     acc.push(point);
@@ -396,14 +394,12 @@
 
             if (uniquePoints.length < 2) return;
 
-            // 2. Sort all unique points based on their linear position along the SWCP
             const pointsWithLocation = uniquePoints.map(p => {
                 const pointOnLine = turf.nearestPointOnLine(swcpGeoJSON, p);
                 return { coords: p, location: pointOnLine.properties.location };
             });
             pointsWithLocation.sort((a, b) => a.location - b.location);
 
-            // 3. Group the sorted points into contiguous segments
             const segments = [];
             let currentSegment = [];
             const MAX_GAP_KM = 0.5; // If gap between points on the path is > 500m, start a new line
@@ -418,37 +414,30 @@
                 const gapInKm = curr.location - prev.location;
 
                 if (gapInKm > MAX_GAP_KM) {
-                    // The gap is too big, this is a new hike. Finalize the old segment.
                     if (currentSegment.length > 1) {
                         segments.push(currentSegment);
                     }
-                    // Start a new segment with the current point
                     currentSegment = [curr.coords];
                 } else {
-                    // The gap is small, so continue the current segment
                     currentSegment.push(curr.coords);
                 }
             }
-            // Add the very last segment after the loop finishes
-            if (currentSegment.length > 1) {
+            if (currentSegment.length > 0) { // Push the last segment
                 segments.push(currentSegment);
             }
 
-            // 4. Draw each segment as a separate line and calculate total distance
             let totalCompletedDistance = 0;
             segments.forEach(segment => {
-                // Draw the line on the map
-                const leafletCoords = segment.map(coord => [coord[1], coord[0]]); // Leaflet needs [lat, lng]
-                L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
-               
-                // Add its length to the total
-                totalCompletedDistance += turf.length(turf.lineString(segment), { units: 'kilometers' });
+                if (segment.length > 1) {
+                    const leafletCoords = segment.map(coord => [coord[1], coord[0]]);
+                    L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+                    totalCompletedDistance += turf.length(turf.lineString(segment), { units: 'kilometers' });
+                }
             });
            
-            log(`Identified and drew ${segments.length} separate segments.`);
+            log(`Identified and drew ${segments.length} separate segment(s).`);
 
-            // 5. Update the UI with the final calculated progress
-            const currentPercentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
+            const currentPercentage = swcpTotalDistance > 0 ? Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100) : 0;
             UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
             UIElements.progressPercentage.textContent = `${currentPercentage.toFixed(2)}%`;
             UIElements.progressBar.style.width = `${currentPercentage}%`;
@@ -533,40 +522,47 @@
              log('Add to description clicked. This feature is not yet fully implemented.');
         }
 
+        // --- THIS IS THE CORRECTED FUNCTION ---
         async function analyzeSingleActivity(activity, button) {
             if (!analysisWorker) {
                 log('Error: Analysis worker is not available.', 'error');
                 button.textContent = 'Error: Worker Failed';
                 return;
             }
+
             button.disabled = true;
             button.innerHTML = `<span class="loader"></span>Queued...`;
-            log(`Starting analysis for: "${activity.name}"`);
+            log(`Queuing analysis for: "${activity.name}"`);
 
-            try {
-                const stream = await getActivityStream(activity.id);
-                if (!stream || stream.length === 0) {
-                    log(`No GPS data for activity ${activity.id}.`, 'error');
-                    button.textContent = 'No GPS Data';
-                    return;
+            // Use setTimeout to allow the browser to render the spinner before blocking the main thread.
+            setTimeout(async () => {
+                try {
+                    const stream = await getActivityStream(activity.id);
+                    if (!stream || stream.length === 0) {
+                        log(`No GPS data for activity ${activity.id}.`, 'error');
+                        button.textContent = 'No GPS Data';
+                        button.disabled = false; // Allow user to try again if it was a temp error
+                        return;
+                    }
+
+                    log('Sending activity data to worker...');
+                    analysisWorker.postMessage({
+                        type: 'analyze_activity',
+                        activityId: activity.id,
+                        activityLineCoords: stream.map(p => [p[1], p[0]])
+                    });
+                } catch (error) {
+                    log(`Failed to get stream for ${activity.id}: ${error.message}`, 'error');
+                    button.textContent = 'Error';
+                    button.disabled = false;
                 }
-                log('Sending activity data to worker...');
-                analysisWorker.postMessage({
-                    type: 'analyze_activity',
-                    activityId: activity.id,
-                    activityLineCoords: stream.map(p => [p[1], p[0]])
-                });
-            } catch (error) {
-                log(`Failed to get stream for ${activity.id}: ${error.message}`, 'error');
-                button.textContent = 'Error';
-                button.disabled = false;
-            }
+            }, 10); // A small 10ms delay is enough for the UI to update.
         }
        
         // --- INITIALIZATION ---
         document.addEventListener('DOMContentLoaded', async () => {
             try {
-                // 1. Link UI Elements explicitly to avoid errors. This is the most reliable way.
+                // 1. Link UI Elements explicitly.
                 UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
                 UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
                 UIElements.configSection = document.getElementById('config-section');
