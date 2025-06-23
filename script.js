@@ -582,11 +582,10 @@ async function analyzeSingleActivity(activity, button) {
     const existingPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     log(`Sending activity ${activity.id} data to worker for analysis...`);
    
-    // Capture the current activityId to update the specific button from the global worker handler
-    const currentActivityId = String(activity.id);
-
     // The main analysisWorker.onmessage handler (defined in init) will now manage button updates.
-    // Ensure the global handler correctly uses `document.querySelector` to find THIS specific button.
+    // We only need to ensure the worker knows which activity's button to update.
+    const currentActivityId = String(activity.id); // Capture for `postMessage`
+
     analysisWorker.postMessage({
         type: 'process_activity',
         activityId: currentActivityId, // Pass the ID
@@ -687,6 +686,7 @@ function updateProgressUI(payload) {
     }
 
     // Ensure values are numbers before setting textContent and style.width
+    // Using `parseFloat` just in case, though worker should send numbers now
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
@@ -701,98 +701,182 @@ async function addDescriptionToStrava(activity, button) {
         if (!responseGet.ok) throw new Error(await responseGet.text());
         const fullActivity = await responseGet.json();
         const existingDescription = fullActivity.description || '';
-        const newText = `I've now completed ${currentPercentage}% of the South West Coast Path! 🥾`;
-        const updatedDescription = existingDescription ? `${newText}
+        const newText = `I've now completed ${currentPercentage.toFixed(2)}% of the South West Coast Path! 🥾`; // Use toFixed for consistency
+        const updatedDescription = existingDescription ? `${newText}\n\n---\n\n${existingDescription}` : newText; // Fixed template literal spacing
 
----
+        const responsePut = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activity.id}`, {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ description: updatedDescription })
+        });
+        if (!responsePut.ok) throw new Error(await responsePut.text());
+        log('Strava description updated.', 'success');
+        button.textContent = 'Description Added!';
+    } catch (e) {
+        log(`Error updating description: ${e.message}`, 'error');
+        button.textContent = 'Error';
+    } finally {
+        setTimeout(() => { button.textContent = 'Add to Strava Description'; button.disabled = false; }, 3000);
+    }
+}
+   
+const init = async () => {
+    // This explicit assignment method is the most robust and prevents initialization errors.
+    UIElements.clientId = document.getElementById('clientId');
+    UIElements.clientSecret = document.getElementById('clientSecret');
+    UIElements.connectButton = document.getElementById('connect-button');
+    UIElements.configSection = document.getElementById('config-section');
+    UIElements.activityListContainer = document.getElementById('activity-list-container');
+    UIElements.activityCardTemplate = document.getElementById('activity-card-template');
+    UIElements.activityCount = document.getElementById('activity-count');
+    UIElements.filterButtons = document.getElementById('filter-buttons');
+    UIElements.resetButton = document.getElementById('reset-button');
+    UIElements.statusLog = document.getElementById('status-log');
+    UIElements.stravaUserInfo = document.getElementById('strava-user-info');
+    UIElements.progressBar = document.getElementById('progress-bar');
+    UIElements.progressPercentage = document.getElementById('progress-percentage');
+    UIElements.completedDistance = document.getElementById('completed-distance');
+    UIElements.totalDistance = document.getElementById('total-distance');
+    UIElements.mainMap = document.getElementById('map');
+    UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
+    UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
+    UIElements.statusLogDetails = document.getElementById('status-log-details');
+    UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container');
+    UIElements.activitiesSection = document.getElementById('activities-section');
+    UIElements.mapSection = document.getElementById('map-section');
+    UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
+    UIElements.activitySearchBox = document.getElementById('activity-search-box');
+    UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
+    UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
+    UIElements.headerSection = document.getElementById('header-section');
+    UIElements.progressSummarySection = document.getElementById('progress-summary-section');
+    UIElements.appBackground = document.getElementById('app-background');
+    UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
+    // --- NEW UI ELEMENT FOR PROGRESS LOADING ---
+    UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
+   
+    log('App initialized.');
+   
+    try {
+        analysisWorker = new Worker('swcp_analysis_worker.js');
+        log('Analysis worker initialized.', 'success');
+       
+        // --- REVISED GLOBAL WORKER MESSAGE HANDLER ---
+        // This single handler is responsible for ALL messages from the worker.
+        // It now uses document.querySelector to target specific buttons.
+        analysisWorker.onmessage = (e) => {
+            const { type, payload } = e.data;
+            if (!payload || !payload.activityId) return; // Ensure basic payload structure
+           
+            const { activityId, progress, error } = payload;
+            const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id='${activityId}']`);
+           
+            if (type === 'progress') {
+                if (analyzeBtn) {
+                    const buttonTextSpan = analyzeBtn.querySelector('.button-text');
+                    if (buttonTextSpan) {
+                        buttonTextSpan.textContent = `Analyzing (${progress}%)...`;
+                    }
+                }
+            } else if (type === 'result') {
+                log(`Analysis complete for activity ${activityId}. Updating UI.`, 'success');
+                console.log("Worker Result Payload (Result):", payload); // Console log final payload from worker
 
-${existingDescription}` : newText;
-            const responsePut = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activity.id}`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ description: updatedDescription })
-            });
-            if (!responsePut.ok) throw new Error(await responsePut.text());
-            log('Strava description updated.', 'success');
-            button.textContent = 'Description Added!';
-        } catch (e) {
-            log(`Error updating description: ${e.message}`, 'error');
-            button.textContent = 'Error';
-        } finally {
-            setTimeout(() => { button.textContent = 'Add to Strava Description'; button.disabled = false; }, 3000);
+                if (activityId !== 'initial_load') {
+                    if(analyzeBtn) {
+                        analyzeBtn.textContent = 'Reanalyze';
+                        analyzeBtn.classList.remove('btn-primary', 'btn-secondary'); // Clean slate
+                        analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
+                        analyzeBtn.disabled = false;
+                        // After analysis is complete, remove the loader span, as the button text will be 'Reanalyze'
+                        const loaderSpan = analyzeBtn.querySelector('.loader');
+                        if(loaderSpan) loaderSpan.remove();
+                    }
+                    const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+                    processedIds.add(activityId);
+                    localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
+                } else { // This is for activityId === 'initial_load'
+                    // --- HIDE OVERALL PROGRESS LOADING INDICATOR ---
+                    if (UIElements.overallProgressLoading) {
+                        UIElements.overallProgressLoading.classList.add('hidden');
+                    }
+                }
+                updateProgressUI(payload); // Update main progress bar and map segments
+            } else if (type === 'error') {
+                log(`Worker error for ${activityId}: ${error}`, 'error');
+                if (analyzeBtn) {
+                    analyzeBtn.textContent = 'Analysis Failed';
+                    analyzeBtn.disabled = false;
+                    // Remove loader on error
+                    const loaderSpan = analyzeBtn.querySelector('.loader');
+                    if(loaderSpan) loaderSpan.remove();
+                }
+                alert(`Analysis failed for activity ${activityId}: ${error}. Check console for details.`);
+                // Hide overall progress loading indicator also on initial load error
+                if (activityId === 'initial_load' && UIElements.overallProgressLoading) {
+                    UIElements.overallProgressLoading.classList.add('hidden');
+                }
+            }
+        };
+
+        analysisWorker.onerror = (e) => {
+            log(`Critical worker error: ${e.message || 'Unknown worker error'}`, 'error');
+            alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
+            // Hide progress indicator if worker crashes
+            if (UIElements.overallProgressLoading) {
+                UIElements.overallProgressLoading.classList.add('hidden');
+            }
+        };
+    } catch (e) {
+        log(`Failed to initialize analysis worker: ${e.message}`, 'error');
+        alert('Failed to load background analysis. Progress tracking might not work. Check console for "swcp_analysis_worker.js" errors.');
+        // Hide progress indicator if worker fails to initialize
+        if (UIElements.overallProgressLoading) {
+            UIElements.overallProgressLoading.classList.add('hidden');
         }
     }
+
+    // Event Listeners
+    UIElements.connectButton.addEventListener('click', connectToStrava);
+    UIElements.resetButton.addEventListener('click', resetProgress);
+    UIElements.filterButtons.addEventListener('click', handleFilterClick);
+    UIElements.activitySearchBox.addEventListener('input', filterActivities);
+    UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
+    UIElements.clientId.addEventListener('input', checkInputs);
+    UIElements.clientSecret.addEventListener('input', checkInputs);
+    window.addEventListener('resize', updateGridLayout);
+
+    // Populate input fields from local storage (if available)
+    UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
+    UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
+    checkInputs(); // Check inputs immediately to enable/disable connect button
+
+    // Handle Strava OAuth callback
+    const urlParams = new URLSearchParams(window.location.search);
+    const authCode = urlParams.get('code');
+    const authError = urlParams.get('error'); // Check for OAuth errors
+
+    UIElements.initialLoadingScreen.classList.add('hidden'); // Hide initial loading screen
+
+    if (authError) {
+        log(`Strava OAuth Error: ${authError}. Please try connecting again.`, 'error');
+        alert(`Strava connection failed: ${authError}`);
+        UIElements.loginScreenWrapper.classList.remove('hidden'); // Show login screen on error
+    } else if (authCode) {
+        // We've been redirected back from Strava with a code
+        UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating with Strava...</span></div>`;
+        UIElements.loginScreenWrapper.classList.remove('hidden');
+        await getAccessToken(authCode);
+    } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
+        // User has existing tokens, show main app
+        UIElements.mainLayoutContainer.classList.remove('hidden');
+        await showMainApp();
+    } else {
+        // No code, no existing token, show login screen
+        UIElements.loginScreenWrapper.classList.remove('hidden');
+    }
    
-    const init = async () => {
-        // This explicit assignment method is the most robust and prevents initialization errors.
-        UIElements.clientId = document.getElementById('clientId');
-        UIElements.clientSecret = document.getElementById('clientSecret');
-        UIElements.connectButton = document.getElementById('connect-button');
-        UIElements.configSection = document.getElementById('config-section');
-        UIElements.activityListContainer = document.getElementById('activity-list-container');
-        UIElements.activityCardTemplate = document.getElementById('activity-card-template');
-        UIElements.activityCount = document.getElementById('activity-count');
-        UIElements.filterButtons = document.getElementById('filter-buttons');
-        UIElements.resetButton = document.getElementById('reset-button');
-        UIElements.statusLog = document.getElementById('status-log');
-        UIElements.stravaUserInfo = document.getElementById('strava-user-info');
-        UIElements.progressBar = document.getElementById('progress-bar');
-        UIElements.progressPercentage = document.getElementById('progress-percentage');
-        UIElements.completedDistance = document.getElementById('completed-distance');
-        UIElements.totalDistance = document.getElementById('total-distance');
-        UIElements.mainMap = document.getElementById('map');
-        UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
-        UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
-        UIElements.statusLogDetails = document.getElementById('status-log-details');
-        UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container');
-        UIElements.activitiesSection = document.getElementById('activities-section');
-        UIElements.mapSection = document.getElementById('map-section');
-        UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
-        UIElements.activitySearchBox = document.getElementById('activity-search-box');
-        UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
-        UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
-        UIElements.headerSection = document.getElementById('header-section');
-        UIElements.progressSummarySection = document.getElementById('progress-summary-section');
-        UIElements.appBackground = document.getElementById('app-background');
-        UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
-        // --- NEW UI ELEMENT FOR PROGRESS LOADING ---
-        UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
-       
-        log('App initialized.');
-   
-        try {
-            analysisWorker = new Worker('swcp_analysis_worker.js');
-            log('Analysis worker initialized.', 'success');
-        } catch (e) { log('Failed to initialize analysis worker.', 'error'); }
-   
-        UIElements.connectButton.addEventListener('click', connectToStrava);
-        UIElements.resetButton.addEventListener('click', resetProgress);
-        UIElements.filterButtons.addEventListener('click', handleFilterClick);
-        UIElements.activitySearchBox.addEventListener('input', filterActivities);
-        UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
-        UIElements.clientId.addEventListener('input', checkInputs);
-        UIElements.clientSecret.addEventListener('input', checkInputs);
-       
-        UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
-        UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
-        checkInputs();
-   
-        const authCode = new URLSearchParams(window.location.search).get('code');
-       
-        UIElements.initialLoadingScreen.classList.add('hidden');
-        if (authCode) {
-            UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating...</span></div>`;
-            UIElements.loginScreenWrapper.classList.remove('hidden');
-            await getAccessToken(authCode);
-        } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
-            UIElements.mainLayoutContainer.classList.remove('hidden');
-            await showMainApp();
-        } else {
-            UIElements.loginScreenWrapper.classList.remove('hidden');
-        }
-       
-        updateGridLayout();
-        window.addEventListener('resize', updateGridLayout);
-    };
-   
-    document.addEventListener('DOMContentLoaded', init);
+    updateGridLayout(); // Initial layout adjustment
+};
+
+document.addEventListener('DOMContentLoaded', init);
