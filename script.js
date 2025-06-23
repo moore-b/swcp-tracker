@@ -12,8 +12,7 @@ const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
 const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
 
 // --- CRITICAL FIX: Define UIElements at the top-most scope ---
-// This ensures UIElements is always defined when the log function (or any other function) is called,
-// even during very early initialization.
+// This ensures UIElements is always defined as an object.
 const UIElements = {};
 
 // Global variables for map and data
@@ -27,11 +26,10 @@ let swcpDataPromise = null; // Will store the promise for loading SWCP data
  * @param {'info' | 'warn' | 'error' | 'success'} type - The type of message for styling.
  */
 const log = (message, type = 'info') => {
-    // This check is now less likely to fail, as UIElements is globally defined.
-    // However, UIElements.statusLog itself won't be assigned until initializeUIElements runs.
-    // For very early logs *before* UI elements are assigned, they will go to console.warn.
+    // This check ensures logs don't fail if UIElements.statusLog hasn't been assigned an element yet.
     if (!UIElements.statusLog) {
         console.warn('Status log element not yet available in UI. Logging to console:', message);
+        console.log(`[${new Date().toLocaleTimeString()}]: ${message}`); // Always log to console as fallback
         return;
     }
     const now = new Date().toLocaleTimeString();
@@ -149,7 +147,9 @@ async function refreshAccessToken() {
    
 /** Updates the CSS grid layout based on screen width. */
 function updateGridLayout() {
-    if (!UIElements.mainLayoutContainer) return; // Ensure elements are ready
+    // Now UIElements should be defined, but its properties might be null if init hasn't finished.
+    // So defensive checks on individual properties are still good.
+    if (!UIElements.mainLayoutContainer) return;
 
     const isMobile = window.innerWidth <= 1024; // Tailwind's 'lg' breakpoint
 
@@ -176,8 +176,8 @@ function updateGridLayout() {
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
             if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
             if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIlements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIlements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
+            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
+            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.gridColumn = '2';
                 UIElements.activitiesSection.style.gridRow = '1 / span 4';
@@ -697,7 +697,9 @@ function updateProgressUI(payload) {
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
-    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints)); // Ensure newCompletedPoints are saved
+    // --- CRITICAL FIX: Ensure newCompletedPoints are saved for persistence ---
+    // This is the array that drives the overall progress on subsequent loads.
+    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints));
     log(`Overall progress updated: ${totalDistance.toFixed(2)} km (${parseFloat(percentage).toFixed(2)}%)`, 'success');
 }
    
@@ -728,9 +730,9 @@ async function addDescriptionToStrava(activity, button) {
 }
    
 const init = async () => {
-    // --- CRITICAL FIX: Ensure UIElements is initialized immediately ---
-    // This must be the very first thing to prevent ReferenceError when log() is called.
-    // Also, initialize UIElements property values directly here.
+    // --- CRITICAL FIX: Initialize all UIElements properties immediately ---
+    // This ensures all UIElements properties are set *before* any functions that use them are called,
+    // preventing "UIElements is not defined" or "Cannot read properties of null" errors.
     UIElements.clientId = document.getElementById('clientId');
     UIElements.clientSecret = document.getElementById('clientSecret');
     UIElements.connectButton = document.getElementById('connect-button');
@@ -763,14 +765,14 @@ const init = async () => {
     UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
     UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
 
-    log('Application initialization started.');
+    log('Application initialization started.'); // This log call should now work
    
     try {
         analysisWorker = new Worker('swcp_analysis_worker.js');
         log('Analysis worker initialized.', 'success');
        
         // This single handler is responsible for ALL messages from the worker.
-        // It uses document.querySelector to target specific buttons.
+        // It now uses document.querySelector to target specific buttons.
         analysisWorker.onmessage = (e) => {
             const { type, payload } = e.data;
             if (!payload || !payload.activityId) return;
