@@ -162,7 +162,7 @@
         const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_';
         const CACHED_ACTIVITIES_KEY = 'swcp_cached_activities';
         const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_activities_timestamp';
-        const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
+        const CACHE_EXPIRY_MS = 60 * 60 * 1000;
         const BACKGROUND_IMAGE_PATH = 'background.webp';
         const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
         const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
@@ -245,20 +245,30 @@
             if (isMobile) {
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
                 UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
+                UIElements.headerSection.style.gridColumn = '1';
                 UIElements.headerSection.style.gridRow = '1';
+                UIElements.progressSummarySection.style.gridColumn = '1';
                 UIElements.progressSummarySection.style.gridRow = '2';
+                UIElements.mapSection.style.gridColumn = '1';
                 UIElements.mapSection.style.gridRow = '3';
+                UIElements.activitiesSection.style.gridColumn = '1';
                 UIElements.activitiesSection.style.gridRow = '4';
+                UIElements.statusLogSectionContainer.style.gridColumn = '1';
                 UIElements.statusLogSectionContainer.style.gridRow = '5';
                 UIElements.activitiesSection.style.position = 'static';
                 UIElements.activitiesSection.style.height = 'auto';
             } else {
                 UIElements.mainLayoutContainer.style.gridTemplateColumns = '2fr 1fr';
                 UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
+                UIElements.headerSection.style.gridColumn = '1';
                 UIElements.headerSection.style.gridRow = '1';
+                UIElements.progressSummarySection.style.gridColumn = '1';
                 UIElements.progressSummarySection.style.gridRow = '2';
+                UIElements.mapSection.style.gridColumn = '1';
                 UIElements.mapSection.style.gridRow = '3';
+                UIElements.statusLogSectionContainer.style.gridColumn = '1';
                 UIElements.statusLogSectionContainer.style.gridRow = '4';
+                UIElements.activitiesSection.style.gridColumn = '2';
                 UIElements.activitiesSection.style.gridRow = '1 / span 4';
                 UIElements.activitiesSection.style.position = 'sticky';
                 UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
@@ -308,24 +318,28 @@
        
         async function showMainApp() {
             log('Loading main application...');
-            UIElements.loginScreenWrapper.classList.add('hidden');
-            UIElements.mainLayoutContainer.classList.remove('hidden');
             const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
             if (athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-            await initializeMap();
-            loadProgressFromStorage();
            
+            // The two main data-loading functions are called here.
+            // We use Promise.all to run them in parallel for better performance.
+            await Promise.all([initializeMap(), fetchAndRenderActivities()]);
+
+            loadProgressFromStorage();
+            if (mainMap) mainMap.invalidateSize();
+            log('Application loaded.', 'success');
+        }
+       
+        // This new helper function isolates the activity loading and rendering
+        async function fetchAndRenderActivities() {
             UIElements.activitiesLoadingSpinner.classList.remove('hidden');
             allFetchedActivities = await fetchAllActivities();
             UIElements.activitiesLoadingSpinner.classList.add('hidden');
-           
             if (allFetchedActivities) {
                 filterActivities();
             } else {
                 log('Could not load activities.', 'error');
             }
-            if (mainMap) mainMap.invalidateSize();
-            log('Application loaded.', 'success');
         }
 
         async function initializeMap() {
@@ -341,11 +355,8 @@
                 const data = await response.json();
                
                 const allCoordinates = data.features.reduce((coords, feature) => {
-                    if (feature.geometry.type === 'LineString') {
-                        return coords.concat(feature.geometry.coordinates);
-                    } else if (feature.geometry.type === 'MultiLineString') {
-                        return coords.concat(...feature.geometry.coordinates);
-                    }
+                    if (feature.geometry.type === 'LineString') { return coords.concat(feature.geometry.coordinates); }
+                    else if (feature.geometry.type === 'MultiLineString') { return coords.concat(...feature.geometry.coordinates); }
                     return coords;
                 }, []);
                 swcpGeoJSON = turf.lineString(allCoordinates).geometry;
@@ -403,10 +414,7 @@
             localStorage.removeItem(CACHED_ACTIVITIES_KEY);
             localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
             log('Cache cleared. Fetching new activities...');
-            UIElements.activitiesLoadingSpinner.classList.remove('hidden');
-            allFetchedActivities = await fetchAllActivities();
-            UIElements.activitiesLoadingSpinner.classList.add('hidden');
-            if (allFetchedActivities) filterActivities();
+            await fetchAndRenderActivities();
         }
 
         function renderActivityList(activities) {
@@ -641,38 +649,12 @@
 
         const init = async () => {
             // This explicit assignment is the most robust method and fixes the recurring errors.
-            UIElements.clientId = document.getElementById('clientId');
-            UIElements.clientSecret = document.getElementById('clientSecret');
-            UIElements.connectButton = document.getElementById('connect-button');
-            UIElements.configSection = document.getElementById('config-section');
-            UIElements.activityListContainer = document.getElementById('activity-list-container');
-            UIElements.activityCardTemplate = document.getElementById('activity-card-template');
-            UIElements.activityCount = document.getElementById('activity-count');
-            UIElements.filterButtons = document.getElementById('filter-buttons');
-            UIElements.resetButton = document.getElementById('reset-button');
-            UIElements.statusLog = document.getElementById('status-log');
-            UIElements.stravaUserInfo = document.getElementById('strava-user-info');
-            UIElements.progressBar = document.getElementById('progress-bar');
-            UIElements.progressPercentage = document.getElementById('progress-percentage');
-            UIElements.completedDistance = document.getElementById('completed-distance');
-            UIElements.totalDistance = document.getElementById('total-distance');
-            UIElements.mainMap = document.getElementById('map');
-            UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
-            UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
-            UIElements.statusLogDetails = document.getElementById('status-log-details');
-            UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container');
-            UIElements.activitiesSection = document.getElementById('activities-section');
-            UIElements.mapSection = document.getElementById('map-section');
-            UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
-            UIElements.activitySearchBox = document.getElementById('activity-search-box');
-            UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
-            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
-            UIElements.headerSection = document.getElementById('header-section');
-            UIElements.progressSummarySection = document.getElementById('progress-summary-section');
-            UIElements.appBackground = document.getElementById('app-background');
-            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
+            const elementIds = ['clientId', 'clientSecret', 'connect-button', 'config-section', 'activity-list-container', 'activity-card-template', 'activity-count', 'filter-buttons', 'reset-button', 'status-log', 'strava-user-info', 'progress-bar', 'progress-percentage', 'completed-distance', 'total-distance', 'map', 'main-layout-container', 'login-screen-wrapper', 'status-log-details', 'status-log-section-container', 'activities-section', 'map-section', 'activities-loading-spinner', 'activity-search-box', 'map-loading-overlay', 'refresh-activities-btn', 'header-section', 'progress-summary-section', 'app-background', 'initial-loading-screen'];
+            elementIds.forEach(id => {
+                const key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
+                UIElements[key] = document.getElementById(id);
+            });
            
-            // --- DIAGNOSTIC CHECK ---
             if (!UIElements.connectButton) {
                 alert("DIAGNOSTIC: CRITICAL ERROR! The script could not find the 'Connect with Strava' button in the HTML. Please check the button's ID is set to 'connect-button'.");
                 return;
@@ -727,19 +709,21 @@
             const authCode = new URLSearchParams(window.location.search).get('code');
             if (authCode) {
                 UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating...</span></div>`;
+                UIElements.initialLoadingScreen.classList.add('hidden');
                 UIElements.loginScreenWrapper.classList.remove('hidden');
                 await getAccessToken(authCode);
             } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
+                UIElements.initialLoadingScreen.classList.add('hidden');
+                UIElements.mainLayoutContainer.classList.remove('hidden');
                 await showMainApp();
             } else {
+                UIElements.initialLoadingScreen.classList.add('hidden');
                 UIElements.loginScreenWrapper.classList.remove('hidden');
-                // --- DIAGNOSTIC CHECK ---
                 if (UIElements.connectButton && UIElements.connectButton.disabled) {
-                    alert("DIAGNOSTIC: The 'Connect with Strava' button is disabled because the Client ID and/or Secret are missing. Please enter them to continue.");
+                    alert("DIAGNOSTIC: The 'Connect with Strava' button is disabled. Please enter your Client ID and Client Secret to enable it.");
                 }
             }
            
-            UIElements.initialLoadingScreen.classList.add('hidden');
             updateGridLayout();
             window.addEventListener('resize', updateGridLayout);
         };
