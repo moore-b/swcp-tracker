@@ -12,10 +12,44 @@ const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
 const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
 
 // --- CRITICAL FIX: Define UIElements at the top-most scope ---
-// This ensures UIElements is always defined as an object.
-const UIElements = {};
+// This ensures UIElements is always defined as an object and its properties
+// are populated with DOM references as soon as the script executes.
+const UIElements = {
+    clientId: document.getElementById('clientId'),
+    clientSecret: document.getElementById('clientSecret'),
+    connectButton: document.getElementById('connect-button'),
+    configSection: document.getElementById('config-section'),
+    activityListContainer: document.getElementById('activity-list-container'),
+    activityCardTemplate: document.getElementById('activity-card-template'), // Template element
+    activityCount: document.getElementById('activity-count'),
+    filterButtons: document.getElementById('filter-buttons'),
+    resetButton: document.getElementById('reset-button'),
+    statusLog: document.getElementById('status-log'),
+    stravaUserInfo: document.getElementById('strava-user-info'),
+    progressBar: document.getElementById('progress-bar'),
+    progressPercentage: document.getElementById('progress-percentage'),
+    completedDistance: document.getElementById('completed-distance'),
+    totalDistance: document.getElementById('total-distance'),
+    mainMap: document.getElementById('map'), // The map container div
+    mainLayoutContainer: document.getElementById('main-layout-container'),
+    loginScreenWrapper: document.getElementById('login-screen-wrapper'),
+    statusLogDetails: document.getElementById('status-log-details'),
+    statusLogSectionContainer: document.getElementById('status-log-section-container'),
+    activitiesSection: document.getElementById('activities-section'),
+    mapSection: document.getElementById('map-section'),
+    activitiesLoadingSpinner: document.getElementById('activities-loading-spinner'),
+    activitySearchBox: document.getElementById('activity-search-box'),
+    mapLoadingOverlay: document.getElementById('map-loading-overlay'),
+    refreshActivitiesBtn: document.getElementById('refresh-activities-btn'),
+    headerSection: document.getElementById('header-section'),
+    progressSummarySection: document.getElementById('progress-summary-section'),
+    appBackground: document.getElementById('app-background'),
+    initialLoadingScreen: document.getElementById('initial-loading-screen'),
+    overallProgressLoading: document.getElementById('overall-progress-loading')
+};
 
 // Global variables for map and data
+// currentPercentage is critical here, ensure it's always up-to-date from updateProgressUI
 let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
 let analysisWorker = null;
 let swcpDataPromise = null; // Will store the promise for loading SWCP data
@@ -28,8 +62,9 @@ let swcpDataPromise = null; // Will store the promise for loading SWCP data
 const log = (message, type = 'info') => {
     // This check ensures logs don't fail if UIElements.statusLog hasn't been assigned an element yet.
     if (!UIElements.statusLog) {
+        // Fallback to console.log if the UI log element isn't ready
         console.warn('Status log element not yet available in UI. Logging to console:', message);
-        console.log(`[${new Date().toLocaleTimeString()}]: ${message}`); // Always log to console as fallback
+        console.log(`[${new Date().toLocaleTimeString()}]: ${message}`);
         return;
     }
     const now = new Date().toLocaleTimeString();
@@ -150,7 +185,7 @@ function updateGridLayout() {
     // Now UIElements should be defined, but its properties might be null if init hasn't finished.
     // So defensive checks on individual properties are still good.
     if (!UIElements.mainLayoutContainer) {
-        console.warn('updateGridLayout: UIElements.mainLayoutContainer is not defined.');
+        console.warn('updateGridLayout: UIElements.mainLayoutContainer is not defined yet.');
         return;
     }
 
@@ -164,7 +199,7 @@ function updateGridLayout() {
             if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
             if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
             if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIlements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
+            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
             if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '5';
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.position = 'static';
@@ -700,6 +735,9 @@ function updateProgressUI(payload) {
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
+   
+    // --- CRITICAL: Update global currentPercentage variable ---
+    currentPercentage = parseFloat(percentage); // Update the global variable here
 
     // --- CRITICAL FIX: Ensure newCompletedPoints are saved for persistence ---
     // This array holds all the points that define the completed sections of the path.
@@ -732,13 +770,14 @@ async function addDescriptionToStrava(activity, button) {
         const emojiCliffCoast = '🌊';
         const emojiHikingBoot = '🥾';
 
+        // currentPercentage is now guaranteed to be updated by updateProgressUI
         const newTextLine1 = `${currentPercentage.toFixed(2)}% of the South West Coast Path completed! ${emojiCliffCoast}`;
         const newTextLine2 = `${totalKilometersWalked.toFixed(2)} out of ${totalPathDistance.toFixed(2)} kilometres walked ${emojiHikingBoot}`;
        
         const newText = `${newTextLine1}\n${newTextLine2}`; // Combine lines with a newline character
         // --- END MODIFIED TEXT ---
 
-        const updatedDescription = existingDescription ? `${newText}\n\n---\n\n${existingDescription}` : newText; // Fixed template literal spacing
+        const updatedDescription = existingDescription ? `${newText}\n\n---\n\n${existingDescription}` : newText;
 
         const responsePut = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activity.id}`, {
             method: 'PUT',
