@@ -365,7 +365,7 @@ async function loadSwcpData() {
        
         // Add the GeoJSON data to the Leaflet map
         if (mainMap) { // Ensure mainMap is initialized before adding GeoJSON
-            // For Leaflet rendering, we can use the original data as Leaflet can often handle 3D points
+            // For Leaflet rendering, we can use the original data as Leaflet can handle 3D points
             // Or explicitly map to 2D if preferred, but original L.geoJSON usually handles it gracefully
             const leafletGeoJson = L.geoJSON(data, {
                 style: { color: 'blue', weight: 3, opacity: 0.7 }
@@ -491,13 +491,20 @@ function renderActivityList(activities) {
         const analyzeBtn = card.querySelector('[data-analyze-btn]');
         analyzeBtn.dataset.activityId = activity.id;
        
+        // --- REANALYZE FUNCTIONALITY CHANGE ---
         if (processedIds.has(String(activity.id))) {
-            analyzeBtn.textContent = 'Analyzed';
-            analyzeBtn.disabled = true;
+            analyzeBtn.textContent = 'Reanalyze'; // Change text to Reanalyze
+            analyzeBtn.classList.remove('btn-primary'); // Remove primary styling
+            analyzeBtn.classList.add('btn-secondary'); // Add secondary styling (green)
+            analyzeBtn.disabled = false; // Keep it clickable
         } else {
-            analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn);
+            analyzeBtn.textContent = 'Analyze for SWCP';
+            analyzeBtn.classList.add('btn-primary'); // Ensure primary styling for initial analyze
+            analyzeBtn.classList.remove('btn-secondary');
+            analyzeBtn.disabled = false;
         }
-       
+        analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn); // Always assign the handler
+
         const addDescriptionBtn = card.querySelector('[data-update-btn]');
         addDescriptionBtn.dataset.activityId = activity.id;
         addDescriptionBtn.onclick = () => addDescriptionToStrava(activity, addDescriptionBtn);
@@ -518,11 +525,9 @@ function renderActivityList(activities) {
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
                     L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap);
                    
-                    // --- FIX FOR MINI-MAP FITBOUNDS ERROR ---
                     // Call fitBounds on the map object, not the polyline
                     activityMap.fitBounds(latlngs);
                    
-                    // --- FIX FOR OFFSETWIDTH ERROR ---
                     // Invalidate size immediately after map is likely rendered or container is sized
                     activityMap.invalidateSize();
 
@@ -547,18 +552,23 @@ function renderActivityList(activities) {
  */
 async function analyzeSingleActivity(activity, button) {
     button.disabled = true;
-    button.innerHTML = `<span class="loader"></span>Analyzing (0%)...`;
    
+    // --- FIX FOR LOADER ANIMATION ---
+    // Instead of innerHTML = '...', create the loader once and update text separately.
+    button.innerHTML = '<span class="loader"></span><span class="button-text">Analyzing (0%)...</span>';
+    const buttonTextSpan = button.querySelector('.button-text');
+
     await swcpDataPromise; // Ensure SWCP GeoJSON is loaded before starting analysis
     if (!swcpGeoJSON) {
         alert('SWCP map data is still loading or failed to load. Please try again in a moment.');
         log('SWCP GeoJSON not available for analysis.', 'error');
-        button.disabled = false; button.textContent = 'Analyze for SWCP';
+        button.disabled = false; button.textContent = 'Analyze for SWCP'; // Revert button on error
         return;
     }
     if (!analysisWorker) {
         log('Analysis worker is offline or failed to initialize.', 'error');
         button.textContent = 'Error: Worker offline';
+        button.disabled = false; // Revert button on error
         return;
     }
 
@@ -566,23 +576,47 @@ async function analyzeSingleActivity(activity, button) {
     if (stream === null) {
         button.textContent = 'API Error';
         log(`Failed to get activity stream for ${activity.id}.`, 'error');
-        setTimeout(() => { button.disabled = false; button.textContent = 'Analyze for SWCP'; }, 3000);
+        setTimeout(() => { button.disabled = false; button.textContent = 'Analyze for SWCP'; }, 3000); // Revert after delay
         return;
     }
     if (!stream.latlng || !stream.latlng.data || stream.latlng.data.length === 0) {
         alert(`Could not get GPS data for activity "${activity.name}". Please check its privacy and map visibility settings on Strava.`);
         button.textContent = 'No GPS Data';
+        button.disabled = false; // Revert button
         log(`No GPS data found for activity ${activity.id}.`, 'warn');
         return;
     }
+   
+    // When reanalyzing, we want to re-process ALL previously completed points PLUS this new activity.
+    // So, we don't remove the activityId from PROCESSED_ACTIVITIES_KEY here.
     const existingPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     log(`Sending activity ${activity.id} data to worker for analysis...`);
     analysisWorker.postMessage({
         type: 'process_activity',
         activityId: String(activity.id), // Ensure activityId is a string for consistent keys
         activityStream: stream.latlng.data,
-        existingPoints: existingPoints
+        existingPoints: existingPoints // Send all existing points
     });
+
+    // --- FIX FOR LOADER ANIMATION ---
+    // Update progress text without replacing the whole innerHTML
+    const activityIdForProgress = String(activity.id); // Capture for closure
+    const originalOnMessage = analysisWorker.onmessage; // Store original handler temporarily
+
+    analysisWorker.onmessage = (e) => {
+        originalOnMessage(e); // Call the original handler
+        const { type, payload } = e.data;
+        if (type === 'progress' && payload.activityId === activityIdForProgress) {
+            if (buttonTextSpan) {
+                buttonTextSpan.textContent = `Analyzing (${payload.progress}%)...`;
+            }
+        }
+        // When result is received, restore original onmessage handler
+        if (type === 'result' && payload.activityId === activityIdForProgress ||
+            type === 'error' && payload.activityId === activityIdForProgress) {
+            analysisWorker.onmessage = originalOnMessage;
+        }
+    };
 }
    
 /**
@@ -822,42 +856,45 @@ const init = async () => {
     try {
         analysisWorker = new Worker('swcp_analysis_worker.js');
         log('Analysis worker initialized.', 'success');
+       
+        // This is the original, global onmessage handler for the worker.
+        // It will be temporarily replaced in analyzeSingleActivity for specific progress updates.
         analysisWorker.onmessage = (e) => {
             const { type, payload } = e.data;
-            if (!payload || !payload.activityId) return; // Ensure payload and activityId exist
+            if (!payload || !payload.activityId) return;
            
             const { activityId, progress, error } = payload;
-            // Select the specific button for the activity being processed
             const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id='${activityId}']`);
            
-            if (type === 'progress' && analyzeBtn) {
-                analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${progress}%)...`;
-            } else if (type === 'result') {
-                log(`Analysis complete for activity ${activityId}. Updating UI.`, 'success');
-                // --- DEBUGGING: Log payload from worker here ---
-                console.log("Worker Result Payload:", payload);
-                // --- END DEBUGGING ---
+            // The 'progress' type handling for the button text is now done in analyzeSingleActivity's closure.
+            // This global handler will still receive it, but won't update the specific button text.
 
-                if (activityId !== 'initial_load') { // Don't modify button state for initial load
+            if (type === 'result') {
+                log(`Analysis complete for activity ${activityId}. Updating UI.`, 'success');
+                console.log("Worker Result Payload:", payload);
+
+                if (activityId !== 'initial_load') {
                     if(analyzeBtn) {
-                        analyzeBtn.textContent = 'Analyzed';
-                        analyzeBtn.disabled = true;
+                        analyzeBtn.textContent = 'Reanalyze';
+                        analyzeBtn.classList.remove('btn-primary');
+                        analyzeBtn.classList.add('btn-secondary');
+                        analyzeBtn.disabled = false;
                     }
-                    // Mark activity as processed in local storage
                     const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
                     processedIds.add(activityId);
                     localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
                 }
-                updateProgressUI(payload); // Call the UI update function
+                updateProgressUI(payload);
             } else if (type === 'error') {
                 log(`Worker error for ${activityId}: ${error}`, 'error');
                 if (analyzeBtn) {
                     analyzeBtn.textContent = 'Analysis Failed';
-                    analyzeBtn.disabled = false; // Allow retrying on error
+                    analyzeBtn.disabled = false;
                 }
                 alert(`Analysis failed for activity ${activityId}: ${error}. Check console for details.`);
             }
         };
+
         analysisWorker.onerror = (e) => {
             log(`Critical worker error: ${e.message || 'Unknown worker error'}`, 'error');
             alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
