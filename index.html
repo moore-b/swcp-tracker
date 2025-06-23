@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+ro<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
@@ -50,6 +50,22 @@
             <div class="text-right mt-2"><button id="reset-button" class="text-sm btn-danger">Reset All Progress</button></div>
         </div>
 
+        <div id="progress-summary-section" class="p-6 rounded-lg shadow-lg blurred-tile-background">
+            <div class="flex justify-between items-center mb-4 border-b pb-3">
+                <h2 class="text-2xl font-semibold">Overall Progress</h2>
+                <div id="strava-user-info" class="text-right"></div>
+            </div>
+            <div class="mb-6">
+                <p class="text-sm text-gray-700">Distance: <span id="completed-distance">0.00</span> km / <span id="total-distance">0.00</span> km</p>
+                <p class="lg:text-lg">Completion: <span id="progress-percentage" class="font-bold text-blue-600">0.00%</span></p>
+                <div class="w-full bg-gray-200 rounded-full h-4 mt-2"><div id="progress-bar" class="bg-blue-600 h-4 rounded-full transition-all duration-500" style="width: 0%"></div></div>
+            </div>
+            <div id="overall-progress-loading" class="flex items-center justify-center p-2 hidden">
+                <div class="loader mr-2"></div> <span class="text-gray-600">Calculating overall progress...</span>
+            </div>
+            <div class="text-right mt-2"><button id="reset-button" class="text-sm btn-danger">Reset All Progress</button></div>
+        </div>
+        
         <div id="map-section" class="p-6 rounded-lg shadow-lg blurred-tile-background">
             <h3 class="text-xl font-semibold mb-3">Master Map</h3>
             <div id="map">
