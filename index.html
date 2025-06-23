@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>SW Coast Path Tracker</title>
-   
+    
     <script src="https://cdn.tailwindcss.com"></script>
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
@@ -163,7 +163,7 @@
             UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
             if (type === 'error') console.error(message);
         };
-       
+        
         const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
         // --- API & DATA FUNCTIONS ---
@@ -175,12 +175,12 @@
             if (expiresAt && (Date.now() / 1000 > parseInt(expiresAt) - 300)) {
                 log('Access token expired. Refreshing...', 'warn');
                 const newAccessTokenValue = await refreshAccessToken();
-                if (newAccessTokenValue) {
+                if (newAccessTokenValue) { 
                     accessToken = JSON.stringify(newAccessTokenValue);
                 } else {
                     log('Token refresh failed. Please log in again.', 'error');
-                    localStorage.clear();
-                    window.location.reload();
+                    localStorage.clear(); 
+                    window.location.reload(); 
                     return null;
                 }
             }
@@ -217,7 +217,7 @@
                 });
                 const data = await response.json();
                 if (!response.ok) throw new Error(data.message);
-               
+                
                 localStorage.setItem(STRAVA_ACCESS_TOKEN_KEY, JSON.stringify(data.access_token));
                 localStorage.setItem(STRAVA_REFRESH_TOKEN_KEY, JSON.stringify(data.refresh_token));
                 localStorage.setItem(STRAVA_EXPIRES_AT_KEY, data.expires_at);
@@ -228,7 +228,7 @@
                 return null;
             }
         }
-       
+        
         async function getAccessToken(code) {
             log('Exchanging auth code for access token...');
             const clientId = localStorage.getItem('stravaClientId');
@@ -259,7 +259,7 @@
             } catch (error) {
                 log(`Auth Error: ${error.message}`, 'error');
                 localStorage.clear();
-                window.location.reload();
+                window.location.reload(); 
             }
         }
 
@@ -286,10 +286,10 @@
                 page++;
                 await sleep(100);
             }
-           
+            
             const relevantActivities = filterActivities(allActivities);
             log(`Found ${relevantActivities.length} relevant activities (Hikes & Walks). Caching...`);
-           
+            
             localStorage.setItem(CACHED_ACTIVITIES_KEY, JSON.stringify(relevantActivities));
             localStorage.setItem(CACHED_ACTIVITIES_TIMESTAMP_KEY, Date.now().toString());
             return relevantActivities;
@@ -299,7 +299,7 @@
             const cacheKey = `${ACTIVITY_STREAMS_CACHE_PREFIX}${activityId}`;
             const cachedStream = localStorage.getItem(cacheKey);
             if (cachedStream) { return JSON.parse(cachedStream); }
-           
+            
             log(`Fetching GPS stream for activity ${activityId}...`);
             const response = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activityId}/streams?keys=latlng&key_by_type=true`);
             if (!response) return null;
@@ -319,7 +319,7 @@
 
             const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
             if (athlete.firstname) { UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`; }
-           
+            
             initializeMapAndDependencies();
             fetchAndRenderActivities();
         }
@@ -336,7 +336,7 @@
                 const response = await fetch(SWCP_GEOJSON_URL);
                 if (!response.ok) throw new Error(`Could not load routes.geojson: ${response.statusText}`);
                 const data = await response.json();
-               
+                
                 swcpGeoJSON = data;
                 swcpTotalDistance = turf.length(data, { units: 'kilometers' });
 
@@ -344,7 +344,7 @@
                     analysisWorker.postMessage({ type: 'init_swcp', swcpGeoJSONString: JSON.stringify(swcpGeoJSON) });
                     log('SWCP GeoJSON sent to worker.');
                 }
-               
+                
                 const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
                 mainMap.fitBounds(leafletGeoJson.getBounds());
                 UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
@@ -352,12 +352,12 @@
 
                 loadProgressFromStorage();
 
-            } catch(e) {
+            } catch(e) { 
                 log(e.message, 'error');
-            }
+            } 
             finally { UIElements.mapLoadingOverlay.classList.add('hidden'); }
         }
-       
+        
         async function fetchAndRenderActivities() {
             UIElements.activitiesLoadingSpinner.classList.remove('hidden');
             UIElements.activityListContainer.innerHTML = '';
@@ -433,7 +433,7 @@
                     totalCompletedDistance += turf.length(turf.lineString(segment), { units: 'kilometers' });
                 }
             });
-           
+            
             log(`Identified and drew ${segments.length} separate segment(s).`);
 
             const currentPercentage = swcpTotalDistance > 0 ? Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100) : 0;
@@ -446,29 +446,29 @@
             UIElements.activityListContainer.innerHTML = '';
             UIElements.activityCount.textContent = `(${activities.length} found)`;
             const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || []));
-           
+            
             activities.forEach(activity => {
                 const card = UIElements.activityCardTemplate.content.cloneNode(true);
                 const cardDiv = card.querySelector('div');
-               
+                
                 cardDiv.querySelector('[data-name]').textContent = activity.name;
                 cardDiv.querySelector('[data-date]').textContent = new Date(activity.start_date).toLocaleDateString();
                 cardDiv.querySelector('[data-distance]').innerHTML = `<strong>Distance:</strong> ${(activity.distance / 1000).toFixed(2)} km`;
                 cardDiv.querySelector('[data-time]').innerHTML = `<strong>Moving Time:</strong> ${new Date(activity.moving_time * 1000).toISOString().substr(11, 8)}`;
                 cardDiv.querySelector('[data-elevation]').innerHTML = `<strong>Elevation Gain:</strong> ${activity.total_elevation_gain.toFixed(0)} m`;
-               
+                
                 const typeEl = cardDiv.querySelector('[data-type]');
                 typeEl.textContent = activity.type;
                 typeEl.classList.remove('bg-blue-200', 'text-blue-600');
                 if (activity.type === 'Hike') {
                     typeEl.classList.add('bg-emerald-200', 'text-emerald-600');
-                } else {
+                } else { 
                     typeEl.classList.add('bg-sky-200', 'text-sky-600');
                 }
-               
+                
                 const mapEl = cardDiv.querySelector('[data-map-id]');
                 mapEl.id = `map-${activity.id}`;
-               
+                
                 const analyzeBtn = cardDiv.querySelector('[data-analyze-btn]');
                 analyzeBtn.dataset.activityId = activity.id;
                 if (processedIds.has(activity.id)) {
@@ -483,7 +483,7 @@
                 updateBtn.onclick = () => addDescriptionToStrava(activity, updateBtn);
 
                 UIElements.activityListContainer.appendChild(card);
-               
+                
                 if(activity.map.summary_polyline) {
                     const observer = new IntersectionObserver((entries, observerInstance) => {
                         entries.forEach(entry => {
@@ -512,7 +512,7 @@
         function filterAndRenderActivities() {
             if (!UIElements.activitySearchBox) return;
             const searchTerm = UIElements.activitySearchBox.value.toLowerCase();
-           
+            
             let filtered = allFetchedActivities;
             if (searchTerm) {
                 filtered = filtered.filter(act => act.name.toLowerCase().includes(searchTerm));
@@ -529,7 +529,7 @@
             }
         }
 
-        async function addDescriptionToStrava(activity, button) {
+        async function addDescriptionToStrava(activity, button) { 
              log('Add to description clicked. This feature is not yet fully implemented.');
         }
 
@@ -558,7 +558,7 @@
                         analysisWorker.postMessage({
                             type: 'analyze_activity',
                             activityId: activity.id,
-                            rawStream: stream
+                            rawStream: stream 
                         });
                     } catch (error) {
                         log(`Failed to get stream for ${activity.id}: ${error.message}`, 'error');
@@ -568,95 +568,111 @@
                 }, 0);
             });
         }
-       
+        
         // --- INITIALIZATION ---
         const main = async () => {
-            // 1. Link UI Elements explicitly.
-            const elementIds = ['initialLoadingScreen', 'loginScreenWrapper', 'configSection', 'clientId', 'clientSecret', 'connectButton', 'mainLayoutContainer', 'headerSection', 'progressSummarySection', 'stravaUserInfo', 'completedDistance', 'totalDistance', 'progressPercentage', 'progressBar', 'resetButton', 'mapSection', 'map', 'mapLoadingOverlay', 'statusLogSectionContainer', 'statusLogDetails', 'statusLog', 'activitiesSection', 'activityCount', 'activitySearchBox', 'refreshActivitiesBtn', 'activitiesLoadingSpinner', 'activityListContainer', 'activityCardTemplate'];
-            let allElementsFound = true;
-            elementIds.forEach(id => {
-                const key = id.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
-                UIElements[key] = document.getElementById(id);
-                if (!UIElements[key]) {
-                    console.error(`Critical UI element with ID '${id}' not found.`);
-                    allElementsFound = false;
-                }
-            });
-
-            if (!allElementsFound) {
-                alert("A critical UI element is missing from the HTML. The application cannot start. Please check the console (F12) for details.");
-                return;
-            }
-            log('UI elements linked.');
-
-            // 2. Initialize Web Worker
+            // This main function is wrapped in a DOMContentLoaded listener below
             try {
-                analysisWorker = new Worker('swcp_analysis_worker.js');
-                analysisWorker.onmessage = (e) => {
-                     const { type, payload } = e.data;
-                     const { activityId, progress, overlappingPoints, error } = payload;
-                     const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id="${activityId}"]`);
-                     if (!analyzeBtn) return;
+                // 1. Link UI Elements explicitly.
+                const elementIds = ['initialLoadingScreen', 'loginScreenWrapper', 'configSection', 'clientId', 'clientSecret', 'connectButton', 'mainLayoutContainer', 'headerSection', 'progressSummarySection', 'stravaUserInfo', 'completedDistance', 'totalDistance', 'progressPercentage', 'progressBar', 'resetButton', 'mapSection', 'map', 'mapLoadingOverlay', 'statusLogSectionContainer', 'statusLogDetails', 'statusLog', 'activitiesSection', 'activityCount', 'activitySearchBox', 'refreshActivitiesBtn', 'activitiesLoadingSpinner', 'activityListContainer', 'activityCardTemplate'];
+                let allElementsFound = true;
+                elementIds.forEach(id => {
+                    const key = id.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
+                    UIElements[key] = document.getElementById(id);
+                    if (!UIElements[key]) {
+                        console.error(`Critical UI element with ID '${id}' not found.`);
+                        allElementsFound = false;
+                    }
+                });
 
-                     if (type === 'progress') {
-                         analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${progress.toFixed(0)}%)`;
-                     } else if (type === 'result') {
-                         log(`Analysis complete for ${activityId}. Found ${overlappingPoints.length} points.`, 'success');
-                         analyzeBtn.textContent = 'Analyzed';
+                if (!allElementsFound) {
+                    alert("A critical UI element is missing from the HTML. The application cannot start. Please check the console (F12) for details.");
+                    return;
+                }
+                log('UI elements linked.');
 
-                         const allPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                         allPoints.push(...overlappingPoints);
-                         localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allPoints));
+                // 2. Initialize Web Worker
+                try {
+                    analysisWorker = new Worker('swcp_analysis_worker.js');
+                    analysisWorker.onmessage = (e) => {
+                         const { type, payload } = e.data;
+                         const { activityId, progress, overlappingPoints, error } = payload;
+                         const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id="${activityId}"]`);
+                         if (!analyzeBtn) return;
 
-                         const processed = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
-                         processed.add(Number(activityId));
-                         localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processed)));
-                         
-                         updateProgress(allPoints);
-                     } else if (type === 'error') {
-                         log(`Worker error for ${activityId}: ${error}`, 'error');
-                         analyzeBtn.textContent = 'Analysis Failed';
-                         analyzeBtn.disabled = false;
-                     }
+                         if (type === 'progress') {
+                             analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${progress.toFixed(0)}%)`;
+                         } else if (type === 'result') {
+                             log(`Analysis complete for ${activityId}. Found ${overlappingPoints.length} points.`, 'success');
+                             analyzeBtn.textContent = 'Analyzed';
+
+                             const allPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
+                             allPoints.push(...overlappingPoints);
+                             localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allPoints));
+
+                             const processed = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+                             processed.add(Number(activityId)); 
+                             localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processed)));
+                             
+                             updateProgress(allPoints);
+                         } else if (type === 'error') {
+                             log(`Worker error for ${activityId}: ${error}`, 'error');
+                             analyzeBtn.textContent = 'Analysis Failed';
+                             analyzeBtn.disabled = false;
+                         }
+                    };
+                    analysisWorker.onerror = (e) => log(`Critical worker error: ${e.message}`, 'error');
+                    log('Analysis worker created successfully.', 'success');
+                } catch (workerError) {
+                    log('Failed to create analysis worker. Ensure swcp_analysis_worker.js exists.', 'error');
+                    console.error(workerError);
+                }
+
+                // 3. Attach Event Listeners
+                UIElements.connectButton.onclick = () => {
+                    localStorage.setItem('stravaClientId', UIElements.clientId.value);
+                    localStorage.setItem('stravaClientSecret', UIElements.clientSecret.value);
+                    const redirectUri = window.location.origin + window.location.pathname;
+                    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${UIElements.clientId.value}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
                 };
-                analysisWorker.onerror = (e) => log(`Critical worker error: ${e.message}`, 'error');
-                log('Analysis worker created successfully.', 'success');
-            } catch (workerError) {
-                log('Failed to create analysis worker. Ensure swcp_analysis_worker.js exists.', 'error');
-                console.error(workerError);
-            }
+                UIElements.resetButton.onclick = resetProgress;
+                UIElements.activitySearchBox.oninput = filterAndRenderActivities;
+                UIElements.refreshActivitiesBtn.onclick = fetchAndRenderActivities;
 
-            // 3. Attach Event Listeners
-            UIElements.connectButton.onclick = () => {
-                localStorage.setItem('stravaClientId', UIElements.clientId.value);
-                localStorage.setItem('stravaClientSecret', UIElements.clientSecret.value);
-                const redirectUri = window.location.origin + window.location.pathname;
-                window.location.href = `https://www.strava.com/oauth/authorize?client_id=${UIElements.clientId.value}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
-            };
-            UIElements.resetButton.onclick = resetProgress;
-            UIElements.activitySearchBox.oninput = filterAndRenderActivities;
-            UIElements.refreshActivitiesBtn.onclick = fetchAndRenderActivities;
+                // 4. Handle Auth Flow & App Start
+                UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
+                UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
+                
+                const urlParams = new URLSearchParams(window.location.search);
+                const authCode = urlParams.get('code');
 
-            // 4. Handle Auth Flow & App Start
-            UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
-            UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
-           
-            const urlParams = new URLSearchParams(window.location.search);
-            const authCode = urlParams.get('code');
+                if (authCode) {
+                    UIElements.initialLoadingScreen.classList.remove('hidden');
+                    await getAccessToken(authCode);
+                    UIElements.initialLoadingScreen.classList.add('hidden');
+                    showMainApp();
+                } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
+                    showMainApp();
+                } else {
+                    UIElements.loginScreenWrapper.classList.remove('hidden');
+                }
 
-            if (authCode) {
+            } catch (error) {
+                log(`A critical error occurred during app startup: ${error.message}`, 'error');
+                console.error(error);
                 UIElements.initialLoadingScreen.classList.remove('hidden');
-                await getAccessToken(authCode);
-                UIElements.initialLoadingScreen.classList.add('hidden');
-                showMainApp();
-            } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
-                showMainApp();
-            } else {
-                UIElements.loginScreenWrapper.classList.remove('hidden');
+                const loadingText = UIElements.initialLoadingScreen.querySelector('span');
+                if (loadingText) {
+                    loadingText.innerHTML = `Application failed to load. Please check the console (F12) for errors.`;
+                    loadingText.classList.add('text-red-500');
+                    UIElements.initialLoadingScreen.querySelector('.loader').style.display = 'none';
+                }
             }
         };
-       
-        main(); // Run the application now that the script at the end of the body is being parsed.
+        
+        // This is the most reliable way to start the script.
+        // It waits for the browser to build the page before running any code.
+        document.addEventListener('DOMContentLoaded', main);
     </script>
 </body>
 </html>
