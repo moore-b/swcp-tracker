@@ -311,9 +311,9 @@
             if (athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
             await initializeMap();
             loadProgressFromStorage();
-            UIElements.activitiesLoadingSpinner.style.display = 'flex';
+            UIElements.activitiesLoadingSpinner.classList.remove('hidden');
             allFetchedActivities = await fetchAllActivities();
-            UIElements.activitiesLoadingSpinner.style.display = 'none';
+            UIElements.activitiesLoadingSpinner.classList.add('hidden');
             if (allFetchedActivities) {
                 filterActivities();
             } else {
@@ -334,11 +334,23 @@
                 const response = await fetch(SWCP_GEOJSON_URL);
                 if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
                 const data = await response.json();
-                swcpTotalDistance = turf.length(data, { units: 'kilometers' });
-                swcpGeoJSON = data.features[0].geometry;
+               
+                // This is the robust way to handle the GeoJSON, combining all features.
+                const allCoordinates = data.features.reduce((coords, feature) => {
+                    if (feature.geometry.type === 'LineString') {
+                        return coords.concat(feature.geometry.coordinates);
+                    } else if (feature.geometry.type === 'MultiLineString') {
+                        return coords.concat(...feature.geometry.coordinates);
+                    }
+                    return coords;
+                }, []);
+                swcpGeoJSON = turf.lineString(allCoordinates).geometry;
+                swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
+
                 if (analysisWorker) analysisWorker.postMessage({ type: 'init_swcp', swcpGeoJSONString: JSON.stringify(swcpGeoJSON) });
-                L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap).bringToBack();
-                mainMap.fitBounds(L.geoJSON(data).getBounds());
+               
+                const leafletGeoJson = L.geoJSON(data, { style: { color: 'blue', weight: 3, opacity: 0.7 } }).addTo(mainMap);
+                mainMap.fitBounds(leafletGeoJson.getBounds());
                 UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
             } catch(e) {
                 log(`Failed to load map data: ${e.message}`, 'error');
@@ -387,9 +399,9 @@
             localStorage.removeItem(CACHED_ACTIVITIES_KEY);
             localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
             log('Cache cleared. Fetching new activities...');
-            UIElements.activitiesLoadingSpinner.style.display = 'flex';
+            UIElements.activitiesLoadingSpinner.classList.remove('hidden');
             allFetchedActivities = await fetchAllActivities();
-            UIElements.activitiesLoadingSpinner.style.display = 'none';
+            UIElements.activitiesLoadingSpinner.classList.add('hidden');
             if (allFetchedActivities) filterActivities();
         }
 
@@ -425,12 +437,16 @@
 
                 UIElements.activityListContainer.appendChild(card);
                 if (activity.map.summary_polyline) {
-                    const latlngs = polyline.decode(activity.map.summary_polyline);
-                    if (latlngs.length > 0) {
-                        const activityMap = L.map(mapEl.id, { scrollWheelZoom: false }).setView(latlngs[0], 13);
-                        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
-                        const activityLine = L.polyline(latlngs, {color: '#FC5200'}).addTo(activityMap);
-                        setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
+                    try {
+                        const latlngs = polyline.decode(activity.map.summary_polyline);
+                        if (latlngs.length > 0) {
+                            const activityMap = L.map(mapEl.id, { scrollWheelZoom: false }).setView(latlngs[0], 13);
+                            L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
+                            const activityLine = L.polyline(latlngs, {color: '#FC5200'}).addTo(activityMap);
+                            setTimeout(() => activityMap.fitBounds(activityLine.getBounds()), 1);
+                        }
+                    } catch (e) {
+                        mapEl.innerHTML = `<div class="p-4 text-center text-red-500">Could not load map preview.</div>`;
                     }
                 }
             });
@@ -567,17 +583,18 @@
             if (sortedPoints.length > 0) {
                 currentSegment.push(sortedPoints[0].coords);
                 for (let i = 1; i < sortedPoints.length; i++) {
-                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) { // Gap > 200m
+                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) {
                         if (currentSegment.length > 1) segments.push(currentSegment);
-                        currentSegment = [];
+                        currentSegment = [sortedPoints[i].coords]; // Start new segment with current point
+                    } else {
+                        currentSegment.push(sortedPoints[i].coords);
                     }
-                    currentSegment.push(sortedPoints[i].coords);
                 }
                 if (currentSegment.length > 1) segments.push(currentSegment);
             }
 
             const totalCompletedDistance = segments.reduce((sum, seg) => {
-                const leafletCoords = seg.map(c => [c[1], c[0]]); // Convert for Leaflet
+                const leafletCoords = seg.map(c => [c[1], c[0]]);
                 L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
                 return sum + turf.length(turf.lineString(seg), { units: 'kilometers' });
             }, 0);
