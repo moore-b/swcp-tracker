@@ -1,4 +1,4 @@
-// Constants
+// Constants (No changes here)
 const SWCP_GEOJSON_URL = 'routes.geojson';
 const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
 const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -11,7 +11,9 @@ const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
 const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
 const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
 
-// UI Elements collected into a single object for easier access and clarity
+// --- CRITICAL FIX: Define UIElements at the top-most scope ---
+// This ensures UIElements is always defined when the log function (or any other function) is called,
+// even during very early initialization.
 const UIElements = {};
 
 // Global variables for map and data
@@ -25,8 +27,11 @@ let swcpDataPromise = null; // Will store the promise for loading SWCP data
  * @param {'info' | 'warn' | 'error' | 'success'} type - The type of message for styling.
  */
 const log = (message, type = 'info') => {
+    // This check is now less likely to fail, as UIElements is globally defined.
+    // However, UIElements.statusLog itself won't be assigned until initializeUIElements runs.
+    // For very early logs *before* UI elements are assigned, they will go to console.warn.
     if (!UIElements.statusLog) {
-        console.warn('Status log element not found (UIElements.statusLog is null or undefined). Logging to console:', message);
+        console.warn('Status log element not yet available in UI. Logging to console:', message);
         return;
     }
     const now = new Date().toLocaleTimeString();
@@ -38,7 +43,7 @@ const log = (message, type = 'info') => {
 
     p.innerHTML = `<span class="text-gray-500">${now}:</span> <span class="${className}">${message}</span>`;
     UIElements.statusLog.appendChild(p);
-    UIlements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
+    UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
 };
 
 /**
@@ -171,8 +176,8 @@ function updateGridLayout() {
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
             if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
             if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
+            if (UIlements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
+            if (UIlements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.gridColumn = '2';
                 UIElements.activitiesSection.style.gridRow = '1 / span 4';
@@ -396,11 +401,12 @@ async function loadProgressFromStorage() {
     const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     if (completedPoints.length > 0) {
         log('Calculating initial progress from stored data...');
+        // Correctly send existingPoints to worker for initial_load calculation
         analysisWorker.postMessage({ type: 'process_activity', activityId: 'initial_load', activityStream: null, existingPoints: completedPoints });
     } else {
+        // If no completed points, immediately update UI to 0 and hide loader
         updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
-        log('No existing progress found.', 'info');
-        // Hide indicator if no points to load
+        log('No existing progress found. Overall progress set to 0.', 'info');
         if (UIElements.overallProgressLoading) UIElements.overallProgressLoading.classList.add('hidden');
     }
 }
@@ -722,7 +728,9 @@ async function addDescriptionToStrava(activity, button) {
 }
    
 const init = async () => {
-    // This explicit assignment method is the most robust and prevents initialization errors.
+    // --- CRITICAL FIX: Ensure UIElements is initialized immediately ---
+    // This must be the very first thing to prevent ReferenceError when log() is called.
+    // Also, initialize UIElements property values directly here.
     UIElements.clientId = document.getElementById('clientId');
     UIElements.clientSecret = document.getElementById('clientSecret');
     UIElements.connectButton = document.getElementById('connect-button');
@@ -753,21 +761,19 @@ const init = async () => {
     UIElements.progressSummarySection = document.getElementById('progress-summary-section');
     UIElements.appBackground = document.getElementById('app-background');
     UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
-    // --- NEW UI ELEMENT FOR PROGRESS LOADING ---
     UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
-   
-    log('App initialized.');
+
+    log('Application initialization started.');
    
     try {
         analysisWorker = new Worker('swcp_analysis_worker.js');
         log('Analysis worker initialized.', 'success');
        
-        // --- REVISED GLOBAL WORKER MESSAGE HANDLER ---
         // This single handler is responsible for ALL messages from the worker.
-        // It now uses document.querySelector to target specific buttons.
+        // It uses document.querySelector to target specific buttons.
         analysisWorker.onmessage = (e) => {
             const { type, payload } = e.data;
-            if (!payload || !payload.activityId) return; // Ensure basic payload structure
+            if (!payload || !payload.activityId) return;
            
             const { activityId, progress, error } = payload;
             const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id='${activityId}']`);
@@ -789,9 +795,8 @@ const init = async () => {
                         analyzeBtn.classList.remove('btn-primary', 'btn-secondary'); // Clean slate
                         analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
                         analyzeBtn.disabled = false;
-                        // After analysis is complete, remove the loader span, as the button text will be 'Reanalyze'
                         const loaderSpan = analyzeBtn.querySelector('.loader');
-                        if(loaderSpan) loaderSpan.remove();
+                        if(loaderSpan) loaderSpan.remove(); // Remove loader
                     }
                     const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
                     processedIds.add(activityId);
@@ -808,9 +813,8 @@ const init = async () => {
                 if (analyzeBtn) {
                     analyzeBtn.textContent = 'Analysis Failed';
                     analyzeBtn.disabled = false;
-                    // Remove loader on error
                     const loaderSpan = analyzeBtn.querySelector('.loader');
-                    if(loaderSpan) loaderSpan.remove();
+                    if(loaderSpan) loaderSpan.remove(); // Remove loader
                 }
                 alert(`Analysis failed for activity ${activityId}: ${error}. Check console for details.`);
                 // Hide overall progress loading indicator also on initial load error
