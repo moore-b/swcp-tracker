@@ -32,7 +32,7 @@
         .filter-btn { padding: 0.5rem 1rem; border: 1px solid #d1d5db; border-radius: 0.5rem; background-color: #ffffff; transition: background-color 0.2s; }
         .filter-btn:hover { background-color: #f3f4f6; }
         .filter-btn.active { background-color: #3b82f6; color: #ffffff; border-color: #3b82f6; }
-        .blurred-tile-background { background-color: rgba(192, 192, 192, 0.5) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); border: 1px solid rgba(255, 255, 255, 0.18); }
+        .blurred-tile-background { background-color: rgba(255, 255, 255, 0.6) !important; backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.37); border: 1px solid rgba(255, 255, 255, 0.18); }
         #main-layout-container { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto auto 1fr auto; gap: 1rem; min-height: 100vh; padding: 1rem; }
         #header-section { grid-column: 1; grid-row: 1; }
         #progress-summary-section { grid-column: 1; grid-row: 2; }
@@ -291,8 +291,7 @@
                 await sleep(100);
             }
             log(`Fetched ${allActivities.length} total activities. Caching...`);
-            // In your original code, you only filtered for "Hike". I've kept this logic.
-            const relevantActivities = allActivities.filter(a => ['Hike'].includes(a.type));
+            const relevantActivities = allActivities.filter(a => ['Hike', 'Walk'].includes(a.type));
             localStorage.setItem(CACHED_ACTIVITIES_KEY, JSON.stringify(relevantActivities));
             localStorage.setItem(CACHED_ACTIVITIES_TIMESTAMP_KEY, Date.now().toString());
             return relevantActivities;
@@ -372,10 +371,14 @@
             if (swcpGeoJSON) { updateProgress(completedPoints); }
         }
 
+        // --- THIS IS THE CORRECTED FUNCTION ---
         function updateProgress(completedPoints) {
-            if (!swcpGeoJSON || !completedSegmentsLayer) return;
+            if (!swcpGeoJSON || !completedSegmentsLayer) {
+                log('Cannot update progress, map or data not ready.', 'warn');
+                return;
+            }
             completedSegmentsLayer.clearLayers();
-           
+
             if (completedPoints.length < 2) {
                 UIElements.completedDistance.textContent = "0.00";
                 UIElements.progressPercentage.textContent = "0.00%";
@@ -383,23 +386,69 @@
                 return;
             }
 
+            // 1. De-duplicate points to reduce noise and improve performance
             const uniquePoints = completedPoints.reduce((acc, point) => {
-                if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'meters'}) < 20)) {
+                if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), { units: 'meters' }) < 20)) {
                     acc.push(point);
                 }
                 return acc;
             }, []);
 
             if (uniquePoints.length < 2) return;
-           
-            // A more advanced implementation would sort points and create segments.
-            // For now, we draw a single polyline of unique points.
-            const leafletCoords = uniquePoints.map(coord => [coord[1], coord[0]]);
-            L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
 
-            const totalCompletedDistance = turf.length(turf.lineString(uniquePoints), { units: 'kilometers'});
-            const currentPercentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
+            // 2. Sort all unique points based on their linear position along the SWCP
+            const pointsWithLocation = uniquePoints.map(p => {
+                const pointOnLine = turf.nearestPointOnLine(swcpGeoJSON, p);
+                return { coords: p, location: pointOnLine.properties.location };
+            });
+            pointsWithLocation.sort((a, b) => a.location - b.location);
+
+            // 3. Group the sorted points into contiguous segments
+            const segments = [];
+            let currentSegment = [];
+            const MAX_GAP_KM = 0.5; // If gap between points on the path is > 500m, start a new line
+
+            if (pointsWithLocation.length > 0) {
+                currentSegment.push(pointsWithLocation[0].coords);
+            }
+
+            for (let i = 1; i < pointsWithLocation.length; i++) {
+                const prev = pointsWithLocation[i - 1];
+                const curr = pointsWithLocation[i];
+                const gapInKm = curr.location - prev.location;
+
+                if (gapInKm > MAX_GAP_KM) {
+                    // The gap is too big, this is a new hike. Finalize the old segment.
+                    if (currentSegment.length > 1) {
+                        segments.push(currentSegment);
+                    }
+                    // Start a new segment with the current point
+                    currentSegment = [curr.coords];
+                } else {
+                    // The gap is small, so continue the current segment
+                    currentSegment.push(curr.coords);
+                }
+            }
+            // Add the very last segment after the loop finishes
+            if (currentSegment.length > 1) {
+                segments.push(currentSegment);
+            }
+
+            // 4. Draw each segment as a separate line and calculate total distance
+            let totalCompletedDistance = 0;
+            segments.forEach(segment => {
+                // Draw the line on the map
+                const leafletCoords = segment.map(coord => [coord[1], coord[0]]); // Leaflet needs [lat, lng]
+                L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+               
+                // Add its length to the total
+                totalCompletedDistance += turf.length(turf.lineString(segment), { units: 'kilometers' });
+            });
            
+            log(`Identified and drew ${segments.length} separate segments.`);
+
+            // 5. Update the UI with the final calculated progress
+            const currentPercentage = Math.min(100, (totalCompletedDistance / swcpTotalDistance) * 100);
             UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
             UIElements.progressPercentage.textContent = `${currentPercentage.toFixed(2)}%`;
             UIElements.progressBar.style.width = `${currentPercentage}%`;
@@ -548,7 +597,6 @@
                 UIElements.activityListContainer = document.getElementById('activity-list-container');
                 UIElements.activityCardTemplate = document.getElementById('activity-card-template');
 
-                // Check for critical elements before proceeding
                 if (!UIElements.initialLoadingScreen || !UIElements.loginScreenWrapper || !UIElements.mainLayoutContainer) {
                     alert("A critical UI element is missing from the HTML, cannot start the application.");
                     throw new Error("Critical UI element missing.");
