@@ -1,4 +1,4 @@
-// Constants
+// Constants (No changes here)
 const SWCP_GEOJSON_URL = 'routes.geojson';
 const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
 const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -11,48 +11,13 @@ const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
 const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
 const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
 
-// --- CRITICAL FIX: Define UIElements at the top-most scope ---
-// This ensures UIElements is always defined as an object and its properties
-// are populated with DOM references as soon as the script executes.
-const UIElements = {
-    clientId: document.getElementById('clientId'),
-    clientSecret: document.getElementById('clientSecret'),
-    connectButton: document.getElementById('connect-button'),
-    configSection: document.getElementById('config-section'),
-    activityListContainer: document.getElementById('activity-list-container'),
-    activityCardTemplate: document.getElementById('activity-card-template'), // Template element
-    activityCount: document.getElementById('activity-count'),
-    filterButtons: document.getElementById('filter-buttons'),
-    resetButton: document.getElementById('reset-button'),
-    statusLog: document.getElementById('status-log'),
-    stravaUserInfo: document.getElementById('strava-user-info'),
-    progressBar: document.getElementById('progress-bar'),
-    progressPercentage: document.getElementById('progress-percentage'),
-    completedDistance: document.getElementById('completed-distance'),
-    totalDistance: document.getElementById('total-distance'),
-    mainMap: document.getElementById('map'), // The map container div
-    mainLayoutContainer: document.getElementById('main-layout-container'),
-    loginScreenWrapper: document.getElementById('login-screen-wrapper'),
-    statusLogDetails: document.getElementById('status-log-details'),
-    statusLogSectionContainer: document.getElementById('status-log-section-container'),
-    activitiesSection: document.getElementById('activities-section'),
-    mapSection: document.getElementById('map-section'),
-    activitiesLoadingSpinner: document.getElementById('activities-loading-spinner'),
-    activitySearchBox: document.getElementById('activity-search-box'),
-    mapLoadingOverlay: document.getElementById('map-loading-overlay'),
-    refreshActivitiesBtn: document.getElementById('refresh-activities-btn'),
-    headerSection: document.getElementById('header-section'),
-    progressSummarySection: document.getElementById('progress-summary-section'),
-    appBackground: document.getElementById('app-background'),
-    initialLoadingScreen: document.getElementById('initial-loading-screen'),
-    overallProgressLoading: document.getElementById('overall-progress-loading')
-};
+// Define UIElements as an empty object at the top. Its properties will be populated later.
+const UIElements = {};
 
 // Global variables for map and data
-// currentPercentage is critical here, ensure it's always up-to-date from updateProgressUI
 let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
 let analysisWorker = null;
-let swcpDataPromise = null; // Will store the promise for loading SWCP data
+let swcpDataPromise = null;
 
 /**
  * Logs messages to the status log UI element.
@@ -60,9 +25,7 @@ let swcpDataPromise = null; // Will store the promise for loading SWCP data
  * @param {'info' | 'warn' | 'error' | 'success'} type - The type of message for styling.
  */
 const log = (message, type = 'info') => {
-    // This check ensures logs don't fail if UIElements.statusLog hasn't been assigned an element yet.
     if (!UIElements.statusLog) {
-        // Fallback to console.log if the UI log element isn't ready
         console.warn('Status log element not yet available in UI. Logging to console:', message);
         console.log(`[${new Date().toLocaleTimeString()}]: ${message}`);
         return;
@@ -79,32 +42,20 @@ const log = (message, type = 'info') => {
     UIElements.statusLog.scrollTop = UIElements.statusLog.scrollHeight;
 };
 
-/**
- * Simple async delay function.
- * @param {number} ms - Milliseconds to wait.
- */
 const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
 
-/**
- * Makes an authenticated call to the Strava API, with token refresh and retry logic.
- * @param {string} url - The API endpoint URL.
- * @param {RequestInit} options = {} - Fetch options.
- * @param {number} retries = 1 - Number of retries for 401 errors (for token refresh).
- * @returns {Promise<Response|null>} The fetch response or null on critical failure.
- */
 async function makeStravaApiCall(url, options = {}, retries = 1) {
     let accessToken = localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY);
     let expiresAt = localStorage.getItem(STRAVA_EXPIRES_AT_KEY);
    
-    // Check if token is expired or about to expire (within 5 minutes)
     if (accessToken && expiresAt && (Date.now() / 1000 > parseInt(expiresAt) - 300)) {
         log('Access token expired or near expiry. Refreshing...', 'warn');
         const newAccessToken = await refreshAccessToken();
         if (newAccessToken) {
-            accessToken = JSON.stringify(newAccessToken); // Store as string, use parsed here
+            accessToken = JSON.stringify(newAccessToken);
         } else {
             log('Token refresh failed. Please log in again.', 'error');
-            resetProgress(); // Force re-authentication if token refresh fails
+            resetProgress();
             return null;
         }
     }
@@ -118,11 +69,10 @@ async function makeStravaApiCall(url, options = {}, retries = 1) {
             const newAccessToken = await refreshAccessToken();
             return newAccessToken ? makeStravaApiCall(url, options, retries - 1) : null;
         }
-        // Handle rate limits with exponential backoff
         if (response.status === 429) {
-            const retryAfter = response.headers.get('Retry-After') || 5; // Default 5 seconds
+            const retryAfter = response.headers.get('Retry-After') || 5;
             log(`Strava API Rate Limit Exceeded. Retrying in ${retryAfter} seconds...`, 'warn');
-            await sleep(retryAfter * 1000 + (Math.random() * 1000)); // Add jitter for better distribution
+            await sleep(retryAfter * 1000 + (Math.random() * 1000));
             if (retries > 0) {
                 return makeStravaApiCall(url, options, retries - 1);
             } else {
@@ -134,14 +84,10 @@ async function makeStravaApiCall(url, options = {}, retries = 1) {
         return response;
     } catch (error) {
         log(`API call network error: ${error.message}`, 'error');
-        throw error; // Re-throw to allow calling functions to handle
+        throw error;
     }
 }
 
-/**
- * Refreshes the Strava access token using the refresh token.
- * @returns {Promise<string|null>} The new access token or null if refresh fails.
- */
 async function refreshAccessToken() {
     log('Attempting to refresh access token...');
     const refreshToken = localStorage.getItem(STRAVA_REFRESH_TOKEN_KEY);
@@ -182,63 +128,86 @@ async function refreshAccessToken() {
    
 /** Updates the CSS grid layout based on screen width. */
 function updateGridLayout() {
-    // Now UIElements should be defined, but its properties might be null if init hasn't finished.
-    // So defensive checks on individual properties are still good.
-    if (!UIElements.mainLayoutContainer) {
-        console.warn('updateGridLayout: UIElements.mainLayoutContainer is not defined yet.');
+    if (!UIElements.mainLayoutContainer || !UIElements.mobileHeader || !UIElements.headerSection || !UIElements.progressSummarySection || !UIElements.statusLogSectionContainer || !UIElements.mapSection || !UIElements.activitiesDrawer || !UIElements.activitiesDrawerClose) {
+        console.warn('updateGridLayout: Critical UIElements for layout are not defined yet.');
         return;
     }
 
-    const isMobile = window.innerWidth <= 1024; // Tailwind's 'lg' breakpoint
+    const isMobile = window.innerWidth <= 1024;
 
-    // Use a dataset attribute to prevent unnecessary DOM manipulations if layout hasn't changed
     if (isMobile) {
-        if (UIElements.mainLayoutContainer.dataset.layout !== 'mobile') {
-            UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
-            UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
-            if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
-            if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
-            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '5';
-            if (UIElements.activitiesSection) {
-                UIElements.activitiesSection.style.position = 'static';
-                UIElements.activitiesSection.style.height = 'auto';
-                UIElements.activitiesSection.style.top = 'auto'; // Remove sticky top on mobile
-            }
-            UIElements.mainLayoutContainer.dataset.layout = 'mobile';
-        }
+        UIElements.mobileHeader.style.display = 'flex';
+        UIElements.headerSection.style.display = 'none';
+        UIElements.progressSummarySection.style.display = 'none';
+        UIElements.statusLogSectionContainer.style.display = 'none';
+       
+        UIElements.mapSection.style.flexGrow = '1';
+        UIElements.mapSection.style.height = 'auto';
+
+        UIElements.activitiesDrawer.classList.add('fixed', 'top-0', 'right-0');
+        UIElements.activitiesDrawer.classList.remove('lg:static', 'lg:block');
+        UIElements.activitiesDrawer.style.width = '85%';
+        UIElements.activitiesDrawer.style.maxWidth = '380px';
+        UIElements.activitiesDrawer.style.height = '100vh';
+        UIElements.activitiesDrawer.style.boxShadow = '-4px 0 15px rgba(0,0,0,0.2)';
+        UIElements.activitiesDrawer.style.transform = 'translateX(100%)';
+        UIElements.activitiesDrawer.style.transition = 'transform 0.3s ease-out';
+        UIElements.activitiesDrawer.style.zIndex = '30';
+        UIElements.activitiesDrawer.style.overflowY = 'auto';
+        UIElements.activitiesDrawer.style.padding = '1rem';
+        UIElements.activitiesDrawer.style.borderRadius = '0';
+        UIElements.activitiesDrawerClose.style.display = 'block';
+       
+        UIElements.mainLayoutContainer.style.display = 'flex';
+        UIElements.mainLayoutContainer.style.flexDirection = 'column';
+        UIElements.mainLayoutContainer.style.padding = '0';
+        UIElements.mainLayoutContainer.style.minHeight = '100vh';
+        UIElements.mainLayoutContainer.style.position = 'relative';
+
     } else {
-        if (UIElements.mainLayoutContainer.dataset.layout !== 'desktop') {
-            UIElements.mainLayoutContainer.style.gridTemplateColumns = '2fr 1fr';
-            UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
-            if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
-            if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
-            if (UIElements.activitiesSection) {
-                UIElements.activitiesSection.style.gridColumn = '2';
-                UIElements.activitiesSection.style.gridRow = '1 / span 4';
-                UIElements.activitiesSection.style.position = 'sticky';
-                UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
-                UIElements.activitiesSection.style.top = '1rem'; // Ensure sticky top is set
-            }
-            UIElements.mainLayoutContainer.dataset.layout = 'desktop';
-        }
+        UIElements.mobileHeader.style.display = 'none';
+        UIElements.headerSection.style.display = 'block';
+        UIElements.progressSummarySection.style.display = 'block';
+        UIElements.statusLogSectionContainer.style.display = 'block';
+
+        UIElements.mapSection.style.flexGrow = 'unset';
+        UIElements.mapSection.style.height = '700px';
+        UIElements.mapSection.style.padding = '1.5rem';
+
+        UIElements.activitiesDrawer.classList.remove('fixed', 'top-0', 'right-0', 'open');
+        UIElements.activitiesDrawer.classList.add('lg:static', 'lg:block');
+        UIElements.activitiesDrawer.style.width = 'auto';
+        UIElements.activitiesDrawer.style.maxWidth = 'unset';
+        UIElements.activitiesDrawer.style.height = 'calc(100vh - 2rem)';
+        UIElements.activitiesDrawer.style.boxShadow = '0 12px 20px -3px rgba(0, 0, 0, 0.1), 0 6px 10px -2px rgba(0, 0, 0, 0.05)';
+        UIElements.activitiesDrawer.style.transform = 'translateX(0)';
+        UIElements.activitiesDrawer.style.transition = 'none';
+        UIElements.activitiesDrawer.style.zIndex = 'auto';
+        UIElements.activitiesDrawer.style.overflowY = 'auto';
+        UIElements.activitiesDrawer.style.padding = '1.5rem';
+        UIElements.activitiesDrawer.style.borderRadius = '0.5rem';
+        UIElements.activitiesDrawerClose.style.display = 'none';
+
+        UIElements.mainLayoutContainer.style.display = 'grid';
+        UIElements.mainLayoutContainer.style.gridTemplateColumns = '2fr 1fr';
+        UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
+        UIElements.mainLayoutContainer.style.gap = '1rem';
+        UIElements.mainLayoutContainer.style.padding = '1rem';
+        UIElements.mainLayoutContainer.style.minHeight = '100vh';
+        UIElements.mainLayoutContainer.style.position = 'static';
     }
-    // Invalidate map size after layout change to ensure tiles load correctly
+   
     if (mainMap) mainMap.invalidateSize();
 }
 
-/** Checks if client ID and secret inputs are filled and enables/disables the connect button. */
+
 function checkInputs() {
-    if (UIElements.connectButton && UIElements.clientId && UIElements.clientSecret) { // Ensure elements exist
+    if (UIElements.connectButton && UIElements.clientId && UIElements.clientSecret) {
         const isDisabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
         UIElements.connectButton.disabled = isDisabled;
     }
 }
    
-/** Initiates the Strava OAuth authorization flow. */
 function connectToStrava() {
     const clientId = UIElements.clientId.value.trim();
     const clientSecret = UIElements.clientSecret.value.trim();
@@ -254,10 +223,6 @@ function connectToStrava() {
     window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
 }
 
-/**
- * Exchanges the Strava authorization code for access and refresh tokens.
- * @param {string} code - The authorization code from Strava.
- */
 async function getAccessToken(code) {
     log('Exchanging authorization code for token...');
     try {
@@ -279,38 +244,33 @@ async function getAccessToken(code) {
         localStorage.setItem(STRAVA_REFRESH_TOKEN_KEY, JSON.stringify(data.refresh_token));
         localStorage.setItem(STRAVA_EXPIRES_AT_KEY, data.expires_at.toString());
         localStorage.setItem('stravaAthlete', JSON.stringify(data.athlete));
-        window.location.href = window.location.pathname; // Clean URL and reload
+        window.location.href = window.location.pathname;
     } catch (error) {
         log(`Authentication failed: ${error.message}`, 'error');
         alert(`Authentication failed: ${error.message}. Please try again.`);
-        resetProgress(); // Clear all data, go back to login on auth failure
+        resetProgress();
     }
 }
    
-/** Hides the login screen and displays the main application. */
 async function showMainApp() {
     log('Loading main application...');
     const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
-    if (UIElements.stravaUserInfo) { // Defensive check
+    if (UIElements.stravaUserInfo) {
         if (athlete.firstname) {
             UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
         } else {
-            UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">Strava User</p>`; // Fallback
+            UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">Strava User</p>`;
         }
     }
    
-    // Initialize map and load SWCP data
-    initializeMapAndData(); // This will also initiate swcpDataPromise inside
-   
+    initializeMapAndData();
     await fetchAndRenderActivities();
 
-    // Ensure loadProgressFromStorage waits for SWCP data to be loaded
     await loadProgressFromStorage();
-    if (mainMap) mainMap.invalidateSize(); // Ensure map tiles load correctly
+    if (mainMap) mainMap.invalidateSize();
     log('Application loaded.', 'success');
 }
    
-/** Fetches and then renders Strava activities. */
 async function fetchAndRenderActivities() {
     if (UIElements.activitiesLoadingSpinner) UIElements.activitiesLoadingSpinner.classList.remove('hidden');
     allFetchedActivities = await fetchAllActivities();
@@ -323,76 +283,63 @@ async function fetchAndRenderActivities() {
     }
 }
 
-/** Initializes the Leaflet map and loads SWCP data. */
 function initializeMapAndData() {
     log('Initializing map...');
    
-    // Set a strict bounding box for the UK/SWCP area
-    const corner1 = L.latLng(49.8, -6.0); // South-west (e.g., Land's End area)
-    const corner2 = L.latLng(51.3, -1.7); // North-east (e.g., Minehead area)
+    const corner1 = L.latLng(49.8, -6.0);
+    const corner2 = L.latLng(51.3, -1.7);
     const bounds = L.latLngBounds(corner1, corner2);
 
-    // Initialize map with maxBounds and minZoom to keep focus on SWCP
-    if (!mainMap && UIElements.mainMap) { // Prevent re-initialization if already present, ensure div exists
+    if (!mainMap && UIElements.mainMap) {
         mainMap = L.map(UIElements.mainMap.id, { maxBounds: bounds, minZoom: 8 });
     } else if (!UIElements.mainMap) {
         log('Error: Main map container (id="map") not found. Cannot initialize map.', 'error');
         return;
     }
    
-    if (mainMap) { // Only proceed if map was successfully initialized
+    if (mainMap) {
         L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(mainMap);
        
-        // Ensure layer group is reset or initialized
         if (completedSegmentsLayer) {
-            completedSegmentsLayer.clearLayers(); // Clear old layers if re-initializing
+            completedSegmentsLayer.clearLayers();
         } else {
             completedSegmentsLayer = L.layerGroup().addTo(mainMap);
         }
 
-        // Assign the promise from loadSwcpData() to the global variable
         swcpDataPromise = loadSwcpData();
     }
 }
 
-/** Loads the SWCP GeoJSON data and renders it on the main map. */
 async function loadSwcpData() {
     log('Loading SWCP route data in background...');
     if (UIElements.mapLoadingOverlay) UIElements.mapLoadingOverlay.classList.remove('hidden');
     try {
         const response = await fetch(SWCP_GEOJSON_URL);
         if (!response.ok) {
-            // Provide more detail if the fetch itself fails
             throw new Error(`HTTP error! Status: ${response.status}. Could not load ${SWCP_GEOJSON_URL}. Check if the file exists and is accessible in your deployment.`);
         }
-        const data = await response.json(); // This will throw if the response is not valid JSON
+        const data = await response.json();
        
-        // --- CRITICAL FIX FOR 3D COORDINATES IN GEOJSON ---
-        // Extract coordinates, ensuring only [longitude, latitude] pairs are used for Turf.js
         const allCoordinates = [];
         data.features.forEach(feature => {
             if (feature.geometry && feature.geometry.coordinates) {
                 if (feature.geometry.type === 'LineString') {
-                    // Map 3D coordinates to 2D [lon, lat]
                     feature.geometry.coordinates.forEach(c => allCoordinates.push([c[0], c[1]]));
                 }
                 else if (feature.geometry.type === 'MultiLineString') {
-                    // For MultiLineString, iterate through each sub-lineString
                     feature.geometry.coordinates.forEach(subLine => {
-                        subLine.forEach(c => allCoordinates.push([c[0], c[1]])); // Map 3D to 2D for each point in sub-line
+                        subLine.forEach(c => allCoordinates.push([c[0], c[1]]));
                     });
                 }
             }
         });
 
-        // The filter for length === 2 is now appropriate because we explicitly extracted 2D points
         const validCoordinates = allCoordinates.filter(c =>
             Array.isArray(c) && c.length === 2 &&
             typeof c[0] === 'number' && typeof c[1] === 'number'
         );
        
         if (validCoordinates.length === 0) {
-            // More specific error message if no valid line coordinates are found
             throw new Error('No valid LineString or MultiLineString features with proper 2D coordinates found within the GeoJSON data after processing.');
         }
 
@@ -400,16 +347,12 @@ async function loadSwcpData() {
         swcpTotalDistance = turf.length(swcpGeoJSON, { units: 'kilometers' });
 
         if (analysisWorker) {
-             // Send a stringified version to the worker to ensure a clean copy
             analysisWorker.postMessage({ type: 'init_swcp', swcpGeoJSONString: JSON.stringify(swcpGeoJSON), swcpTotalDistance });
         } else {
             log('Analysis worker not initialized, cannot send SWCP data to it. Ensure worker script is loaded.', 'warn');
         }
        
-        // Add the GeoJSON data to the Leaflet map
-        if (mainMap) { // Ensure mainMap is initialized before adding GeoJSON
-            // For Leaflet rendering, we can use the original data as Leaflet can handle 3D points
-            // Or explicitly map to 2D if preferred, but original L.geoJSON usually handles it gracefully
+        if (mainMap) {
             const leafletGeoJson = L.geoJSON(data, {
                 style: { color: 'blue', weight: 3, opacity: 0.7 }
             }).addTo(mainMap);
@@ -428,21 +371,17 @@ async function loadSwcpData() {
     }
 }
    
-/** Loads existing progress data from local storage and initiates re-calculation. */
 async function loadProgressFromStorage() {
-    // --- SHOW LOADING INDICATOR ---
     if (UIElements.overallProgressLoading) {
         UIElements.overallProgressLoading.classList.remove('hidden');
     }
 
-    await swcpDataPromise; // Ensure SWCP data is loaded before processing points
+    await swcpDataPromise;
     const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     if (completedPoints.length > 0) {
         log('Calculating initial progress from stored data...');
-        // Correctly send existingPoints to worker for initial_load calculation
         analysisWorker.postMessage({ type: 'process_activity', activityId: 'initial_load', activityStream: null, existingPoints: completedPoints });
     } else {
-        // If no completed points, immediately update UI to 0 and hide loader
         updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
         log('No existing progress found. Overall progress set to 0.', 'info');
         if (UIElements.overallProgressLoading) UIElements.overallProgressLoading.classList.add('hidden');
@@ -486,7 +425,6 @@ async function refreshActivities() {
     }
     localStorage.removeItem(CACHED_ACTIVITIES_KEY);
     localStorage.removeItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
-    // Clear activity stream cache as well for consistency
     Object.keys(localStorage).forEach(key => {
         if (key.startsWith(ACTIVITY_STREAMS_CACHE_PREFIX)) {
             localStorage.removeItem(key);
@@ -500,7 +438,7 @@ async function refreshActivities() {
 function renderActivityList(activities) {
     if (!UIElements.activityListContainer) return;
 
-    UIElements.activityListContainer.innerHTML = ''; // Clear previous list
+    UIElements.activityListContainer.innerHTML = '';
     UIElements.activityCount.textContent = `(${activities.length} found)`;
     const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
    
@@ -515,50 +453,43 @@ function renderActivityList(activities) {
         cardDiv.querySelector('[data-elevation]').innerHTML = `<strong>Elevation Gain:</strong> ${activity.total_elevation_gain.toFixed(0)} m`;
        
         const mapEl = card.querySelector('[data-map-id]');
-        mapEl.id = `map-${activity.id}`; // Assign unique ID for Leaflet map initialization
-       
+        mapEl.id = `map-${activity.id}`;
         const analyzeBtn = card.querySelector('[data-analyze-btn]');
         analyzeBtn.dataset.activityId = activity.id;
        
-        // --- REANALYZE FUNCTIONALITY & GREY STYLING ---
-        // Remove all previous color classes to ensure clean slate
         analyzeBtn.classList.remove('btn-primary', 'btn-secondary', 'bg-gray-300', 'text-gray-700');
        
         if (processedIds.has(String(activity.id))) {
             analyzeBtn.textContent = 'Reanalyze';
-            analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
-            analyzeBtn.disabled = false; // Keep it clickable
+            analyzeBtn.classList.add('bg-gray-300', 'text-gray-700');
+            analyzeBtn.disabled = false;
         } else {
             analyzeBtn.textContent = 'Analyze for SWCP';
-            analyzeBtn.classList.add('btn-primary'); // Apply primary styling for initial analyze
+            analyzeBtn.classList.add('btn-primary');
             analyzeBtn.disabled = false;
         }
-        analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn); // Always assign the handler
-
+        analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn);
+       
         const addDescriptionBtn = card.querySelector('[data-update-btn]');
         addDescriptionBtn.dataset.activityId = activity.id;
         addDescriptionBtn.onclick = () => addDescriptionToStrava(activity, addDescriptionBtn);
 
         UIElements.activityListContainer.appendChild(card);
        
-        // Initialize mini-map for activity
         if (activity.map && activity.map.summary_polyline) {
             try {
                 const latlngs = polyline.decode(activity.map.summary_polyline);
                 if (latlngs.length > 0) {
                     const activityMap = L.map(mapEl.id, {
                         scrollWheelZoom: false,
-                        attributionControl: false, // No need for attribution on mini-maps
-                        zoomControl: false // Disable zoom control for smaller maps
+                        attributionControl: false,
+                        zoomControl: false
                     }).setView(latlngs[0], 13);
                    
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
                     L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap);
                    
-                    // Call fitBounds on the map object, not the polyline
                     activityMap.fitBounds(latlngs);
-                   
-                    // Invalidate size immediately after map is likely rendered or container is sized
                     activityMap.invalidateSize();
 
                 } else {
@@ -583,25 +514,23 @@ function renderActivityList(activities) {
 async function analyzeSingleActivity(activity, button) {
     button.disabled = true;
    
-    // Store original text to restore on error/completion
     const originalText = button.textContent;
 
-    // Set up initial spinner state for the button
     button.innerHTML = '<span class="loader"></span><span class="button-text">Analyzing (0%)...</span>';
     const buttonTextSpan = button.querySelector('.button-text');
 
-    await swcpDataPromise; // Ensure SWCP GeoJSON is loaded before starting analysis
+    await swcpDataPromise;
     if (!swcpGeoJSON) {
         log('SWCP GeoJSON not available for analysis.', 'error');
         alert('SWCP map data is still loading or failed to load. Please try again in a moment.');
         button.disabled = false;
-        button.innerHTML = originalText; // Revert
+        button.innerHTML = originalText;
         return;
     }
     if (!analysisWorker) {
         log('Analysis worker is offline or failed to initialize.', 'error');
         button.disabled = false;
-        button.innerHTML = originalText; // Revert
+        button.innerHTML = originalText;
         return;
     }
 
@@ -611,7 +540,7 @@ async function analyzeSingleActivity(activity, button) {
         button.innerHTML = 'API Error';
         setTimeout(() => {
             button.disabled = false;
-            button.innerHTML = originalText; // Revert
+            button.innerHTML = originalText;
         }, 3000);
         return;
     }
@@ -619,20 +548,18 @@ async function analyzeSingleActivity(activity, button) {
         log(`No GPS data found for activity ${activity.id}.`, 'warn');
         alert(`Could not get GPS data for activity "${activity.name}". Please check its privacy and map visibility settings on Strava.`);
         button.disabled = false;
-        button.innerHTML = 'No GPS Data'; // Revert
+        button.innerHTML = 'No GPS Data';
         return;
     }
    
     const existingPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     log(`Sending activity ${activity.id} data to worker for analysis...`);
    
-    // The main analysisWorker.onmessage handler (defined in init) will now manage button updates.
-    // We only need to ensure the worker knows which activity's button to update.
-    const currentActivityId = String(activity.id); // Capture for `postMessage`
+    const currentActivityId = String(activity.id);
 
     analysisWorker.postMessage({
         type: 'process_activity',
-        activityId: currentActivityId, // Pass the ID
+        activityId: currentActivityId,
         activityStream: stream.latlng.data,
         existingPoints: existingPoints
     });
@@ -699,24 +626,20 @@ async function fetchAllActivities() {
 }
 
 function updateProgressUI(payload) {
-    // --- DEBUGGING LOGS ---
     console.log("updateProgressUI: Payload received:", payload);
     console.log("updateProgressUI: totalDistance (from payload):", payload.totalDistance);
     console.log("updateProgressUI: percentage (from payload):", payload.percentage);
     console.log("updateProgressUI: segments (from payload):", payload.segments);
-    // --- END DEBUGGING LOGS ---
 
-    // Defensive checks for UIElements properties being non-null
     if (!completedSegmentsLayer || !UIElements.completedDistance || !UIElements.progressPercentage || !UIElements.progressBar || !mainMap) {
-        console.error('UI elements or map for progress update are not ready. Cannot update UI. Re-initializing map if possible.');
+        console.error('updateProgressUI: Critical UI elements or map for progress update are not ready. Cannot update UI.');
         log('Critical UI elements missing for progress update.', 'error');
-        // Attempt to re-initialize map if components are missing (might already be done by init)
         if (!mainMap && UIElements.mainMap) {
-            initializeMapAndData(); // Re-init map
+            initializeMapAndData();
         }
-        return; // Exit if critical elements are truly missing
+        return;
     }
-    const { segments, totalDistance, percentage, newCompletedPoints } = payload; // Destructure newCompletedPoints
+    const { segments, totalDistance, percentage, newCompletedPoints } = payload;
 
     completedSegmentsLayer.clearLayers();
     if (segments && segments.length > 0) {
@@ -729,21 +652,13 @@ function updateProgressUI(payload) {
         log('No new completed segments to render on map.', 'info');
     }
 
-    // --- Updating text fields and progress bar ---
-    // Ensure values are numbers before setting textContent and style.width
-    // Added parseFloat to explicitly convert even if they are strings from worker payload
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
    
-    // --- CRITICAL: Update global currentPercentage variable ---
-    currentPercentage = parseFloat(percentage); // Update the global variable here
+    currentPercentage = parseFloat(percentage);
 
-    // --- CRITICAL FIX: Ensure newCompletedPoints are saved for persistence ---
-    // This array holds all the points that define the completed sections of the path.
-    // If this is not correctly saved, then on next load, `loadProgressFromStorage` will get an empty array,
-    // leading to 0% overall progress being calculated by the worker.
-    if (newCompletedPoints) { // Defensive check
+    if (newCompletedPoints) {
         localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints));
         console.log("updateProgressUI: Saved newCompletedPoints to localStorage:", newCompletedPoints.length);
     } else {
@@ -761,21 +676,16 @@ async function addDescriptionToStrava(activity, button) {
         const fullActivity = await responseGet.json();
         const existingDescription = fullActivity.description || '';
        
-        // --- MODIFIED TEXT HERE ---
-        // Ensure UIElements.completedDistance and UIElements.totalDistance exist before accessing textContent
         const totalKilometersWalked = UIElements.completedDistance ? parseFloat(UIElements.completedDistance.textContent) : 0;
         const totalPathDistance = UIElements.totalDistance ? parseFloat(UIElements.totalDistance.textContent) : 0;
 
-        // Chosen emoji: Wave
         const emojiCliffCoast = '🌊';
         const emojiHikingBoot = '🥾';
 
-        // currentPercentage is now guaranteed to be updated by updateProgressUI
         const newTextLine1 = `${currentPercentage.toFixed(2)}% of the South West Coast Path completed! ${emojiCliffCoast}`;
         const newTextLine2 = `${totalKilometersWalked.toFixed(2)} out of ${totalPathDistance.toFixed(2)} kilometres walked ${emojiHikingBoot}`;
        
-        const newText = `${newTextLine1}\n${newTextLine2}`; // Combine lines with a newline character
-        // --- END MODIFIED TEXT ---
+        const newText = `${newTextLine1}\n${newTextLine2}`;
 
         const updatedDescription = existingDescription ? `${newText}\n\n---\n\n${existingDescription}` : newText;
 
@@ -797,8 +707,6 @@ async function addDescriptionToStrava(activity, button) {
    
 const init = async () => {
     // --- CRITICAL FIX: Initialize all UIElements properties immediately ---
-    // This ensures all UIElements properties are set *before* any functions that use them are called,
-    // preventing "UIElements is not defined" or "Cannot read properties of null" errors.
     UIElements.clientId = document.getElementById('clientId');
     UIElements.clientSecret = document.getElementById('clientSecret');
     UIElements.connectButton = document.getElementById('connect-button');
@@ -831,14 +739,12 @@ const init = async () => {
     UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
     UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
 
-    log('Application initialization started.'); // This log call should now work
+    log('Application initialization started.');
    
     try {
         analysisWorker = new Worker('swcp_analysis_worker.js');
         log('Analysis worker initialized.', 'success');
        
-        // This single handler is responsible for ALL messages from the worker.
-        // It now uses document.querySelector to target specific buttons.
         analysisWorker.onmessage = (e) => {
             const { type, payload } = e.data;
             if (!payload || !payload.activityId) return;
@@ -855,37 +761,35 @@ const init = async () => {
                 }
             } else if (type === 'result') {
                 log(`Analysis complete for activity ${activityId}. Updating UI.`, 'success');
-                console.log("Worker Result Payload (Result):", payload); // Console log final payload from worker
+                console.log("Worker Result Payload (Result):", payload);
 
                 if (activityId !== 'initial_load') {
                     if(analyzeBtn) {
                         analyzeBtn.textContent = 'Reanalyze';
-                        analyzeBtn.classList.remove('btn-primary', 'btn-secondary'); // Clean slate
-                        analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
+                        analyzeBtn.classList.remove('btn-primary', 'btn-secondary');
+                        analyzeBtn.classList.add('bg-gray-300', 'text-gray-700');
                         analyzeBtn.disabled = false;
                         const loaderSpan = analyzeBtn.querySelector('.loader');
-                        if(loaderSpan) loaderSpan.remove(); // Remove loader
+                        if(loaderSpan) loaderSpan.remove();
                     }
                     const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
                     processedIds.add(activityId);
                     localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
-                } else { // This is for activityId === 'initial_load'
-                    // --- HIDE OVERALL PROGRESS LOADING INDICATOR ---
+                } else {
                     if (UIElements.overallProgressLoading) {
                         UIElements.overallProgressLoading.classList.add('hidden');
                     }
                 }
-                updateProgressUI(payload); // Update main progress bar and map segments
+                updateProgressUI(payload);
             } else if (type === 'error') {
                 log(`Worker error for ${activityId}: ${error}`, 'error');
                 if (analyzeBtn) {
                     analyzeBtn.textContent = 'Analysis Failed';
                     analyzeBtn.disabled = false;
                     const loaderSpan = analyzeBtn.querySelector('.loader');
-                    if(loaderSpan) loaderSpan.remove(); // Remove loader
+                    if(loaderSpan) loaderSpan.remove();
                 }
                 alert(`Analysis failed for activity ${activityId}: ${error}. Check console for details.`);
-                // Hide overall progress loading indicator also on initial load error
                 if (activityId === 'initial_load' && UIElements.overallProgressLoading) {
                     UIElements.overallProgressLoading.classList.add('hidden');
                 }
@@ -895,7 +799,6 @@ const init = async () => {
         analysisWorker.onerror = (e) => {
             log(`Critical worker error: ${e.message || 'Unknown worker error'}`, 'error');
             alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
-            // Hide progress indicator if worker crashes
             if (UIElements.overallProgressLoading) {
                 UIElements.overallProgressLoading.classList.add('hidden');
             }
@@ -903,7 +806,6 @@ const init = async () => {
     } catch (e) {
         log(`Failed to initialize analysis worker: ${e.message}`, 'error');
         alert('Failed to load background analysis. Progress tracking might not work. Check console for "swcp_analysis_worker.js" errors.');
-        // Hide progress indicator if worker fails to initialize
         if (UIElements.overallProgressLoading) {
             UIElements.overallProgressLoading.classList.add('hidden');
         }
@@ -922,34 +824,26 @@ const init = async () => {
     // Populate input fields from local storage (if available)
     UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
     UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
-    checkInputs(); // Check inputs immediately to enable/disable connect button
+    checkInputs();
 
-    // Handle Strava OAuth callback
     const urlParams = new URLSearchParams(window.location.search);
     const authCode = urlParams.get('code');
-    const authError = urlParams.get('error'); // Check for OAuth errors
+    const authError = urlParams.get('error');
 
-    UIElements.initialLoadingScreen.classList.add('hidden'); // Hide initial loading screen
+    UIElements.initialLoadingScreen.classList.add('hidden');
 
     if (authError) {
         log(`Strava OAuth Error: ${authError}. Please try connecting again.`, 'error');
         alert(`Strava connection failed: ${authError}`);
-        UIElements.loginScreenWrapper.classList.remove('hidden'); // Show login screen on error
-    } else if (authCode) {
-        // We've been redirected back from Strava with a code
-        UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating...</span></div>`;
         UIElements.loginScreenWrapper.classList.remove('hidden');
-        await getAccessToken(authCode);
     } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
-        // User has existing tokens, show main app
         UIElements.mainLayoutContainer.classList.remove('hidden');
         await showMainApp();
     } else {
-        // No code, no existing token, show login screen
         UIElements.loginScreenWrapper.classList.remove('hidden');
     }
    
-    updateGridLayout(); // Initial layout adjustment
+    updateGridLayout();
 };
 
 document.addEventListener('DOMContentLoaded', init);
