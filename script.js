@@ -1,4 +1,4 @@
-// Constants
+// Constants (No changes here)
 const SWCP_GEOJSON_URL = 'routes.geojson';
 const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
 const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -26,7 +26,7 @@ let swcpDataPromise = null; // Will store the promise for loading SWCP data
  */
 const log = (message, type = 'info') => {
     if (!UIElements.statusLog) {
-        console.warn('Status log element not found, logging to console:', message);
+        console.warn('Status log element not found (UIElements.statusLog is null or undefined). Logging to console:', message);
         return;
     }
     const now = new Date().toLocaleTimeString();
@@ -257,7 +257,7 @@ async function showMainApp() {
     }
    
     // Initialize map and load SWCP data
-    initializeMapAndData(); // This will set swcpDataPromise inside
+    initializeMapAndData(); // This will also initiate swcpDataPromise inside
    
     await fetchAndRenderActivities();
 
@@ -324,19 +324,35 @@ async function loadSwcpData() {
         }
         const data = await response.json(); // This will throw if the response is not valid JSON
        
-        // Original coordinate extraction logic (proven to work with your file)
+        // --- CRITICAL CHANGE HERE ---
+        // Extract coordinates, ensuring only [longitude, latitude] pairs are used
+        // Your GeoJSON has [lon, lat, elev], so we need to map to [lon, lat]
         const allCoordinates = data.features.reduce((coords, feature) => {
-            if (feature.geometry.type === 'LineString') { return coords.concat(feature.geometry.coordinates); }
-            else if (feature.geometry.type === 'MultiLineString') { return coords.concat(...feature.geometry.coordinates); }
+            if (feature.geometry && feature.geometry.coordinates) {
+                if (feature.geometry.type === 'LineString') {
+                    // Map 3D coordinates to 2D [lon, lat]
+                    return coords.concat(feature.geometry.coordinates.map(c => [c[0], c[1]]));
+                }
+                else if (feature.geometry.type === 'MultiLineString') {
+                    // For MultiLineString, iterate through each sub-lineString
+                    const subLineCoords = feature.geometry.coordinates.map(subLine =>
+                        subLine.map(c => [c[0], c[1]]) // Map 3D to 2D for each point in sub-line
+                    );
+                    return coords.concat(...subLineCoords); // Flatten the array of arrays
+                }
+            }
             return coords;
         }, []);
 
-        // Filter for valid coordinates (this part is good practice, keep it)
-        const validCoordinates = allCoordinates.filter(c => Array.isArray(c) && c.length === 2 && typeof c[0] === 'number' && typeof c[1] === 'number');
+        // The filter for length === 2 is now appropriate because we explicitly extracted 2D points
+        const validCoordinates = allCoordinates.filter(c =>
+            Array.isArray(c) && c.length === 2 &&
+            typeof c[0] === 'number' && typeof c[1] === 'number'
+        );
        
         if (validCoordinates.length === 0) {
             // More specific error message if no valid line coordinates are found
-            throw new Error('No valid LineString or MultiLineString features with coordinates found within the GeoJSON data.');
+            throw new Error('No valid LineString or MultiLineString features with proper 2D coordinates found within the GeoJSON data after processing.');
         }
 
         swcpGeoJSON = turf.lineString(validCoordinates).geometry;
@@ -351,6 +367,7 @@ async function loadSwcpData() {
        
         // Add the GeoJSON data to the Leaflet map
         if (mainMap) { // Ensure mainMap is initialized before adding GeoJSON
+            // Re-use original data for rendering, as Leaflet can handle 3D points
             const leafletGeoJson = L.geoJSON(data, {
                 style: { color: 'blue', weight: 3, opacity: 0.7 }
             }).addTo(mainMap);
