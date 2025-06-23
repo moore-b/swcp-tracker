@@ -14,10 +14,10 @@ const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
 // UI Elements collected into a single object for easier access and clarity
 const UIElements = {};
 
-// Global variables for map and data, kept for simplicity of this app's scope
+// Global variables for map and data
 let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
 let analysisWorker = null;
-let swcpDataPromise = null;
+let swcpDataPromise = null; // Will store the promise for loading SWCP data
 
 /**
  * Logs messages to the status log UI element.
@@ -153,29 +153,33 @@ function updateGridLayout() {
         if (UIElements.mainLayoutContainer.dataset.layout !== 'mobile') {
             UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
-            UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
-            UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
-            UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '5';
-            UIElements.activitiesSection.style.position = 'static';
-            UIElements.activitiesSection.style.height = 'auto';
-            UIElements.activitiesSection.style.top = 'auto'; // Remove sticky top on mobile
+            if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
+            if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
+            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
+            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
+            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '5';
+            if (UIElements.activitiesSection) {
+                UIElements.activitiesSection.style.position = 'static';
+                UIElements.activitiesSection.style.height = 'auto';
+                UIElements.activitiesSection.style.top = 'auto'; // Remove sticky top on mobile
+            }
             UIElements.mainLayoutContainer.dataset.layout = 'mobile';
         }
     } else {
         if (UIElements.mainLayoutContainer.dataset.layout !== 'desktop') {
             UIElements.mainLayoutContainer.style.gridTemplateColumns = '2fr 1fr';
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
-            UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
-            UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
-            UIElements.activitiesSection.style.gridColumn = '2';
-            UIElements.activitiesSection.style.gridRow = '1 / span 4';
-            UIElements.activitiesSection.style.position = 'sticky';
-            UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
-            UIElements.activitiesSection.style.top = '1rem'; // Ensure sticky top is set
+            if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
+            if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
+            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
+            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
+            if (UIElements.activitiesSection) {
+                UIElements.activitiesSection.style.gridColumn = '2';
+                UIElements.activitiesSection.style.gridRow = '1 / span 4';
+                UIElements.activitiesSection.style.position = 'sticky';
+                UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
+                UIElements.activitiesSection.style.top = '1rem'; // Ensure sticky top is set
+            }
             UIElements.mainLayoutContainer.dataset.layout = 'desktop';
         }
     }
@@ -244,16 +248,21 @@ async function getAccessToken(code) {
 async function showMainApp() {
     log('Loading main application...');
     const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
-    if (athlete.firstname) {
-        UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
-    } else {
-        UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">Strava User</p>`; // Fallback
+    if (UIElements.stravaUserInfo) { // Defensive check
+        if (athlete.firstname) {
+            UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+        } else {
+            UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">Strava User</p>`; // Fallback
+        }
     }
    
-    initializeMapAndData();
+    // Initialize map and load SWCP data
+    initializeMapAndData(); // This will set swcpDataPromise inside
+   
     await fetchAndRenderActivities();
 
-    await loadProgressFromStorage(); // Depends on swcpDataPromise, which is awaited inside
+    // Ensure loadProgressFromStorage waits for SWCP data to be loaded
+    await loadProgressFromStorage();
     if (mainMap) mainMap.invalidateSize(); // Ensure map tiles load correctly
     log('Application loaded.', 'success');
 }
@@ -281,20 +290,26 @@ function initializeMapAndData() {
     const bounds = L.latLngBounds(corner1, corner2);
 
     // Initialize map with maxBounds and minZoom to keep focus on SWCP
-    if (!mainMap) { // Prevent re-initialization if already present
-        mainMap = L.map('map', { maxBounds: bounds, minZoom: 8 });
+    if (!mainMap && UIElements.mainMap) { // Prevent re-initialization if already present, ensure div exists
+        mainMap = L.map(UIElements.mainMap.id, { maxBounds: bounds, minZoom: 8 });
+    } else if (!UIElements.mainMap) {
+        log('Error: Main map container (id="map") not found. Cannot initialize map.', 'error');
+        return;
     }
    
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(mainMap);
-   
-    // Ensure layer group is reset or initialized
-    if (completedSegmentsLayer) {
-        completedSegmentsLayer.clearLayers(); // Clear old layers if re-initializing
-    } else {
-        completedSegmentsLayer = L.layerGroup().addTo(mainMap);
-    }
+    if (mainMap) { // Only proceed if map was successfully initialized
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(mainMap);
+       
+        // Ensure layer group is reset or initialized
+        if (completedSegmentsLayer) {
+            completedSegmentsLayer.clearLayers(); // Clear old layers if re-initializing
+        } else {
+            completedSegmentsLayer = L.layerGroup().addTo(mainMap);
+        }
 
-    swcpDataPromise = loadSwcpData(); // Start loading geojson data asynchronously
+        // Assign the promise from loadSwcpData() to the global variable
+        swcpDataPromise = loadSwcpData();
+    }
 }
 
 /** Loads the SWCP GeoJSON data and renders it on the main map. */
@@ -303,24 +318,25 @@ async function loadSwcpData() {
     if (UIElements.mapLoadingOverlay) UIElements.mapLoadingOverlay.classList.remove('hidden');
     try {
         const response = await fetch(SWCP_GEOJSON_URL);
-        if (!response.ok) throw new Error(`HTTP error! Status: ${response.status} for ${SWCP_GEOJSON_URL}`);
-        const data = await response.json();
+        if (!response.ok) {
+            // Provide more detail if the fetch itself fails
+            throw new Error(`HTTP error! Status: ${response.status}. Could not load ${SWCP_GEOJSON_URL}. Check if the file exists and is accessible in your deployment.`);
+        }
+        const data = await response.json(); // This will throw if the response is not valid JSON
        
-        // Flatten MultiLineString and LineString coordinates for Turf.js
+        // Original coordinate extraction logic (proven to work with your file)
         const allCoordinates = data.features.reduce((coords, feature) => {
-            if (feature.geometry.type === 'LineString') {
-                return coords.concat(feature.geometry.coordinates);
-            } else if (feature.geometry.type === 'MultiLineString') {
-                return coords.concat(...feature.geometry.coordinates);
-            }
+            if (feature.geometry.type === 'LineString') { return coords.concat(feature.geometry.coordinates); }
+            else if (feature.geometry.type === 'MultiLineString') { return coords.concat(...feature.geometry.coordinates); }
             return coords;
         }, []);
 
-        // Filter out any non-coordinate arrays that might sneak in (e.g., if a feature has empty geometry)
+        // Filter for valid coordinates (this part is good practice, keep it)
         const validCoordinates = allCoordinates.filter(c => Array.isArray(c) && c.length === 2 && typeof c[0] === 'number' && typeof c[1] === 'number');
        
         if (validCoordinates.length === 0) {
-            throw new Error('No valid coordinates found in SWCP GeoJSON for turf calculation. Check your routes.geojson file.');
+            // More specific error message if no valid line coordinates are found
+            throw new Error('No valid LineString or MultiLineString features with coordinates found within the GeoJSON data.');
         }
 
         swcpGeoJSON = turf.lineString(validCoordinates).geometry;
@@ -330,20 +346,24 @@ async function loadSwcpData() {
              // Send a stringified version to the worker to ensure a clean copy
             analysisWorker.postMessage({ type: 'init_swcp', swcpGeoJSONString: JSON.stringify(swcpGeoJSON), swcpTotalDistance });
         } else {
-            log('Analysis worker not initialized, cannot send SWCP data to it.', 'warn');
+            log('Analysis worker not initialized, cannot send SWCP data to it. Ensure worker script is loaded.', 'warn');
         }
        
         // Add the GeoJSON data to the Leaflet map
-        const leafletGeoJson = L.geoJSON(data, {
-            style: { color: 'blue', weight: 3, opacity: 0.7 }
-        }).addTo(mainMap);
-        mainMap.fitBounds(leafletGeoJson.getBounds());
+        if (mainMap) { // Ensure mainMap is initialized before adding GeoJSON
+            const leafletGeoJson = L.geoJSON(data, {
+                style: { color: 'blue', weight: 3, opacity: 0.7 }
+            }).addTo(mainMap);
+            mainMap.fitBounds(leafletGeoJson.getBounds());
+        } else {
+            log('Main map not initialized, cannot render SWCP route. This is an unexpected state.', 'error');
+        }
        
         if (UIElements.totalDistance) UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
-        log('SWCP route rendered on map.');
+        log('SWCP route rendered on map.', 'success');
     } catch(e) {
-        log(`Failed to load SWCP map data: ${e.message}`, 'error');
-        alert(`Failed to load SWCP map data: ${e.message}. Please check your 'routes.geojson' file and ensure it's valid.`);
+        log(`Failed to load SWCP map data: ${e.message}. Please check your 'routes.geojson' file and its deployment.`, 'error');
+        alert(`Failed to load SWCP map data: ${e.message}.`);
     } finally {
         if (UIElements.mapLoadingOverlay) UIElements.mapLoadingOverlay.classList.add('hidden');
     }
@@ -359,11 +379,11 @@ async function loadProgressFromStorage() {
             // Pass `null` for activityStream to signal "just process existing points"
             analysisWorker.postMessage({ type: 'process_activity', activityId: 'initial_load', activityStream: null, existingPoints: completedPoints });
         } else {
-            log('Analysis worker not available for initial progress calculation.', 'error');
-            updateProgressUI({ segments: [], totalDistance: 0, percentage: '0.00', newCompletedPoints: [] });
+            log('Analysis worker not available for initial progress calculation. Progress will not be loaded from storage.', 'error');
+            updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
         }
     } else {
-        updateProgressUI({ segments: [], totalDistance: 0, percentage: '0.00', newCompletedPoints: [] });
+        updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
         log('No existing progress found.', 'info');
     }
 }
@@ -481,11 +501,13 @@ function renderActivityList(activities) {
                    
                     L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
                     L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap).fitBounds(latlngs); // Use fitBounds with polyline
+                } else {
+                    mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">No valid polyline data for map.</div>';
                 }
             } catch (e) {
                 console.warn(`Failed to decode polyline for activity ${activity.id}: ${e.message}`);
                 log(`Failed to render mini-map for activity ${activity.id}. Check activity data on Strava.`, 'warn');
-                mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">Map not available (no valid GPS data or polyline)</div>';
+                mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">Map not available (decoding error).</div>';
             }
         } else {
             mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">No GPS data for this activity.</div>';
@@ -644,10 +666,14 @@ function updateProgressUI(payload) {
     // --- END DEBUGGING LOGS ---
    
     if (!completedSegmentsLayer || !UIElements.completedDistance || !UIElements.progressPercentage || !UIElements.progressBar || !mainMap) {
-        console.error('UI elements or map for progress update are not ready. Cannot update UI.');
+        console.error('UI elements or map for progress update are not ready. Cannot update UI. Re-initializing map if possible.');
         log('Critical UI elements missing for progress update.', 'error');
-        // Optionally try to re-initialize if this happens unexpectedly
-        // initializeMapAndData();
+        // Attempt to re-initialize map if components are missing
+        if (!mainMap && UIElements.mainMap) { // Only if map not initialized but container exists
+            initializeMapAndData();
+            // Note: This re-init will restart the swcpDataPromise, so subsequent calls to updateProgressUI might wait again.
+            // A more robust solution for large apps might be to have a dedicated map state manager.
+        }
         return;
     }
 
