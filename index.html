@@ -41,7 +41,7 @@
         #activities-section { grid-column: 2; grid-row: 1 / span 4; position: sticky; top: 1rem; height: calc(100vh - 2rem); overflow-y: auto; }
         @media (max-width: 1024px) {
             #main-layout-container { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; }
-            #header-section, #progress-summary-section, #map-section, #status-log-section-container { grid-column: 1; }
+            #header-section, #progress-summary-section, #map-section, #status-log-section-container, #activities-section { grid-column: 1; }
             #header-section { grid-row: 1; }
             #progress-summary-section { grid-row: 2; }
             #map-section { grid-row: 3; }
@@ -239,8 +239,35 @@
             }
         }
        
-        function updateGridLayout() { /* Layout logic can be added here if needed */ }
-        function checkInputs() { if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim()); }
+        function updateGridLayout() {
+            if (!UIElements.mainLayoutContainer) return;
+            const isMobile = window.innerWidth <= 1024;
+            if (isMobile) {
+                UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
+                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
+                UIElements.headerSection.style.gridRow = '1';
+                UIElements.progressSummarySection.style.gridRow = '2';
+                UIElements.mapSection.style.gridRow = '3';
+                UIElements.activitiesSection.style.gridRow = '4';
+                UIElements.statusLogSectionContainer.style.gridRow = '5';
+                UIElements.activitiesSection.style.position = 'static';
+                UIElements.activitiesSection.style.height = 'auto';
+            } else {
+                UIElements.mainLayoutContainer.style.gridTemplateColumns = '2fr 1fr';
+                UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
+                UIElements.headerSection.style.gridRow = '1';
+                UIElements.progressSummarySection.style.gridRow = '2';
+                UIElements.mapSection.style.gridRow = '3';
+                UIElements.statusLogSectionContainer.style.gridRow = '4';
+                UIElements.activitiesSection.style.gridRow = '1 / span 4';
+                UIElements.activitiesSection.style.position = 'sticky';
+                UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
+            }
+        }
+
+        function checkInputs() {
+            if (UIElements.connectButton) UIElements.connectButton.disabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
+        }
    
         function connectToStrava() {
             const clientId = UIElements.clientId.value.trim();
@@ -298,7 +325,7 @@
 
         async function initializeMap() {
             log('Initializing map...');
-            UIElements.mapLoadingOverlay.style.display = 'flex';
+            UIElements.mapLoadingOverlay.classList.remove('hidden');
             mainMap = L.map(UIElements.mainMap).setView([50.5, -4.0], 7);
             L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; OpenStreetMap' }).addTo(mainMap);
             completedSegmentsLayer = L.layerGroup().addTo(mainMap);
@@ -316,7 +343,7 @@
             } catch(e) {
                 log(`Failed to load map data: ${e.message}`, 'error');
             } finally {
-                UIElements.mapLoadingOverlay.style.display = 'none';
+                UIElements.mapLoadingOverlay.classList.add('hidden');
             }
         }
        
@@ -513,11 +540,86 @@
             return activities;
         }
 
-        function updateProgress(completedPoints) { /* ... */ }
-        async function addDescriptionToStrava(activity, button) { /* ... */ }
+        function updateProgress(completedPoints) {
+            if (!completedSegmentsLayer || !swcpGeoJSON) return;
+            completedSegmentsLayer.clearLayers();
+            if (completedPoints.length === 0) {
+                currentPercentage = "0.00";
+                UIElements.completedDistance.textContent = "0.00";
+                UIElements.progressPercentage.textContent = "0.00%";
+                UIElements.progressBar.style.width = "0%";
+                return;
+            }
+
+            const uniquePoints = completedPoints.reduce((acc, point) => {
+                if (!acc.some(p => turf.distance(turf.point(p), turf.point(point), {units: 'meters'}) < 20)) {
+                    acc.push(point);
+                }
+                return acc;
+            }, []);
+
+            const sortedPoints = uniquePoints.map(p => ({
+                coords: p,
+                location: turf.nearestPointOnLine(swcpGeoJSON, turf.point(p)).properties.location
+            })).sort((a, b) => a.location - b.location);
+
+            let segments = [], currentSegment = [];
+            if (sortedPoints.length > 0) {
+                currentSegment.push(sortedPoints[0].coords);
+                for (let i = 1; i < sortedPoints.length; i++) {
+                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) { // Gap > 200m
+                        if (currentSegment.length > 1) segments.push(currentSegment);
+                        currentSegment = [];
+                    }
+                    currentSegment.push(sortedPoints[i].coords);
+                }
+                if (currentSegment.length > 1) segments.push(currentSegment);
+            }
+
+            const totalCompletedDistance = segments.reduce((sum, seg) => {
+                const leafletCoords = seg.map(c => [c[1], c[0]]); // Convert for Leaflet
+                L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+                return sum + turf.length(turf.lineString(seg), { units: 'kilometers' });
+            }, 0);
+
+            currentPercentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : "0.00";
+            UIElements.completedDistance.textContent = totalCompletedDistance.toFixed(2);
+            UIElements.progressPercentage.textContent = `${currentPercentage}%`;
+            UIElements.progressBar.style.width = `${currentPercentage}%`;
+        }
+       
+        async function addDescriptionToStrava(activity, button) {
+            button.disabled = true;
+            button.innerHTML = `<span class="loader"></span>Adding...`;
+            try {
+                const responseGet = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activity.id}`);
+                if (!responseGet.ok) throw new Error(await responseGet.text());
+                const fullActivity = await responseGet.json();
+                const existingDescription = fullActivity.description || '';
+                const newText = `I've now completed ${currentPercentage}% of the South West Coast Path! 🥾`;
+                const updatedDescription = existingDescription ? `${newText}\n\n---\n\n${existingDescription}` : newText;
+
+                const responsePut = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activity.id}`, {
+                    method: 'PUT',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ description: updatedDescription })
+                });
+                if (!responsePut.ok) throw new Error(await responsePut.text());
+                log('Strava description updated.', 'success');
+                button.textContent = 'Description Added!';
+            } catch (e) {
+                log(`Error updating description: ${e.message}`, 'error');
+                button.textContent = 'Error';
+            } finally {
+                setTimeout(() => {
+                    button.textContent = 'Add to Strava Description';
+                    button.disabled = false;
+                }, 3000);
+            }
+        }
 
         const init = async () => {
-            // FIX: This is the definitive, explicit, and correct way to assign UI elements.
+            // This explicit assignment is the most robust method and fixes the recurring error.
             UIElements.clientId = document.getElementById('clientId');
             UIElements.clientSecret = document.getElementById('clientSecret');
             UIElements.connectButton = document.getElementById('connect-button');
