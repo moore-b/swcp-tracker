@@ -314,9 +314,11 @@
             if (athlete.firstname) UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
             await initializeMap();
             loadProgressFromStorage();
+           
             UIElements.activitiesLoadingSpinner.classList.remove('hidden');
             allFetchedActivities = await fetchAllActivities();
             UIElements.activitiesLoadingSpinner.classList.add('hidden');
+           
             if (allFetchedActivities) {
                 filterActivities();
             } else {
@@ -585,7 +587,7 @@
             if (sortedPoints.length > 0) {
                 currentSegment.push(sortedPoints[0].coords);
                 for (let i = 1; i < sortedPoints.length; i++) {
-                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) { // Gap > 200m
+                    if (sortedPoints[i].location - sortedPoints[i - 1].location > 0.2) {
                         if (currentSegment.length > 1) segments.push(currentSegment);
                         currentSegment = [sortedPoints[i].coords];
                     } else {
@@ -673,7 +675,7 @@
             // --- DIAGNOSTIC CHECK ---
             if (!UIElements.connectButton) {
                 alert("DIAGNOSTIC: CRITICAL ERROR! The script could not find the 'Connect with Strava' button in the HTML. Please check the button's ID is set to 'connect-button'.");
-                return; // Stop initialization
+                return;
             }
 
             log('App initialized.');
@@ -715,18 +717,12 @@
             UIElements.filterButtons.addEventListener('click', handleFilterClick);
             UIElements.activitySearchBox.addEventListener('input', filterActivities);
             UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
-           
             UIElements.clientId.addEventListener('input', checkInputs);
             UIElements.clientSecret.addEventListener('input', checkInputs);
            
             UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
             UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
             checkInputs();
-
-            // --- DIAGNOSTIC CHECK ---
-            if (UIElements.connectButton.disabled) {
-                alert("DIAGNOSTIC: The 'Connect with Strava' button is currently disabled. Please enter your Client ID and Client Secret into the input fields to enable it.");
-            }
 
             const authCode = new URLSearchParams(window.location.search).get('code');
             if (authCode) {
@@ -737,6 +733,10 @@
                 await showMainApp();
             } else {
                 UIElements.loginScreenWrapper.classList.remove('hidden');
+                // --- DIAGNOSTIC CHECK ---
+                if (UIElements.connectButton && UIElements.connectButton.disabled) {
+                    alert("DIAGNOSTIC: The 'Connect with Strava' button is disabled because the Client ID and/or Secret are missing. Please enter them to continue.");
+                }
             }
            
             UIElements.initialLoadingScreen.classList.add('hidden');
