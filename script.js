@@ -539,77 +539,60 @@ function renderActivityList(activities) {
 async function analyzeSingleActivity(activity, button) {
     button.disabled = true;
    
-    // --- FIX FOR LOADER ANIMATION ---
-    // Instead of innerHTML = '...', create the loader once and update text separately.
+    // Store original text to restore on error/completion
+    const originalText = button.textContent;
+
+    // Set up initial spinner state for the button
     button.innerHTML = '<span class="loader"></span><span class="button-text">Analyzing (0%)...</span>';
     const buttonTextSpan = button.querySelector('.button-text');
 
     await swcpDataPromise; // Ensure SWCP GeoJSON is loaded before starting analysis
     if (!swcpGeoJSON) {
-        alert('SWCP map data is still loading or failed to load. Please try again in a moment.');
         log('SWCP GeoJSON not available for analysis.', 'error');
-        button.disabled = false; button.textContent = 'Analyze for SWCP'; // Revert button on error
-        // Clean up loader if not needed
-        button.innerHTML = 'Analyze for SWCP'; // Reset to simple text
+        alert('SWCP map data is still loading or failed to load. Please try again in a moment.');
+        button.disabled = false;
+        button.innerHTML = originalText; // Revert
         return;
     }
     if (!analysisWorker) {
         log('Analysis worker is offline or failed to initialize.', 'error');
-        button.textContent = 'Error: Worker offline';
-        button.disabled = false; // Revert button on error
-        // Clean up loader if not needed
-        button.innerHTML = 'Analyze for SWCP'; // Reset to simple text
+        button.disabled = false;
+        button.innerHTML = originalText; // Revert
         return;
     }
 
     const stream = await getActivityStream(activity.id);
     if (stream === null) {
-        button.textContent = 'API Error';
         log(`Failed to get activity stream for ${activity.id}.`, 'error');
-        setTimeout(() => { button.disabled = false; button.textContent = 'Analyze for SWCP'; }, 3000); // Revert after delay
-        // Clean up loader if not needed
-        button.innerHTML = 'Analyze for SWCP'; // Reset to simple text
+        button.innerHTML = 'API Error';
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = originalText; // Revert
+        }, 3000);
         return;
     }
     if (!stream.latlng || !stream.latlng.data || stream.latlng.data.length === 0) {
-        alert(`Could not get GPS data for activity "${activity.name}". Please check its privacy and map visibility settings on Strava.`);
-        button.textContent = 'No GPS Data';
-        button.disabled = false; // Revert button
         log(`No GPS data found for activity ${activity.id}.`, 'warn');
-        // Clean up loader if not needed
-        button.innerHTML = 'No GPS Data'; // Reset to simple text
+        alert(`Could not get GPS data for activity "${activity.name}". Please check its privacy and map visibility settings on Strava.`);
+        button.disabled = false;
+        button.innerHTML = 'No GPS Data'; // Revert
         return;
     }
    
-    // When reanalyzing, we want to re-process ALL previously completed points PLUS this new activity.
-    // So, we don't remove the activityId from PROCESSED_ACTIVITIES_KEY here.
     const existingPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
     log(`Sending activity ${activity.id} data to worker for analysis...`);
    
-    // --- IMPORTANT: Ensure the main analysisWorker.onmessage is correctly handling results ---
-    // The previous implementation for the spinner fix might have overridden the global handler
-    // This is the delicate part where regressions can occur.
-    // The solution is to ensure the global handler (defined in init) always processes ALL worker messages.
-    // The spinner update needs to be *within* the scope of the analyzeSingleActivity call,
-    // but without disrupting the main message flow.
-    // Let's remove the temporary handler reassignment from the previous version.
-    // The `init` function's `analysisWorker.onmessage` should be the *only* one.
+    // Capture the current activityId to update the specific button from the global worker handler
+    const currentActivityId = String(activity.id);
 
+    // The main analysisWorker.onmessage handler (defined in init) will now manage button updates.
+    // Ensure the global handler correctly uses `document.querySelector` to find THIS specific button.
     analysisWorker.postMessage({
         type: 'process_activity',
-        activityId: String(activity.id), // Ensure activityId is a string for consistent keys
+        activityId: currentActivityId, // Pass the ID
         activityStream: stream.latlng.data,
-        existingPoints: existingPoints // Send all existing points
+        existingPoints: existingPoints
     });
-
-    // The progress updates for the *button* itself will now be handled by
-    // the main `analysisWorker.onmessage` handler directly, which uses `document.querySelector`
-    // to find the correct button and update its `innerHTML`.
-    // This simplifies the worker message handling and avoids potential conflicts.
-    // The spinner in `analyzeSingleActivity` will be set once, and then the
-    // `analysisWorker.onmessage` will manage updating its percentage.
-    // After analysis is complete, the `init`'s `analysisWorker.onmessage` handler
-    // will set the final button text/styling.
 }
    
 async function getActivityStream(activityId) {
@@ -679,23 +662,36 @@ function updateProgressUI(payload) {
     console.log("updateProgressUI: segments (from payload):", payload.segments);
     // --- END DEBUGGING LOGS ---
 
-    if (!completedSegmentsLayer || !UIElements.completedDistance) {
-        console.error('UI elements for progress update are not ready.');
+    if (!completedSegmentsLayer || !UIElements.completedDistance || !UIElements.progressPercentage || !UIElements.progressBar || !mainMap) {
+        console.error('UI elements or map for progress update are not ready. Cannot update UI. Re-initializing map if possible.');
+        log('Critical UI elements missing for progress update.', 'error');
+        // Attempt to re-initialize map if components are missing
+        if (!mainMap && UIElements.mainMap) { // Only if map not initialized but container exists
+            initializeMapAndData();
+            // Note: This re-init will restart the swcpDataPromise, so subsequent calls to updateProgressUI might wait again.
+            // A more robust solution for large apps might be to have a dedicated map state manager.
+        }
         return;
     }
-    const { segments, totalDistance, percentage } = payload;
-   
+    const { segments, totalDistance, percentage, newCompletedPoints } = payload; // Destructure newCompletedPoints
+
     completedSegmentsLayer.clearLayers();
-    segments.forEach(seg => {
-        const leafletCoords = seg.map(c => [c[1], c[0]]);
-        L.polyline(leafletCoords, { color: '#FC5200', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
-    });
+    if (segments && segments.length > 0) {
+        segments.forEach(seg => {
+            const leafletCoords = seg.map(c => [c[1], c[0]]);
+            L.polyline(leafletCoords, { color: '#FC5200', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+        });
+        log(`Rendered ${segments.length} completed segments on the map.`, 'info');
+    } else {
+        log('No new completed segments to render on map.', 'info');
+    }
 
     // Ensure values are numbers before setting textContent and style.width
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
-    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(payload.newCompletedPoints));
+    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints)); // Ensure newCompletedPoints are saved
+    log(`Overall progress updated: ${totalDistance.toFixed(2)} km (${parseFloat(percentage).toFixed(2)}%)`, 'success');
 }
    
 async function addDescriptionToStrava(activity, button) {
