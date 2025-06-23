@@ -1,4 +1,4 @@
-// Constants (No changes here)
+// Constants
 const SWCP_GEOJSON_URL = 'routes.geojson';
 const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
 const COMPLETED_POINTS_KEY = 'swcp_completed_points';
@@ -149,7 +149,10 @@ async function refreshAccessToken() {
 function updateGridLayout() {
     // Now UIElements should be defined, but its properties might be null if init hasn't finished.
     // So defensive checks on individual properties are still good.
-    if (!UIElements.mainLayoutContainer) return;
+    if (!UIElements.mainLayoutContainer) {
+        console.warn('updateGridLayout: UIElements.mainLayoutContainer is not defined.');
+        return;
+    }
 
     const isMobile = window.innerWidth <= 1024; // Tailwind's 'lg' breakpoint
 
@@ -161,7 +164,7 @@ function updateGridLayout() {
             if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
             if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
             if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
+            if (UIlements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
             if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '5';
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.position = 'static';
@@ -668,16 +671,15 @@ function updateProgressUI(payload) {
     console.log("updateProgressUI: segments (from payload):", payload.segments);
     // --- END DEBUGGING LOGS ---
 
+    // Defensive checks for UIElements properties being non-null
     if (!completedSegmentsLayer || !UIElements.completedDistance || !UIElements.progressPercentage || !UIElements.progressBar || !mainMap) {
         console.error('UI elements or map for progress update are not ready. Cannot update UI. Re-initializing map if possible.');
         log('Critical UI elements missing for progress update.', 'error');
-        // Attempt to re-initialize map if components are missing
-        if (!mainMap && UIElements.mainMap) { // Only if map not initialized but container exists
-            initializeMapAndData();
-            // Note: This re-init will restart the swcpDataPromise, so subsequent calls to updateProgressUI might wait again.
-            // A more robust solution for large apps might be to have a dedicated map state manager.
+        // Attempt to re-initialize map if components are missing (might already be done by init)
+        if (!mainMap && UIElements.mainMap) {
+            initializeMapAndData(); // Re-init map
         }
-        return;
+        return; // Exit if critical elements are truly missing
     }
     const { segments, totalDistance, percentage, newCompletedPoints } = payload; // Destructure newCompletedPoints
 
@@ -692,14 +694,24 @@ function updateProgressUI(payload) {
         log('No new completed segments to render on map.', 'info');
     }
 
+    // --- Updating text fields and progress bar ---
     // Ensure values are numbers before setting textContent and style.width
-    // Using `parseFloat` just in case, though worker should send numbers now
+    // Added parseFloat to explicitly convert even if they are strings from worker payload
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
+
     // --- CRITICAL FIX: Ensure newCompletedPoints are saved for persistence ---
-    // This is the array that drives the overall progress on subsequent loads.
-    localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints));
+    // This array holds all the points that define the completed sections of the path.
+    // If this is not correctly saved, then on next load, `loadProgressFromStorage` will get an empty array,
+    // leading to 0% overall progress being calculated by the worker.
+    if (newCompletedPoints) { // Defensive check
+        localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints));
+        console.log("updateProgressUI: Saved newCompletedPoints to localStorage:", newCompletedPoints.length);
+    } else {
+        console.warn("updateProgressUI: newCompletedPoints was null or undefined in payload. Not saving to localStorage.");
+    }
+
     log(`Overall progress updated: ${totalDistance.toFixed(2)} km (${parseFloat(percentage).toFixed(2)}%)`, 'success');
 }
    
@@ -710,7 +722,22 @@ async function addDescriptionToStrava(activity, button) {
         if (!responseGet.ok) throw new Error(await responseGet.text());
         const fullActivity = await responseGet.json();
         const existingDescription = fullActivity.description || '';
-        const newText = `I've now completed ${currentPercentage.toFixed(2)}% of the South West Coast Path! 🥾`; // Use toFixed for consistency
+       
+        // --- MODIFIED TEXT HERE ---
+        // Ensure UIElements.completedDistance and UIElements.totalDistance exist before accessing textContent
+        const totalKilometersWalked = UIElements.completedDistance ? parseFloat(UIElements.completedDistance.textContent) : 0;
+        const totalPathDistance = UIElements.totalDistance ? parseFloat(UIElements.totalDistance.textContent) : 0;
+
+        // Chosen emoji: Wave
+        const emojiCliffCoast = '🌊';
+        const emojiHikingBoot = '🥾';
+
+        const newTextLine1 = `${currentPercentage.toFixed(2)}% of the South West Coast Path completed! ${emojiCliffCoast}`;
+        const newTextLine2 = `${totalKilometersWalked.toFixed(2)} out of ${totalPathDistance.toFixed(2)} kilometres walked ${emojiHikingBoot}`;
+       
+        const newText = `${newTextLine1}\n${newTextLine2}`; // Combine lines with a newline character
+        // --- END MODIFIED TEXT ---
+
         const updatedDescription = existingDescription ? `${newText}\n\n---\n\n${existingDescription}` : newText; // Fixed template literal spacing
 
         const responsePut = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${activity.id}`, {
