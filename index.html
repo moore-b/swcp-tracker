@@ -111,7 +111,7 @@
             <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-semibold">Your Activities <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
                 <div id="filter-buttons" class="flex space-x-2">
-                    <button data-filter="all" class="filter-btn active">All Hikes/Walks</button>
+                    <button data-filter="all" class="filter-btn active">All</button>
                     <button data-filter="Hike" class="filter-btn">Hike</button>
                     <button data-filter="Walk" class="filter-btn">Walk</button>
                 </div>
@@ -559,7 +559,7 @@
             completedSegmentsLayer.clearLayers();
             segments.forEach(seg => {
                 const leafletCoords = seg.map(c => [c[1], c[0]]);
-                L.polyline(leafletCoords, { color: 'orange', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+                L.polyline(leafletCoords, { color: '#FC5200', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
             });
 
             currentPercentage = percentage;
@@ -595,12 +595,37 @@
         }
 
         const init = async () => {
-            // This explicit assignment is the most robust method.
-            const elementIds = ['clientId', 'clientSecret', 'connect-button', 'config-section', 'activity-list-container', 'activity-card-template', 'activity-count', 'filter-buttons', 'reset-button', 'status-log', 'strava-user-info', 'progress-bar', 'progress-percentage', 'completed-distance', 'total-distance', 'map', 'main-layout-container', 'login-screen-wrapper', 'status-log-details', 'status-log-section-container', 'activities-section', 'map-section', 'activities-loading-spinner', 'activity-search-box', 'map-loading-overlay', 'refresh-activities-btn', 'header-section', 'progress-summary-section', 'app-background', 'initial-loading-screen'];
-            elementIds.forEach(id => {
-                const key = id.replace(/-([a-z])/g, g => g[1].toUpperCase());
-                UIElements[key] = document.getElementById(id);
-            });
+            // This explicit assignment method is the most robust and prevents initialization errors.
+            UIElements.clientId = document.getElementById('clientId');
+            UIElements.clientSecret = document.getElementById('clientSecret');
+            UIElements.connectButton = document.getElementById('connect-button');
+            UIElements.configSection = document.getElementById('config-section');
+            UIElements.activityListContainer = document.getElementById('activity-list-container');
+            UIElements.activityCardTemplate = document.getElementById('activity-card-template');
+            UIElements.activityCount = document.getElementById('activity-count');
+            UIElements.filterButtons = document.getElementById('filter-buttons');
+            UIElements.resetButton = document.getElementById('reset-button');
+            UIElements.statusLog = document.getElementById('status-log');
+            UIElements.stravaUserInfo = document.getElementById('strava-user-info');
+            UIElements.progressBar = document.getElementById('progress-bar');
+            UIElements.progressPercentage = document.getElementById('progress-percentage');
+            UIElements.completedDistance = document.getElementById('completed-distance');
+            UIElements.totalDistance = document.getElementById('total-distance');
+            UIElements.mainMap = document.getElementById('map');
+            UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
+            UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
+            UIElements.statusLogDetails = document.getElementById('status-log-details');
+            UIElements.statusLogSectionContainer = document.getElementById('status-log-section-container');
+            UIElements.activitiesSection = document.getElementById('activities-section');
+            UIElements.mapSection = document.getElementById('map-section');
+            UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
+            UIElements.activitySearchBox = document.getElementById('activity-search-box');
+            UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
+            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
+            UIElements.headerSection = document.getElementById('header-section');
+            UIElements.progressSummarySection = document.getElementById('progress-summary-section');
+            UIElements.appBackground = document.getElementById('app-background');
+            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
            
             log('App initialized.');
 
