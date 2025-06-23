@@ -98,7 +98,7 @@
         <div id="activities-section" class="p-6 rounded-lg shadow-lg blurred-tile-background">
              <div class="flex justify-between items-center mb-4">
                 <h2 class="text-2xl font-semibold">Your Hikes <span id="activity-count" class="text-lg font-normal text-gray-500"></span></h2>
-                </div>
+            </div>
             <div class="mb-4">
                 <input type="text" id="activity-search-box" placeholder="Search hikes by title..." class="mt-1 block w-full px-3 py-2 border border-gray-300 rounded-md shadow-sm focus:ring focus:ring-blue-200 focus:border-blue-500">
             </div>
@@ -142,7 +142,7 @@
         const PROCESSED_ACTIVITIES_KEY = 'swcp_processed_activities';
         const COMPLETED_POINTS_KEY = 'swcp_completed_points';
         const ACTIVITY_STREAMS_CACHE_PREFIX = 'swcp_activity_stream_';
-        const CACHED_ACTIVITIES_KEY = 'swcp_cached_hikes'; // Changed key to reflect content
+        const CACHED_ACTIVITIES_KEY = 'swcp_cached_hikes';
         const CACHED_ACTIVITIES_TIMESTAMP_KEY = 'swcp_cached_hikes_timestamp';
         const CACHE_EXPIRY_MS = 60 * 60 * 1000; // 1 hour
         const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
@@ -270,7 +270,6 @@
             if (cachedTimestamp && (Date.now() - parseInt(cachedTimestamp) < CACHE_EXPIRY_MS)) {
                 log('Loading hikes from cache.', 'info');
                 const cachedData = JSON.parse(localStorage.getItem(CACHED_ACTIVITIES_KEY) || '[]');
-                // The bug fix is here: always filter the data, even from cache.
                 return filterHikes(cachedData);
             }
 
@@ -321,7 +320,6 @@
             const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
             if (athlete.firstname) { UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`; }
            
-            // These now run in parallel, each managing their own loading state.
             initializeMapAndDependencies();
             fetchAndRenderActivities();
         }
@@ -352,7 +350,6 @@
                 UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
                 log('Master map loaded.', 'success');
 
-                // Load initial progress now that the map data is ready
                 loadProgressFromStorage();
 
             } catch(e) {
@@ -556,100 +553,105 @@
         }
        
         // --- INITIALIZATION ---
-        document.addEventListener('DOMContentLoaded', async () => {
-            try {
-                // Link all UI Elements explicitly
-                const elementIds = ['initialLoadingScreen', 'loginScreenWrapper', 'configSection', 'clientId', 'clientSecret', 'connectButton', 'mainLayoutContainer', 'headerSection', 'progressSummarySection', 'stravaUserInfo', 'completedDistance', 'totalDistance', 'progressPercentage', 'progressBar', 'resetButton', 'mapSection', 'map', 'mapLoadingOverlay', 'statusLogSectionContainer', 'statusLogDetails', 'statusLog', 'activitiesSection', 'activityCount', 'filterButtons', 'activitySearchBox', 'refreshActivitiesBtn', 'activitiesLoadingSpinner', 'activityListContainer', 'activityCardTemplate'];
-                elementIds.forEach(id => {
-                    const key = id.replace(/-(\w)/g, (_, letter) => letter.toUpperCase());
-                    UIElements[key] = document.getElementById(id);
-                });
+        // This function now runs at the end of the file, after the browser has parsed all the HTML elements.
+        async function main() {
+            // 1. Link UI Elements explicitly.
+            UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
+            UIElements.loginScreenWrapper = document.getElementById('login-screen-wrapper');
+            UIElements.clientId = document.getElementById('clientId');
+            UIElements.clientSecret = document.getElementById('clientSecret');
+            UIElements.connectButton = document.getElementById('connect-button');
+            UIElements.mainLayoutContainer = document.getElementById('main-layout-container');
+            UIElements.stravaUserInfo = document.getElementById('strava-user-info');
+            UIElements.completedDistance = document.getElementById('completed-distance');
+            UIElements.totalDistance = document.getElementById('total-distance');
+            UIElements.progressPercentage = document.getElementById('progress-percentage');
+            UIElements.progressBar = document.getElementById('progress-bar');
+            UIElements.resetButton = document.getElementById('reset-button');
+            UIElements.map = document.getElementById('map');
+            UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
+            UIElements.statusLog = document.getElementById('status-log');
+            UIElements.activityCount = document.getElementById('activity-count');
+            UIElements.activitySearchBox = document.getElementById('activity-search-box');
+            UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
+            UIElements.activitiesLoadingSpinner = document.getElementById('activities-loading-spinner');
+            UIElements.activityListContainer = document.getElementById('activity-list-container');
+            UIElements.activityCardTemplate = document.getElementById('activity-card-template');
 
-                if (!UIElements.initialLoadingScreen || !UIElements.loginScreenWrapper || !UIElements.mainLayoutContainer) {
-                    alert("A critical UI element is missing from the HTML, cannot start the application.");
-                    throw new Error("Critical UI element missing.");
-                }
-                log('UI elements linked.');
-
-                // Initialize Web Worker
-                try {
-                    analysisWorker = new Worker('swcp_analysis_worker.js');
-                    analysisWorker.onmessage = (e) => {
-                         const { type, payload } = e.data;
-                         const { activityId, progress, overlappingPoints, error } = payload;
-                         const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id="${activityId}"]`);
-                         if (!analyzeBtn) return;
-
-                         if (type === 'progress') {
-                             analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${progress.toFixed(0)}%)`;
-                         } else if (type === 'result') {
-                             log(`Analysis complete for ${activityId}. Found ${overlappingPoints.length} points.`, 'success');
-                             analyzeBtn.textContent = 'Analyzed';
-
-                             const allPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
-                             allPoints.push(...overlappingPoints);
-                             localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allPoints));
-
-                             const processed = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
-                             processed.add(Number(activityId));
-                             localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processed)));
-                             
-                             updateProgress(allPoints);
-                         } else if (type === 'error') {
-                             log(`Worker error for ${activityId}: ${error}`, 'error');
-                             analyzeBtn.textContent = 'Analysis Failed';
-                             analyzeBtn.disabled = false;
-                         }
-                    };
-                    analysisWorker.onerror = (e) => log(`Critical worker error: ${e.message}`, 'error');
-                    log('Analysis worker created successfully.', 'success');
-                } catch (workerError) {
-                    log('Failed to create analysis worker. Ensure swcp_analysis_worker.js exists.', 'error');
-                    console.error(workerError);
-                }
-
-                // Attach Event Listeners
-                UIElements.connectButton.onclick = () => {
-                    localStorage.setItem('stravaClientId', UIElements.clientId.value);
-                    localStorage.setItem('stravaClientSecret', UIElements.clientSecret.value);
-                    const redirectUri = window.location.origin + window.location.pathname;
-                    window.location.href = `https://www.strava.com/oauth/authorize?client_id=${UIElements.clientId.value}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
-                };
-                UIElements.resetButton.onclick = resetProgress;
-                UIElements.activitySearchBox.oninput = filterAndRenderActivities;
-                UIElements.refreshActivitiesBtn.onclick = fetchAndRenderActivities;
-
-                // Handle Auth Flow & App Start
-                UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
-                UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
-               
-                const urlParams = new URLSearchParams(window.location.search);
-                const authCode = urlParams.get('code');
-
-                if (authCode) {
-                    // Show a temporary global loading screen just for the auth exchange
-                    UIElements.initialLoadingScreen.classList.remove('hidden');
-                    await getAccessToken(authCode);
-                    showMainApp();
-                    UIElements.initialLoadingScreen.classList.add('hidden');
-                } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
-                    showMainApp();
-                } else {
-                    UIElements.loginScreenWrapper.classList.remove('hidden');
-                }
-
-            } catch (error) {
-                log(`A critical error occurred during app startup: ${error.message}`, 'error');
-                console.error(error);
-                UIElements.initialLoadingScreen.classList.remove('hidden');
-                const loadingText = UIElements.initialLoadingScreen.querySelector('span');
-                if (loadingText) {
-                    loadingText.innerHTML = `Application failed to load. Please check the console (F12) for errors.`;
-                    loadingText.classList.add('text-red-500');
-                    UIElements.initialLoadingScreen.querySelector('.loader').style.display = 'none';
-                }
+            if (!UIElements.loginScreenWrapper || !UIElements.mainLayoutContainer) {
+                alert("A critical UI element is missing from the HTML, cannot start the application.");
+                return;
             }
-        });
+            log('UI elements linked.');
+
+            // 2. Initialize Web Worker
+            try {
+                analysisWorker = new Worker('swcp_analysis_worker.js');
+                analysisWorker.onmessage = (e) => {
+                     const { type, payload } = e.data;
+                     const { activityId, progress, overlappingPoints, error } = payload;
+                     const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id="${activityId}"]`);
+                     if (!analyzeBtn) return;
+
+                     if (type === 'progress') {
+                         analyzeBtn.innerHTML = `<span class="loader"></span>Analyzing (${progress.toFixed(0)}%)`;
+                     } else if (type === 'result') {
+                         log(`Analysis complete for ${activityId}. Found ${overlappingPoints.length} points.`, 'success');
+                         analyzeBtn.textContent = 'Analyzed';
+
+                         const allPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
+                         allPoints.push(...overlappingPoints);
+                         localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(allPoints));
+
+                         const processed = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+                         processed.add(Number(activityId));
+                         localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processed)));
+                         
+                         updateProgress(allPoints);
+                     } else if (type === 'error') {
+                         log(`Worker error for ${activityId}: ${error}`, 'error');
+                         analyzeBtn.textContent = 'Analysis Failed';
+                         analyzeBtn.disabled = false;
+                     }
+                };
+                analysisWorker.onerror = (e) => log(`Critical worker error: ${e.message}`, 'error');
+                log('Analysis worker created successfully.', 'success');
+            } catch (workerError) {
+                log('Failed to create analysis worker. Ensure swcp_analysis_worker.js exists.', 'error');
+                console.error(workerError);
+            }
+
+            // 3. Attach Event Listeners
+            UIElements.connectButton.onclick = () => {
+                localStorage.setItem('stravaClientId', UIElements.clientId.value);
+                localStorage.setItem('stravaClientSecret', UIElements.clientSecret.value);
+                const redirectUri = window.location.origin + window.location.pathname;
+                window.location.href = `https://www.strava.com/oauth/authorize?client_id=${UIElements.clientId.value}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
+            };
+            UIElements.resetButton.onclick = resetProgress;
+            UIElements.activitySearchBox.oninput = filterAndRenderActivities;
+            UIElements.refreshActivitiesBtn.onclick = fetchAndRenderActivities;
+
+            // 4. Handle Auth Flow & App Start
+            UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
+            UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
+           
+            const urlParams = new URLSearchParams(window.location.search);
+            const authCode = urlParams.get('code');
+
+            if (authCode) {
+                UIElements.initialLoadingScreen.classList.remove('hidden');
+                await getAccessToken(authCode);
+                UIElements.initialLoadingScreen.classList.add('hidden');
+                showMainApp();
+            } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
+                showMainApp();
+            } else {
+                UIElements.loginScreenWrapper.classList.remove('hidden');
+            }
+        }
+       
+        main(); // Run the application
     </script>
 </body>
 </html>
