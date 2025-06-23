@@ -1,54 +1,41 @@
 // swcp_analysis_worker.js
 
-// Import the Turf.js library for geospatial calculations
 self.importScripts('https://unpkg.com/@turf/turf@6/turf.min.js');
 
-// Worker-scoped global variables
 let swcpGeoJSON = null;
 let swcpTotalDistance = 0;
 const DISTANCE_THRESHOLD_METERS = 100;
 const ACTIVITY_SAMPLE_INTERVAL_METERS = 100;
 
-// Main message handler for the worker
 self.onmessage = function(e) {
     const { type, activityId, activityStream, existingPoints, swcpGeoJSONString, swcpTotalDistance: totalDist } = e.data;
 
     if (type === 'init_swcp') {
-        // Initialize the worker with the main path data
         swcpGeoJSON = JSON.parse(swcpGeoJSONString);
         swcpTotalDistance = totalDist;
         console.log('Worker: SWCP data initialized.');
     } else if (type === 'process_activity') {
-        // This is the main analysis task
         if (!swcpGeoJSON) {
-            self.postMessage({ type: 'error', payload: { activityId, error: 'Worker not initialized with SWCP data.' } });
+            self.postMessage({ type: 'error', payload: { activityId, error: 'Worker not initialized.' } });
             return;
         }
 
-        // 1. Find new points from the latest activity
-        const newOverlappingPoints = findOverlappingPoints(activityStream);
-       
-        // 2. Combine with all previously found points
+        const newOverlappingPoints = findOverlappingPoints(activityStream, activityId);
         const allCompletedPoints = existingPoints.concat(newOverlappingPoints);
-
-        // 3. Perform all heavy calculations here, in the background
         const resultPayload = calculateOverallProgress(allCompletedPoints);
-        resultPayload.activityId = activityId; // Add activityId for the response
-
-        // 4. Send the final, lightweight result back to the main thread
+        resultPayload.activityId = activityId;
+       
         self.postMessage({ type: 'result', payload: resultPayload });
     }
 };
 
-/**
- * Takes an activity's GPS stream and finds which points overlap with the SWCP.
- */
-function findOverlappingPoints(activityStream) {
+function findOverlappingPoints(activityStream, activityId) {
     if (!activityStream || activityStream.length === 0) return [];
    
     const activityLine = turf.lineString(activityStream);
     const overlappingPoints = [];
     const totalLength = turf.length(activityLine, { units: 'meters' });
+    let lastReportedProgress = -1;
 
     for (let d = 0; d <= totalLength; d += ACTIVITY_SAMPLE_INTERVAL_METERS) {
         const activityPoint = turf.along(activityLine, d, { units: 'meters' });
@@ -57,14 +44,22 @@ function findOverlappingPoints(activityStream) {
         if (nearestOnSWCP.properties.dist <= DISTANCE_THRESHOLD_METERS) {
             overlappingPoints.push(nearestOnSWCP.geometry.coordinates);
         }
+
+        // Send progress update back to the main thread
+        const progress = Math.round((d / totalLength) * 100);
+        if (progress > lastReportedProgress) {
+            self.postMessage({ type: 'progress', payload: { activityId, progress } });
+            lastReportedProgress = progress;
+        }
     }
+    // Ensure a final 100% is sent
+    if (lastReportedProgress < 100) {
+        self.postMessage({ type: 'progress', payload: { activityId, progress: 100 } });
+    }
+
     return overlappingPoints;
 }
 
-/**
- * Takes the master list of all completed points and calculates the final progress.
- * This function contains all the heavy logic that was previously freezing the main thread.
- */
 function calculateOverallProgress(allPoints) {
     if (allPoints.length === 0) {
         return { segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] };
@@ -86,7 +81,7 @@ function calculateOverallProgress(allPoints) {
     if (sortedPoints.length > 0) {
         currentSegment.push(sortedPoints[0].coords);
         for (let i = 1; i < sortedPoints.length; i++) {
-            if (sortedPoints[i].location - sortedPoints[i-1].location > 0.2) { // Gap > 200m
+            if (sortedPoints[i].location - sortedPoints[i-1].location > 0.2) {
                 if (currentSegment.length > 1) segments.push(currentSegment);
                 currentSegment = [sortedPoints[i].coords];
             } else {
@@ -102,11 +97,10 @@ function calculateOverallProgress(allPoints) {
 
     const percentage = swcpTotalDistance > 0 ? ((totalCompletedDistance / swcpTotalDistance) * 100).toFixed(2) : "0.00";
    
-    // Return the final payload for the main thread to use
     return {
         segments: segments,
         totalDistance: totalCompletedDistance,
         percentage: percentage,
-        newCompletedPoints: uniquePoints // This is the new master list for storage
+        newCompletedPoints: uniquePoints
     };
 }
