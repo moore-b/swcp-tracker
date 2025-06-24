@@ -49,15 +49,21 @@ body.dark-mode .border-gray-300 {
 }
 
 /* Background */
-#app-background { 
-    position: fixed; 
-    top: 0; 
-    left: 0; 
-    width: 100%; 
-    height: 100%; 
-    background-color: transparent;
-    z-index: -1; 
-    transition: filter 0.3s ease;
+#app-background {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100vw;
+    height: 100vh;
+    z-index: 0;
+    background: url('swcp-background.webp') center center / cover no-repeat;
+    opacity: 0.95;
+    pointer-events: none;
+}
+
+body > *:not(#app-background) {
+    position: relative;
+    z-index: 1;
 }
 
 body.dark-mode #app-background {
@@ -246,11 +252,11 @@ body.dark-mode .filter-btn:hover {
 }
 
 /* Enhanced Blurred Background */
-.blurred-tile-background { 
-    background-color: rgba(255, 255, 255, 0.7) !important; 
-    backdrop-filter: blur(12px); 
-    -webkit-backdrop-filter: blur(12px); 
-    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04); 
+.blurred-tile-background {
+    background-color: rgba(255, 255, 255, 0.4) !important;
+    backdrop-filter: blur(6px);
+    -webkit-backdrop-filter: blur(6px);
+    box-shadow: 0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04);
     border: 1px solid rgba(255, 255, 255, 0.2);
     transition: all 0.3s ease;
 }
