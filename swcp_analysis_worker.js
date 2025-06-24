@@ -1,7 +1,26 @@
 // swcp_analysis_worker.js
 
-// Import Turf.js library
-self.importScripts('https://unpkg.com/@turf/turf@6/turf.min.js');
+// Import Turf.js library from local file
+let turfLoaded = false;
+try {
+    self.importScripts('turf.min.js');
+    turfLoaded = true;
+    console.log('Worker: Turf.js loaded successfully from local file');
+} catch (error) {
+    console.error('Worker: Failed to load Turf.js from local file:', error);
+    turfLoaded = false;
+}
+
+if (!turfLoaded) {
+    console.error('Worker: Critical error - Turf.js could not be loaded. Analysis will not work.');
+    self.postMessage({ 
+        type: 'error', 
+        payload: { 
+            activityId: 'worker_init', 
+            error: 'Turf.js library could not be loaded from local file. Please check if turf.min.js exists in the project directory.' 
+        } 
+    });
+}
 
 let swcpGeoJSON = null; // Will store the Turf.js LineString geometry of the SWCP
 let swcpTotalDistance = 0; // Total length of SWCP in kilometers
@@ -14,6 +33,18 @@ const SEGMENT_BREAK_THRESHOLD_KM = 0.2; // How far apart points can be along the
 
 self.onmessage = function(e) {
     const { type, activityId, activityStream, existingPoints, swcpGeoJSONString, swcpTotalDistance: totalDist } = e.data;
+
+    // Check if Turf.js is loaded before processing
+    if (!turfLoaded) {
+        self.postMessage({ 
+            type: 'error', 
+            payload: { 
+                activityId: activityId || 'unknown', 
+                error: 'Turf.js library is not loaded. Cannot process activities. Please refresh the page.' 
+            } 
+        });
+        return;
+    }
 
     if (type === 'init_swcp') {
         try {

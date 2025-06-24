@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLayers Simple Test</title>
+    
+    <!-- OpenLayers CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v8.2.0/ol.css" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v8.2.0/dist/ol.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            font-family: Arial, sans-serif;
+        }
+        
+        .map-container {
+            height: 400px;
+            width: 100%;
+            border: 2px solid #ccc;
+            margin: 20px 0;
+        }
+        
+        .status {
+            background: #f0f0f0;
+            padding: 10px;
+            margin: 10px 0;
+            border-radius: 5px;
+        }
+    </style>
+</head>
+<body>
+    <h1>OpenLayers Simple Test</h1>
+    
+    <div class="status" id="status">
+        Loading OpenLayers...
+    </div>
+    
+    <div class="map-container" id="map"></div>
+    
+    <div class="status" id="zoom-status">
+        Zoom level: <span id="zoom-level">-</span>
+    </div>
+
+    <script>
+        // Check if OpenLayers loaded
+        if (typeof ol === 'undefined') {
+            document.getElementById('status').innerHTML = '❌ OpenLayers failed to load!';
+            document.getElementById('status').style.background = '#ffebee';
+        } else {
+            document.getElementById('status').innerHTML = '✅ OpenLayers loaded successfully!';
+            document.getElementById('status').style.background = '#e8f5e8';
+            
+            try {
+                // Create a simple map
+                const map = new ol.Map({
+                    target: 'map',
+                    layers: [
+                        new ol.layer.Tile({
+                            source: new ol.source.OSM()
+                        })
+                    ],
+                    view: new ol.View({
+                        center: ol.proj.fromLonLat([-3.5, 50.5]),
+                        zoom: 8.5
+                    })
+                });
+                
+                // Update zoom level display
+                map.getView().on('change:resolution', function() {
+                    const zoom = map.getView().getZoom();
+                    document.getElementById('zoom-level').textContent = zoom.toFixed(1);
+                });
+                
+                document.getElementById('status').innerHTML = '✅ Map created successfully! Try zooming to see fractional zoom levels.';
+                
+            } catch (error) {
+                document.getElementById('status').innerHTML = '❌ Error creating map: ' + error.message;
+                document.getElementById('status').style.background = '#ffebee';
+            }
+        }
+    </script>
+</body>
+</html> 

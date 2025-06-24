@@ -1,0 +1,245 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CSS Filter Demo - ESRI World Topo</title>
+    
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2d3748;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .map-option {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .map-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-title {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .map-container {
+            height: 250px;
+            width: 100%;
+        }
+        
+        .map-description {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #4a5568;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .info-box {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+        
+        .performance-note {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .performance-note h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>CSS Filter Demo - ESRI World Topo</h1>
+        
+        <div class="info-box">
+            <h3>🎨 CSS Filter Options</h3>
+            <p><strong>These show different levels of vintage styling applied to ESRI World Topo.</strong></p>
+            <p>Choose the intensity that looks best for your hiking app!</p>
+        </div>
+        
+        <div class="performance-note">
+            <h4>⚡ Performance Note</h4>
+            <p><strong>CSS filters are very lightweight and unlikely to cause performance issues.</strong></p>
+            <p>Modern browsers use GPU acceleration, and these simple filters are very fast.</p>
+        </div>
+        
+        <div class="map-grid">
+            <div class="map-option">
+                <div class="map-title">1. No Filter (Original)</div>
+                <div id="map-original" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Filter:</strong> None<br>
+                    <strong>Effect:</strong> Original ESRI Topo colors<br>
+                    <strong>Performance:</strong> Best
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">2. Subtle Vintage (Recommended)</div>
+                <div id="map-subtle" class="map-container" style="filter: sepia(0.1) saturate(0.9) brightness(0.95);"></div>
+                <div class="map-description">
+                    <strong>Filter:</strong> sepia(0.1) saturate(0.9) brightness(0.95)<br>
+                    <strong>Effect:</strong> Slightly muted, natural vintage<br>
+                    <strong>Performance:</strong> Excellent
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">3. Medium Vintage</div>
+                <div id="map-medium" class="map-container" style="filter: sepia(0.2) saturate(0.8) brightness(0.9);"></div>
+                <div class="map-description">
+                    <strong>Filter:</strong> sepia(0.2) saturate(0.8) brightness(0.9)<br>
+                    <strong>Effect:</strong> More vintage, muted colors<br>
+                    <strong>Performance:</strong> Excellent
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">4. Strong Vintage</div>
+                <div id="map-strong" class="map-container" style="filter: sepia(0.3) saturate(0.7) brightness(0.85);"></div>
+                <div class="map-description">
+                    <strong>Filter:</strong> sepia(0.3) saturate(0.7) brightness(0.85)<br>
+                    <strong>Effect:</strong> Strong vintage, brown tones<br>
+                    <strong>Performance:</strong> Good
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">5. AllTrails-Style</div>
+                <div id="map-alltrails" class="map-container" style="filter: sepia(0.15) saturate(0.75) brightness(0.92) contrast(1.05);"></div>
+                <div class="map-description">
+                    <strong>Filter:</strong> sepia(0.15) saturate(0.75) brightness(0.92) contrast(1.05)<br>
+                    <strong>Effect:</strong> AllTrails-like muted appearance<br>
+                    <strong>Performance:</strong> Excellent
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">6. Warm Vintage</div>
+                <div id="map-warm" class="map-container" style="filter: sepia(0.25) saturate(0.85) brightness(0.9) hue-rotate(5deg);"></div>
+                <div class="map-description">
+                    <strong>Filter:</strong> sepia(0.25) saturate(0.85) brightness(0.9) hue-rotate(5deg)<br>
+                    <strong>Effect:</strong> Warm, golden vintage tones<br>
+                    <strong>Performance:</strong> Good
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SWCP bounds (same as your app)
+        const bounds = [
+            [49.9, -5.9], // Southwest coordinates (Land's End area)
+            [51.2, -1.8]  // Northeast coordinates (Minehead area)
+        ];
+        
+        // Sample route coordinates
+        const routeCoordinates = [
+            [50.1, -5.5],
+            [50.2, -5.0],
+            [50.3, -4.5],
+            [50.4, -4.0],
+            [50.5, -3.5],
+            [50.6, -3.0],
+            [50.7, -2.5]
+        ];
+        
+        // Map configurations - all ESRI World Topo with different filters
+        const mapConfigs = [
+            { id: 'map-original' },
+            { id: 'map-subtle' },
+            { id: 'map-medium' },
+            { id: 'map-strong' },
+            { id: 'map-alltrails' },
+            { id: 'map-warm' }
+        ];
+        
+        // Initialize all maps
+        mapConfigs.forEach(config => {
+            const mapElement = document.getElementById(config.id);
+            if (mapElement) {
+                try {
+                    // Create map
+                    const map = L.map(config.id, {
+                        minZoom: 8,
+                        maxZoom: 14
+                    });
+                    
+                    // Add ESRI World Topo tile layer
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+                        maxZoom: 14
+                    }).addTo(map);
+                    
+                    // Add route line
+                    L.polyline(routeCoordinates, {
+                        color: '#2563eb',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                    
+                    // Fit to bounds
+                    map.fitBounds(bounds);
+                    
+                } catch (error) {
+                    console.error('Error creating map for', config.id, error);
+                    mapElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Map failed to load: ' + error.message + '</div>';
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

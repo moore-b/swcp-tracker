@@ -1,0 +1,320 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Mapbox Style Preview - SW Coast Path Tracker</title>
+    
+    <!-- Mapbox GL JS -->
+    <script src='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.js'></script>
+    <link href='https://api.mapbox.com/mapbox-gl-js/v2.15.0/mapbox-gl.css' rel='stylesheet' />
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2d3748;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .map-option {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .map-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-title {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .map-container {
+            height: 300px;
+            width: 100%;
+        }
+        
+        .map-description {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #4a5568;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .zoom-info {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .zoom-info h3 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+        
+        .api-info {
+            background: #fef5e7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #ed8936;
+        }
+        
+        .api-info h3 {
+            margin-top: 0;
+            color: #c05621;
+        }
+        
+        .fractional-zoom-demo {
+            background: #f0fff4;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .fractional-zoom-demo h3 {
+            margin-top: 0;
+            color: #2f855a;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Mapbox Style Preview - SW Coast Path Tracker</h1>
+        
+        <div class="zoom-info">
+            <h3>🎯 Fractional Zoom Support!</h3>
+            <p><strong>Mapbox supports fractional zoom levels (8.5, 9.2, etc.)</strong></p>
+            <p>This solves your zoom granularity issue! You can now get that perfect zoom level between 8 and 9.</p>
+        </div>
+        
+        <div class="api-info">
+            <h3>🔑 API Key Required</h3>
+            <p><strong>Free tier:</strong> 50,000 map loads per month (likely free forever for personal use)</p>
+            <p><strong>Cost after:</strong> $5 per 1,000 additional loads</p>
+            <p><strong>Setup:</strong> Easy integration, just need to sign up for free API key</p>
+        </div>
+        
+        <div class="fractional-zoom-demo">
+            <h3>🧪 Try Fractional Zoom</h3>
+            <p>Click on any map below and try zooming with your mouse wheel. Notice how you can get zoom levels like 8.5, 8.7, etc. - exactly what you wanted!</p>
+        </div>
+        
+        <div class="map-grid">
+            <div class="map-option">
+                <div class="map-title">1. Mapbox Streets (Default)</div>
+                <div id="map-streets" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Standard street map<br>
+                    <strong>Best for:</strong> Familiar, detailed navigation<br>
+                    <strong>Zoom:</strong> Supports fractional levels!
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">2. Mapbox Outdoors</div>
+                <div id="map-outdoors" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Hiking/outdoor focused<br>
+                    <strong>Best for:</strong> Perfect for SWCP tracking!<br>
+                    <strong>Features:</strong> Trails, terrain, elevation
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">3. Mapbox Light</div>
+                <div id="map-light" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Clean, minimal design<br>
+                    <strong>Best for:</strong> Modern, clean look<br>
+                    <strong>Features:</strong> Subtle colors, good contrast
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">4. Mapbox Dark</div>
+                <div id="map-dark" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Dark theme<br>
+                    <strong>Best for:</strong> Dark mode preference<br>
+                    <strong>Features:</strong> Easy on the eyes
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">5. Mapbox Satellite</div>
+                <div id="map-satellite" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Satellite imagery<br>
+                    <strong>Best for:</strong> Real-world view<br>
+                    <strong>Features:</strong> Actual terrain and features
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">6. Mapbox Satellite Streets</div>
+                <div id="map-satellite-streets" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Satellite + street labels<br>
+                    <strong>Best for:</strong> Best of both worlds<br>
+                    <strong>Features:</strong> Real imagery with street names
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Note: You'll need to replace 'YOUR_MAPBOX_ACCESS_TOKEN' with an actual token
+        // For this preview, we'll use a placeholder that won't work but shows the structure
+        mapboxgl.accessToken = 'YOUR_MAPBOX_ACCESS_TOKEN';
+        
+        // SWCP bounds (same as your app)
+        const bounds = [
+            [-5.9, 49.9], // Southwest coordinates
+            [-1.8, 51.2]  // Northeast coordinates
+        ];
+        
+        // Map configurations
+        const mapConfigs = [
+            {
+                id: 'map-streets',
+                style: 'mapbox://styles/mapbox/streets-v12'
+            },
+            {
+                id: 'map-outdoors',
+                style: 'mapbox://styles/mapbox/outdoors-v12'
+            },
+            {
+                id: 'map-light',
+                style: 'mapbox://styles/mapbox/light-v11'
+            },
+            {
+                id: 'map-dark',
+                style: 'mapbox://styles/mapbox/dark-v11'
+            },
+            {
+                id: 'map-satellite',
+                style: 'mapbox://styles/mapbox/satellite-v9'
+            },
+            {
+                id: 'map-satellite-streets',
+                style: 'mapbox://styles/mapbox/satellite-streets-v12'
+            }
+        ];
+        
+        // Initialize all maps
+        mapConfigs.forEach(config => {
+            const mapElement = document.getElementById(config.id);
+            if (mapElement) {
+                const map = new mapboxgl.Map({
+                    container: config.id,
+                    style: config.style,
+                    bounds: bounds,
+                    fitBoundsOptions: {
+                        padding: 20
+                    },
+                    minZoom: 8,
+                    maxZoom: 14
+                });
+                
+                // Add navigation controls
+                map.addControl(new mapboxgl.NavigationControl(), 'top-right');
+                
+                // Add a sample route line when the map loads
+                map.on('load', () => {
+                    // Add a source for the route
+                    map.addSource('route', {
+                        'type': 'geojson',
+                        'data': {
+                            'type': 'Feature',
+                            'properties': {},
+                            'geometry': {
+                                'type': 'LineString',
+                                'coordinates': [
+                                    [-5.5, 50.1],
+                                    [-5.0, 50.2],
+                                    [-4.5, 50.3],
+                                    [-4.0, 50.4],
+                                    [-3.5, 50.5],
+                                    [-3.0, 50.6],
+                                    [-2.5, 50.7]
+                                ]
+                            }
+                        }
+                    });
+                    
+                    // Add the route layer
+                    map.addLayer({
+                        'id': 'route',
+                        'type': 'line',
+                        'source': 'route',
+                        'layout': {
+                            'line-join': 'round',
+                            'line-cap': 'round'
+                        },
+                        'paint': {
+                            'line-color': '#2563eb',
+                            'line-width': 4,
+                            'line-opacity': 0.8
+                        }
+                    });
+                });
+            }
+        });
+        
+        // Add a note about the API token
+        document.addEventListener('DOMContentLoaded', function() {
+            const container = document.querySelector('.container');
+            const note = document.createElement('div');
+            note.style.cssText = 'background: #fed7d7; padding: 20px; border-radius: 10px; margin-top: 30px; border-left: 4px solid #e53e3e;';
+            note.innerHTML = `
+                <h3 style="margin-top: 0; color: #c53030;">⚠️ API Token Required</h3>
+                <p><strong>This preview won't load maps without a Mapbox access token.</strong></p>
+                <p>To see the maps working:</p>
+                <ol>
+                    <li>Sign up for free at <a href="https://www.mapbox.com/" target="_blank">mapbox.com</a></li>
+                    <li>Get your free access token</li>
+                    <li>Replace 'YOUR_MAPBOX_ACCESS_TOKEN' in the code with your actual token</li>
+                </ol>
+                <p><strong>Free tier:</strong> 50,000 map loads per month - perfect for personal projects!</p>
+            `;
+            container.appendChild(note);
+        });
+    </script>
+</body>
+</html> 

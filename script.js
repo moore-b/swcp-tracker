@@ -10,49 +10,22 @@ const BACKGROUND_IMAGE_PATH = 'background.webp'; // Kept for reference, though l
 const STRAVA_ACCESS_TOKEN_KEY = 'stravaAccessToken';
 const STRAVA_REFRESH_TOKEN_KEY = 'stravaRefreshToken';
 const STRAVA_EXPIRES_AT_KEY = 'stravaExpiresAt';
+const DARK_MODE_KEY = 'swcp_dark_mode';
 
-// --- CRITICAL FIX: Define UIElements at the top-most scope ---
-// This ensures UIElements is always defined as an object and its properties
-// are populated with DOM references as soon as the script executes.
-const UIElements = {
-    clientId: document.getElementById('clientId'),
-    clientSecret: document.getElementById('clientSecret'),
-    connectButton: document.getElementById('connect-button'),
-    configSection: document.getElementById('config-section'),
-    activityListContainer: document.getElementById('activity-list-container'),
-    activityCardTemplate: document.getElementById('activity-card-template'), // Template element
-    activityCount: document.getElementById('activity-count'),
-    filterButtons: document.getElementById('filter-buttons'),
-    resetButton: document.getElementById('reset-button'),
-    statusLog: document.getElementById('status-log'),
-    stravaUserInfo: document.getElementById('strava-user-info'),
-    progressBar: document.getElementById('progress-bar'),
-    progressPercentage: document.getElementById('progress-percentage'),
-    completedDistance: document.getElementById('completed-distance'),
-    totalDistance: document.getElementById('total-distance'),
-    mainMap: document.getElementById('map'), // The map container div
-    mainLayoutContainer: document.getElementById('main-layout-container'),
-    loginScreenWrapper: document.getElementById('login-screen-wrapper'),
-    statusLogDetails: document.getElementById('status-log-details'),
-    statusLogSectionContainer: document.getElementById('status-log-section-container'),
-    activitiesSection: document.getElementById('activities-section'),
-    mapSection: document.getElementById('map-section'),
-    activitiesLoadingSpinner: document.getElementById('activities-loading-spinner'),
-    activitySearchBox: document.getElementById('activity-search-box'),
-    mapLoadingOverlay: document.getElementById('map-loading-overlay'),
-    refreshActivitiesBtn: document.getElementById('refresh-activities-btn'),
-    headerSection: document.getElementById('header-section'),
-    progressSummarySection: document.getElementById('progress-summary-section'),
-    appBackground: document.getElementById('app-background'),
-    initialLoadingScreen: document.getElementById('initial-loading-screen'),
-    overallProgressLoading: document.getElementById('overall-progress-loading')
-};
+// --- CRITICAL FIX: Define UIElements as an empty object at the top ---
+const UIElements = {};
 
 // Global variables for map and data
 // currentPercentage is critical here, ensure it's always up-to-date from updateProgressUI
 let mainMap, swcpGeoJSON, swcpTotalDistance = 0, completedSegmentsLayer, currentPercentage = 0, allFetchedActivities = [];
 let analysisWorker = null;
 let swcpDataPromise = null; // Will store the promise for loading SWCP data
+let isDarkMode = false;
+let fabMenuOpen = false;
+let mobileMenuOpen = false;
+
+// Debounced search function for better performance
+let searchTimeout;
 
 /**
  * Logs messages to the status log UI element.
@@ -179,8 +152,159 @@ async function refreshAccessToken() {
         return null;
     }
 }
-   
-/** Updates the CSS grid layout based on screen width. */
+
+/**
+ * Toggles dark mode and saves preference to localStorage
+ */
+function toggleDarkMode() {
+    isDarkMode = !isDarkMode;
+    document.body.classList.toggle('dark-mode', isDarkMode);
+    localStorage.setItem(DARK_MODE_KEY, isDarkMode.toString());
+    
+    // Update dark mode toggle icon
+    if (UIElements.darkModeToggle) {
+        const icon = UIElements.darkModeToggle.querySelector('svg');
+        if (icon) {
+            if (isDarkMode) {
+                icon.innerHTML = `<path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>`;
+            } else {
+                icon.innerHTML = `<path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>`;
+            }
+        }
+    }
+}
+
+/**
+ * Toggles the floating action button menu
+ */
+function toggleFabMenu() {
+    fabMenuOpen = !fabMenuOpen;
+    const fabMenu = document.getElementById('fab-menu');
+    if (fabMenu) {
+        fabMenu.classList.toggle('show', fabMenuOpen);
+        fabMenu.classList.toggle('hidden', !fabMenuOpen);
+    }
+}
+
+/**
+ * Toggles the mobile filter menu
+ */
+function toggleMobileMenu() {
+    mobileMenuOpen = !mobileMenuOpen;
+    const mobileMenu = document.getElementById('mobile-filter-menu');
+    if (mobileMenu) {
+        mobileMenu.classList.toggle('show', mobileMenuOpen);
+        mobileMenu.classList.toggle('hidden', !mobileMenuOpen);
+    }
+}
+
+/**
+ * Shows the bottom sheet with activity details on mobile
+ */
+function showBottomSheet(activityCard) {
+    const bottomSheet = document.getElementById('bottom-sheet');
+    const content = document.getElementById('bottom-sheet-content');
+    
+    if (bottomSheet && content) {
+        content.innerHTML = activityCard.outerHTML;
+        bottomSheet.classList.remove('hidden');
+        setTimeout(() => {
+            bottomSheet.classList.add('show');
+        }, 10);
+    }
+}
+
+/**
+ * Hides the bottom sheet
+ */
+function hideBottomSheet() {
+    const bottomSheet = document.getElementById('bottom-sheet');
+    if (bottomSheet) {
+        bottomSheet.classList.remove('show');
+        setTimeout(() => {
+            bottomSheet.classList.add('hidden');
+        }, 300);
+    }
+}
+
+/**
+ * Toggles map fullscreen mode
+ */
+function toggleMapFullscreen() {
+    const mapSection = document.getElementById('map-section');
+    if (mapSection) {
+        mapSection.classList.toggle('fixed', !mapSection.classList.contains('fixed'));
+        mapSection.classList.toggle('inset-0', !mapSection.classList.contains('inset-0'));
+        mapSection.classList.toggle('z-50', !mapSection.classList.contains('z-50'));
+        
+        if (mapSection.classList.contains('fixed')) {
+            mapSection.style.borderRadius = '0';
+            mapSection.style.padding = '1rem';
+        } else {
+            mapSection.style.borderRadius = '';
+            mapSection.style.padding = '';
+        }
+        
+        // Invalidate map size to ensure proper rendering
+        if (mainMap) {
+            setTimeout(() => mainMap.invalidateSize(), 100);
+        }
+    }
+}
+
+/**
+ * Shows skeleton loading state
+ */
+function showSkeletonLoading(container, count = 3) {
+    if (!container) return;
+    
+    container.innerHTML = '';
+    for (let i = 0; i < count; i++) {
+        const skeleton = document.createElement('div');
+        skeleton.className = 'bg-white/80 backdrop-blur-sm p-6 rounded-2xl shadow-lg border border-white/20';
+        skeleton.innerHTML = `
+            <div class="flex justify-between items-start mb-4">
+                <div class="flex-1">
+                    <div class="skeleton h-6 w-3/4 mb-2 rounded"></div>
+                    <div class="skeleton h-4 w-1/2 rounded"></div>
+                </div>
+                <div class="skeleton h-6 w-16 rounded-full"></div>
+            </div>
+            <div class="grid grid-cols-1 lg:grid-cols-2 gap-4">
+                <div class="skeleton h-32 rounded-xl"></div>
+                <div class="space-y-4">
+                    <div class="skeleton h-24 rounded-xl"></div>
+                    <div class="space-y-3">
+                        <div class="skeleton h-10 rounded-lg"></div>
+                        <div class="skeleton h-10 rounded-lg"></div>
+                    </div>
+                </div>
+            </div>
+        `;
+        container.appendChild(skeleton);
+    }
+}
+
+/**
+ * Shows enhanced loading state with progress
+ */
+function showEnhancedLoading(element, message = 'Loading...', showProgress = false) {
+    if (!element) return;
+    
+    const loadingHTML = `
+        <div class="text-center p-8">
+            <div class="loader-large mb-4"></div>
+            <h3 class="text-lg font-semibold text-gray-700 mb-2">${message}</h3>
+            ${showProgress ? '<div class="w-full bg-gray-200 rounded-full h-2 mt-4"><div class="bg-blue-600 h-2 rounded-full transition-all duration-300" style="width: 0%"></div></div>' : ''}
+        </div>
+    `;
+    
+    element.innerHTML = loadingHTML;
+    element.classList.remove('hidden');
+}
+
+/**
+ * Updates the CSS grid layout based on screen width. */
 function updateGridLayout() {
     // Now UIElements should be defined, but its properties might be null if init hasn't finished.
     // So defensive checks on individual properties are still good.
@@ -220,8 +344,8 @@ function updateGridLayout() {
                 UIElements.activitiesSection.style.gridColumn = '2';
                 UIElements.activitiesSection.style.gridRow = '1 / span 4';
                 UIElements.activitiesSection.style.position = 'sticky';
-                UIElements.activitiesSection.style.height = 'calc(100vh - 2rem)';
-                UIElements.activitiesSection.style.top = '1rem'; // Ensure sticky top is set
+                UIElements.activitiesSection.style.height = 'calc(100vh - 3rem)';
+                UIElements.activitiesSection.style.top = '1.5rem'; // Ensure sticky top is set
             }
             UIElements.mainLayoutContainer.dataset.layout = 'desktop';
         }
@@ -232,9 +356,16 @@ function updateGridLayout() {
 
 /** Checks if client ID and secret inputs are filled and enables/disables the connect button. */
 function checkInputs() {
-    if (UIElements.connectButton && UIElements.clientId && UIElements.clientSecret) { // Ensure elements exist
-        const isDisabled = !(UIElements.clientId.value.trim() && UIElements.clientSecret.value.trim());
-        UIElements.connectButton.disabled = isDisabled;
+    const clientId = UIElements.clientId.value.trim();
+    const clientSecret = UIElements.clientSecret.value.trim();
+    const connectButton = UIElements.connectButton;
+    
+    if (clientId && clientSecret) {
+        connectButton.disabled = false;
+        connectButton.classList.remove('opacity-50', 'cursor-not-allowed');
+    } else {
+        connectButton.disabled = true;
+        connectButton.classList.add('opacity-50', 'cursor-not-allowed');
     }
 }
    
@@ -312,14 +443,27 @@ async function showMainApp() {
    
 /** Fetches and then renders Strava activities. */
 async function fetchAndRenderActivities() {
-    if (UIElements.activitiesLoadingSpinner) UIElements.activitiesLoadingSpinner.classList.remove('hidden');
-    allFetchedActivities = await fetchAllActivities();
-    if (UIElements.activitiesLoadingSpinner) UIElements.activitiesLoadingSpinner.classList.add('hidden');
-   
-    if (allFetchedActivities) {
-        filterActivities();
-    } else {
-        log('Could not load activities from Strava or cache. Please refresh or check connection.', 'error');
+    if (!UIElements.activitiesLoadingSpinner) return;
+    
+    // Show enhanced loading state
+    showEnhancedLoading(UIElements.activitiesLoadingSpinner, 'Fetching your activities from Strava...', true);
+    
+    try {
+        allFetchedActivities = await fetchAllActivities();
+        if (allFetchedActivities === null) {
+            log('Failed to fetch activities. Please check your connection and try again.', 'error');
+            UIElements.activitiesLoadingSpinner.classList.add('hidden');
+            return;
+        }
+        
+        const filteredActivities = filterActivities();
+        renderActivityList(filteredActivities);
+        
+        log(`Successfully loaded and rendered ${filteredActivities.length} activities.`, 'success');
+    } catch (error) {
+        log(`Error fetching activities: ${error.message}`, 'error');
+    } finally {
+        UIElements.activitiesLoadingSpinner.classList.add('hidden');
     }
 }
 
@@ -327,21 +471,32 @@ async function fetchAndRenderActivities() {
 function initializeMapAndData() {
     log('Initializing map...');
    
-    // Set a strict bounding box for the UK/SWCP area
-    const corner1 = L.latLng(49.8, -6.0); // South-west (e.g., Land's End area)
-    const corner2 = L.latLng(51.3, -1.7); // North-east (e.g., Minehead area)
+    // Set very tight bounds to focus heavily on SWCP land areas and minimize ocean space
+    const corner1 = L.latLng(50.1, -5.2); // South-west (very tight around Land's End)
+    const corner2 = L.latLng(51.0, -2.3); // North-east (very tight around Minehead)
     const bounds = L.latLngBounds(corner1, corner2);
 
     // Initialize map with maxBounds and minZoom to keep focus on SWCP
     if (!mainMap && UIElements.mainMap) { // Prevent re-initialization if already present, ensure div exists
-        mainMap = L.map(UIElements.mainMap.id, { maxBounds: bounds, minZoom: 8 });
+        mainMap = L.map(UIElements.mainMap.id, { 
+            maxBounds: bounds, 
+            minZoom: 8,
+            maxZoom: 14
+        });
+        
+        // Apply subtle vintage CSS filter to the map container
+        UIElements.mainMap.style.filter = 'sepia(0.1) saturate(0.9) brightness(0.95)';
     } else if (!UIElements.mainMap) {
         log('Error: Main map container (id="map") not found. Cannot initialize map.', 'error');
         return;
     }
    
     if (mainMap) { // Only proceed if map was successfully initialized
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors' }).addTo(mainMap);
+        // Use ESRI World Topo for professional topographic mapping with vintage styling
+        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', { 
+            attribution: '&copy; <a href="https://www.esri.com/">Esri</a>',
+            maxZoom: 14
+        }).addTo(mainMap);
        
         // Ensure layer group is reset or initialized
         if (completedSegmentsLayer) {
@@ -411,7 +566,12 @@ async function loadSwcpData() {
             // For Leaflet rendering, we can use the original data as Leaflet can handle 3D points
             // Or explicitly map to 2D if preferred, but original L.geoJSON usually handles it gracefully
             const leafletGeoJson = L.geoJSON(data, {
-                style: { color: 'blue', weight: 3, opacity: 0.7 }
+                style: { 
+                    color: '#2563eb', 
+                    weight: 4, 
+                    opacity: 0.8,
+                    fillOpacity: 0.1
+                }
             }).addTo(mainMap);
             mainMap.fitBounds(leafletGeoJson.getBounds());
         } else {
@@ -456,28 +616,50 @@ function resetProgress() {
     }
 }
 
-function filterActivities() {
-    if (!UIElements.activitySearchBox || !UIElements.filterButtons) return;
+// Debounced search function for better performance
+function debouncedSearch() {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => {
+        if (allFetchedActivities && allFetchedActivities.length > 0) {
+            const filtered = filterActivities();
+            renderActivityList(filtered);
+        }
+    }, 300);
+}
+
+function filterActivities(activities = null) {
+    if (!UIElements.activitySearchBox || !UIElements.filterButtons) return [];
 
     const searchTerm = UIElements.activitySearchBox.value.toLowerCase();
     const activeFilterBtn = UIElements.filterButtons.querySelector('.filter-btn.active');
     const typeFilter = activeFilterBtn ? activeFilterBtn.dataset.filter : 'all';
-   
-    let filtered = allFetchedActivities || [];
+    
+    // Use provided activities or fall back to allFetchedActivities
+    let filtered = activities || allFetchedActivities || [];
+    
     if (typeFilter !== 'all') {
         filtered = filtered.filter(act => act.type === typeFilter);
     }
     if (searchTerm) {
         filtered = filtered.filter(act => act.name.toLowerCase().includes(searchTerm));
     }
-    renderActivityList(filtered);
+    
+    return filtered;
 }
 
 function handleFilterClick(e) {
-    if (e.target.tagName !== 'BUTTON' || !e.target.classList.contains('filter-btn')) return;
+    if (!e.target.classList.contains('filter-btn')) return;
     UIElements.filterButtons.querySelectorAll('.filter-btn').forEach(btn => btn.classList.remove('active'));
     e.target.classList.add('active');
-    filterActivities();
+    
+    // If we have activities loaded, filter them immediately
+    if (allFetchedActivities && allFetchedActivities.length > 0) {
+        const filtered = filterActivities();
+        renderActivityList(filtered);
+    } else {
+        // Otherwise, fetch activities first
+        fetchAndRenderActivities();
+    }
 }
 
 async function refreshActivities() {
@@ -494,73 +676,107 @@ async function refreshActivities() {
     });
 
     log('Activity cache cleared. Fetching new activities from Strava...', 'info');
+    
+    // Show skeleton loading while fetching
+    if (UIElements.activityListContainer) {
+        showSkeletonLoading(UIElements.activityListContainer, 5);
+    }
+    
     await fetchAndRenderActivities();
 }
 
-function renderActivityList(activities) {
-    if (!UIElements.activityListContainer) return;
+// Function to generate consistent pine green gradient for all activity cards
+function getActivityGradient(activityId) {
+    // Always use the same pine green gradient with more contrast for consistency
+    return 'linear-gradient(135deg, #5a8a6e 0%, #2d5016 100%)';
+}
 
+function renderActivityList(activities) {
+    const activityCountEl = document.getElementById('activity-count');
+    if (!activityCountEl) {
+        console.warn('No element with id="activity-count" found in the DOM. Skipping renderActivityList.');
+        return;
+    }
+    if (!UIElements.activityListContainer) return;
     UIElements.activityListContainer.innerHTML = ''; // Clear previous list
-    UIElements.activityCount.textContent = `(${activities.length} found)`;
+    activityCountEl.textContent = `(${activities.length} found)`;
     const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
    
     activities.forEach(activity => {
         const card = UIElements.activityCardTemplate.content.cloneNode(true);
         const cardDiv = card.querySelector('div');
+        
+        // Add activity-card class for enhanced styling
+        cardDiv.classList.add('activity-card');
+        
+        // Apply gradient background to header
+        const gradientHeader = card.querySelector('#gradient-header');
+        if (gradientHeader) {
+            gradientHeader.style.background = getActivityGradient(activity.id);
+        }
+        
+        // Populate activity data
         cardDiv.querySelector('[data-name]').textContent = activity.name;
         cardDiv.querySelector('[data-date]').textContent = new Date(activity.start_date).toLocaleDateString();
         cardDiv.querySelector('[data-type]').textContent = activity.type;
-        cardDiv.querySelector('[data-distance]').innerHTML = `<strong>Distance:</strong> ${(activity.distance / 1000).toFixed(2)} km`;
-        cardDiv.querySelector('[data-time]').innerHTML = `<strong>Moving Time:</strong> ${new Date(activity.moving_time * 1000).toISOString().substr(11, 8)}`;
-        cardDiv.querySelector('[data-elevation]').innerHTML = `<strong>Elevation Gain:</strong> ${activity.total_elevation_gain.toFixed(0)} m`;
+        
+        // Data display
+        const distance = (activity.distance / 1000).toFixed(2);
+        const time = new Date(activity.moving_time * 1000).toISOString().substr(11, 8);
+        const elevation = activity.total_elevation_gain.toFixed(0);
+        cardDiv.querySelector('[data-distance-display]').textContent = `${distance} km`;
+        cardDiv.querySelector('[data-time-display]').textContent = time;
+        cardDiv.querySelector('[data-elevation-display]').textContent = `${elevation}m`;
+        cardDiv.querySelector('[data-swcp-progress]').textContent = '+0.0 km';
        
         const mapEl = card.querySelector('[data-map-id]');
-        mapEl.id = `map-${activity.id}`; // Assign unique ID for Leaflet map initialization
+        mapEl.id = `map-${activity.id}`;
        
         const analyzeBtn = card.querySelector('[data-analyze-btn]');
         analyzeBtn.dataset.activityId = activity.id;
-       
-        // --- REANALYZE FUNCTIONALITY & GREY STYLING ---
-        // Remove all previous color classes to ensure clean slate
         analyzeBtn.classList.remove('btn-primary', 'btn-secondary', 'bg-gray-300', 'text-gray-700');
-       
         if (processedIds.has(String(activity.id))) {
             analyzeBtn.textContent = 'Reanalyze';
-            analyzeBtn.classList.add('bg-gray-300', 'text-gray-700'); // Apply grey styling
-            analyzeBtn.disabled = false; // Keep it clickable
+            analyzeBtn.classList.add('btn-secondary');
+            analyzeBtn.disabled = false;
         } else {
-            analyzeBtn.textContent = 'Analyze for SWCP';
-            analyzeBtn.classList.add('btn-primary'); // Apply primary styling for initial analyze
+            analyzeBtn.textContent = 'Analyze';
+            analyzeBtn.classList.add('btn-analyze');
             analyzeBtn.disabled = false;
         }
-        analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn); // Always assign the handler
-
+        analyzeBtn.onclick = () => analyzeSingleActivity(activity, analyzeBtn);
         const addDescriptionBtn = card.querySelector('[data-update-btn]');
         addDescriptionBtn.dataset.activityId = activity.id;
         addDescriptionBtn.onclick = () => addDescriptionToStrava(activity, addDescriptionBtn);
-
+        const isMobile = window.innerWidth <= 1024;
+        if (isMobile) {
+            cardDiv.addEventListener('click', (e) => {
+                if (e.target.closest('button')) return;
+                showBottomSheet(cardDiv);
+            });
+            cardDiv.style.cursor = 'pointer';
+            cardDiv.title = 'Tap to view details';
+        }
         UIElements.activityListContainer.appendChild(card);
-       
-        // Initialize mini-map for activity
         if (activity.map && activity.map.summary_polyline) {
             try {
                 const latlngs = polyline.decode(activity.map.summary_polyline);
                 if (latlngs.length > 0) {
                     const activityMap = L.map(mapEl.id, {
                         scrollWheelZoom: false,
-                        attributionControl: false, // No need for attribution on mini-maps
-                        zoomControl: false // Disable zoom control for smaller maps
-                    }).setView(latlngs[0], 13);
-                   
-                    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png').addTo(activityMap);
+                        attributionControl: false,
+                        zoomControl: false
+                    });
+                    L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                        attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
+                    }).addTo(activityMap);
                     L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap);
-                   
-                    // Call fitBounds on the map object, not the polyline
-                    activityMap.fitBounds(latlngs);
-                   
-                    // Invalidate size immediately after map is likely rendered or container is sized
-                    activityMap.invalidateSize();
-
+                    mapEl.style.filter = 'sepia(0.1) saturate(0.9) brightness(0.95)';
+                    const bounds = L.latLngBounds(latlngs);
+                    activityMap.fitBounds(bounds, { padding: [10, 10] });
+                    setTimeout(() => {
+                        activityMap.invalidateSize();
+                    }, 100);
                 } else {
                     mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">No valid polyline data for map.</div>';
                 }
@@ -573,6 +789,9 @@ function renderActivityList(activities) {
             mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">No GPS data for this activity.</div>';
         }
     });
+    if (window.innerWidth <= 1024 && UIElements.fabContainer) {
+        UIElements.fabContainer.classList.remove('hidden');
+    }
 }
    
 /**
@@ -796,9 +1015,7 @@ async function addDescriptionToStrava(activity, button) {
 }
    
 const init = async () => {
-    // --- CRITICAL FIX: Initialize all UIElements properties immediately ---
-    // This ensures all UIElements properties are set *before* any functions that use them are called,
-    // preventing "UIElements is not defined" or "Cannot read properties of null" errors.
+    // Initialize all UI elements
     UIElements.clientId = document.getElementById('clientId');
     UIElements.clientSecret = document.getElementById('clientSecret');
     UIElements.connectButton = document.getElementById('connect-button');
@@ -830,17 +1047,63 @@ const init = async () => {
     UIElements.appBackground = document.getElementById('app-background');
     UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
     UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
+    
+    // New UI elements
+    UIElements.darkModeToggle = document.getElementById('dark-mode-toggle');
+    UIElements.mobileMenuBtn = document.getElementById('mobile-menu-btn');
+    UIElements.mobileFilterMenu = document.getElementById('mobile-filter-menu');
+    UIElements.activitySearchBoxMobile = document.getElementById('activity-search-box-mobile');
+    UIElements.fabContainer = document.getElementById('fab-container');
+    UIElements.fabMain = document.getElementById('fab-main');
+    UIElements.fabMenu = document.getElementById('fab-menu');
+    UIElements.fabRefresh = document.getElementById('fab-refresh');
+    UIElements.fabMap = document.getElementById('fab-map');
+    UIElements.mapFullscreenBtn = document.getElementById('map-fullscreen-btn');
+    UIElements.bottomSheet = document.getElementById('bottom-sheet');
 
-    log('Application initialization started.'); // This log call should now work
+    log('Application initialization started.');
+
+    // Initialize dark mode
+    const savedDarkMode = localStorage.getItem(DARK_MODE_KEY) === 'true';
+    if (savedDarkMode) {
+        isDarkMode = true;
+        document.body.classList.add('dark-mode');
+        if (UIElements.darkModeToggle) {
+            const icon = UIElements.darkModeToggle.querySelector('svg');
+            if (icon) {
+                icon.innerHTML = `<path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>`;
+            }
+        }
+    }
    
     try {
         analysisWorker = new Worker('swcp_analysis_worker.js');
         log('Analysis worker initialized.', 'success');
-       
+        
+        // Add timeout for worker initialization
+        const workerTimeout = setTimeout(() => {
+            if (analysisWorker) {
+                log('Worker initialization timeout - CDN might be slow', 'warn');
+                console.warn('Worker initialization taking longer than expected. This might be due to slow CDN response.');
+            }
+        }, 10000); // 10 second timeout
+        
         // This single handler is responsible for ALL messages from the worker.
         // It now uses document.querySelector to target specific buttons.
         analysisWorker.onmessage = (e) => {
+            clearTimeout(workerTimeout); // Clear timeout on first message
             const { type, payload } = e.data;
+            
+            // Handle worker initialization errors
+            if (type === 'error' && payload && payload.activityId === 'worker_init') {
+                log(`Worker initialization error: ${payload.error}`, 'error');
+                alert(`Analysis system failed to initialize: ${payload.error}`);
+                if (UIElements.overallProgressLoading) {
+                    UIElements.overallProgressLoading.classList.add('hidden');
+                }
+                return;
+            }
+            
             if (!payload || !payload.activityId) return;
            
             const { activityId, progress, error } = payload;
@@ -894,7 +1157,15 @@ const init = async () => {
 
         analysisWorker.onerror = (e) => {
             log(`Critical worker error: ${e.message || 'Unknown worker error'}`, 'error');
-            alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
+            console.error('Web worker error details:', e);
+            
+            // Check if it's a Turf.js loading error
+            if (e.message && e.message.includes('importScripts')) {
+                alert('Failed to load required libraries from local files. Please check if turf.min.js exists in the project directory and refresh the page.');
+            } else {
+                alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
+            }
+            
             // Hide progress indicator if worker crashes
             if (UIElements.overallProgressLoading) {
                 UIElements.overallProgressLoading.classList.add('hidden');
@@ -909,15 +1180,103 @@ const init = async () => {
         }
     }
 
-    // Event Listeners
+    // Enhanced Event Listeners
     UIElements.connectButton.addEventListener('click', connectToStrava);
     UIElements.resetButton.addEventListener('click', resetProgress);
     UIElements.filterButtons.addEventListener('click', handleFilterClick);
-    UIElements.activitySearchBox.addEventListener('input', filterActivities);
+    UIElements.activitySearchBox.addEventListener('input', debouncedSearch);
     UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
     UIElements.clientId.addEventListener('input', checkInputs);
     UIElements.clientSecret.addEventListener('input', checkInputs);
     window.addEventListener('resize', updateGridLayout);
+
+    // New Event Listeners
+    if (UIElements.darkModeToggle) {
+        UIElements.darkModeToggle.addEventListener('click', toggleDarkMode);
+    }
+
+    if (UIElements.mobileMenuBtn) {
+        UIElements.mobileMenuBtn.addEventListener('click', toggleMobileMenu);
+    }
+
+    if (UIElements.activitySearchBoxMobile) {
+        UIElements.activitySearchBoxMobile.addEventListener('input', debouncedSearch);
+    }
+
+    if (UIElements.fabMain) {
+        UIElements.fabMain.addEventListener('click', toggleFabMenu);
+    }
+
+    if (UIElements.fabRefresh) {
+        UIElements.fabRefresh.addEventListener('click', () => {
+            refreshActivities();
+            toggleFabMenu();
+        });
+    }
+
+    if (UIElements.fabMap) {
+        UIElements.fabMap.addEventListener('click', () => {
+            if (UIElements.mapSection) {
+                UIElements.mapSection.scrollIntoView({ behavior: 'smooth' });
+            }
+            toggleFabMenu();
+        });
+    }
+
+    if (UIElements.mapFullscreenBtn) {
+        UIElements.mapFullscreenBtn.addEventListener('click', toggleMapFullscreen);
+    }
+
+    if (UIElements.bottomSheet) {
+        UIElements.bottomSheet.addEventListener('click', (e) => {
+            if (e.target === UIElements.bottomSheet) {
+                hideBottomSheet();
+            }
+        });
+    }
+
+    // Close FAB menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (UIElements.fabContainer && !UIElements.fabContainer.contains(e.target)) {
+            if (fabMenuOpen) {
+                toggleFabMenu();
+            }
+        }
+    });
+
+    // Close mobile menu when clicking outside
+    document.addEventListener('click', (e) => {
+        if (UIElements.mobileMenuBtn && !UIElements.mobileMenuBtn.contains(e.target) && 
+            UIElements.mobileFilterMenu && !UIElements.mobileFilterMenu.contains(e.target)) {
+            if (mobileMenuOpen) {
+                toggleMobileMenu();
+            }
+        }
+    });
+
+    // Keyboard shortcuts
+    document.addEventListener('keydown', (e) => {
+        // Escape key closes modals and menus
+        if (e.key === 'Escape') {
+            if (fabMenuOpen) toggleFabMenu();
+            if (mobileMenuOpen) toggleMobileMenu();
+            if (UIElements.bottomSheet && !UIElements.bottomSheet.classList.contains('hidden')) {
+                hideBottomSheet();
+            }
+        }
+        
+        // Ctrl/Cmd + R to refresh activities
+        if ((e.ctrlKey || e.metaKey) && e.key === 'r') {
+            e.preventDefault();
+            refreshActivities();
+        }
+        
+        // Ctrl/Cmd + M to toggle map fullscreen
+        if ((e.ctrlKey || e.metaKey) && e.key === 'm') {
+            e.preventDefault();
+            toggleMapFullscreen();
+        }
+    });
 
     // Populate input fields from local storage (if available)
     UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
@@ -943,6 +1302,9 @@ const init = async () => {
     } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
         // User has existing tokens, show main app
         UIElements.mainLayoutContainer.classList.remove('hidden');
+        if (UIElements.fabContainer) {
+            UIElements.fabContainer.classList.remove('hidden');
+        }
         await showMainApp();
     } else {
         // No code, no existing token, show login screen

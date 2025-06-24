@@ -1,0 +1,268 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>AllTrails-Style Maps Preview</title>
+    
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2d3748;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .map-option {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .map-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-title {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .map-container {
+            height: 250px;
+            width: 100%;
+        }
+        
+        .map-description {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #4a5568;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .info-box {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+        
+        .alltrails-note {
+            background: #fff3cd;
+            padding: 15px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .alltrails-note h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>AllTrails-Style Maps Preview</h1>
+        
+        <div class="info-box">
+            <h3>🎯 True AllTrails-Style Maps!</h3>
+            <p><strong>These maps have the distinctive AllTrails muted color palette and terrain styling.</strong></p>
+            <p>Muted earth tones, subtle terrain shading, and that classic AllTrails hiking map feel!</p>
+        </div>
+        
+        <div class="alltrails-note">
+            <h4>🗺️ AllTrails Map Characteristics</h4>
+            <p><strong>AllTrails maps have:</strong> Muted brown/beige background, subtle green terrain, soft elevation shading, and a distinctive vintage hiking map appearance. These alternatives aim to match that style.</p>
+        </div>
+        
+        <div class="map-grid">
+            <div class="map-option">
+                <div class="map-title">1. Thunderforest Outdoors (Closest to AllTrails)</div>
+                <div id="map-outdoors" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> AllTrails-like muted terrain<br>
+                    <strong>Best for:</strong> Hiking and outdoor activities<br>
+                    <strong>Features:</strong> Muted colors, terrain shading, trails
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">2. Thunderforest Landscape</div>
+                <div id="map-landscape" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Landscape-focused AllTrails style<br>
+                    <strong>Best for:</strong> Natural landscape view<br>
+                    <strong>Features:</strong> Terrain emphasis, muted palette
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">3. OpenTopoMap (OS-Style Alternative)</div>
+                <div id="map-topo" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Traditional topographic<br>
+                    <strong>Best for:</strong> Classic hiking map feel<br>
+                    <strong>Features:</strong> Contours, trails, muted colors
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">4. CartoDB Voyager (Balanced)</div>
+                <div id="map-voyager" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Balanced vintage look<br>
+                    <strong>Best for:</strong> Good readability<br>
+                    <strong>Features:</strong> Rich colors, good contrast
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">5. Stamen Terrain (Classic)</div>
+                <div id="map-terrain" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Classic terrain with muted colors<br>
+                    <strong>Best for:</strong> Traditional terrain view<br>
+                    <strong>Features:</strong> Earth tones, subtle shading
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">6. CartoDB Positron (Minimal)</div>
+                <div id="map-positron" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Clean, minimal<br>
+                    <strong>Best for:</strong> Uncluttered navigation<br>
+                    <strong>Features:</strong> Subtle colors, good contrast
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SWCP bounds (same as your app)
+        const bounds = [
+            [49.9, -5.9], // Southwest coordinates (Land's End area)
+            [51.2, -1.8]  // Northeast coordinates (Minehead area)
+        ];
+        
+        // Sample route coordinates
+        const routeCoordinates = [
+            [50.1, -5.5],
+            [50.2, -5.0],
+            [50.3, -4.5],
+            [50.4, -4.0],
+            [50.5, -3.5],
+            [50.6, -3.0],
+            [50.7, -2.5]
+        ];
+        
+        // Map configurations - AllTrails-style maps
+        const mapConfigs = [
+            {
+                id: 'map-outdoors',
+                tileLayer: 'https://{s}.tile.thunderforest.com/outdoors/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>'
+            },
+            {
+                id: 'map-landscape',
+                tileLayer: 'https://{s}.tile.thunderforest.com/landscape/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://www.thunderforest.com/">Thunderforest</a>'
+            },
+            {
+                id: 'map-topo',
+                tileLayer: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://opentopomap.org/">OpenTopoMap</a> contributors'
+            },
+            {
+                id: 'map-voyager',
+                tileLayer: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            },
+            {
+                id: 'map-terrain',
+                tileLayer: 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://stamen.com/">Stamen Design</a>'
+            },
+            {
+                id: 'map-positron',
+                tileLayer: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            }
+        ];
+        
+        // Initialize all maps
+        mapConfigs.forEach(config => {
+            const mapElement = document.getElementById(config.id);
+            if (mapElement) {
+                try {
+                    // Create map
+                    const map = L.map(config.id, {
+                        minZoom: 8,
+                        maxZoom: 14
+                    });
+                    
+                    // Add tile layer
+                    L.tileLayer(config.tileLayer, {
+                        attribution: config.attribution,
+                        maxZoom: 14
+                    }).addTo(map);
+                    
+                    // Add route line
+                    L.polyline(routeCoordinates, {
+                        color: '#2563eb',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                    
+                    // Fit to bounds
+                    map.fitBounds(bounds);
+                    
+                } catch (error) {
+                    console.error('Error creating map for', config.id, error);
+                    mapElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Map failed to load: ' + error.message + '</div>';
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

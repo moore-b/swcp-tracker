@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>More Map Providers - Hiking Options</title>
+    
+    <!-- Leaflet CSS and JS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: Arial, sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2d3748;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(350px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .map-option {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .map-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-title {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .map-container {
+            height: 250px;
+            width: 100%;
+        }
+        
+        .map-description {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #4a5568;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .info-box {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .info-box h3 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+        
+        .css-overlay-demo {
+            background: #fff3cd;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            border-left: 4px solid #ffc107;
+        }
+        
+        .css-overlay-demo h4 {
+            margin-top: 0;
+            color: #856404;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>More Map Providers - Hiking Options</h1>
+        
+        <div class="info-box">
+            <h3>🎯 Additional Map Providers!</h3>
+            <p><strong>These are other map providers that might work well for hiking.</strong></p>
+            <p>Some require API keys, some are free, and some have usage limits.</p>
+        </div>
+        
+        <div class="css-overlay-demo">
+            <h4>🎨 CSS Overlay Approach</h4>
+            <p><strong>We can apply CSS filters to any map to make it look more muted/vintage.</strong></p>
+            <p>This gives us control over the appearance without changing the underlying map data.</p>
+        </div>
+        
+        <div class="map-grid">
+            <div class="map-option">
+                <div class="map-title">1. ESRI World Topo (Your Choice)</div>
+                <div id="map-esri" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Professional topographic<br>
+                    <strong>Cost:</strong> Free with attribution<br>
+                    <strong>Features:</strong> Contours, terrain, muted colors
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">2. ESRI World Imagery</div>
+                <div id="map-esri-imagery" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Satellite imagery<br>
+                    <strong>Cost:</strong> Free with attribution<br>
+                    <strong>Features:</strong> High-res satellite, terrain visible
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">3. ESRI World Street Map</div>
+                <div id="map-esri-street" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Street map<br>
+                    <strong>Cost:</strong> Free with attribution<br>
+                    <strong>Features:</strong> Detailed streets, good for navigation
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">4. OpenTopoMap (For Comparison)</div>
+                <div id="map-topo" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Traditional topographic<br>
+                    <strong>Cost:</strong> Completely free<br>
+                    <strong>Features:</strong> Contours, trails, OS-style
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">5. Standard OSM (For Comparison)</div>
+                <div id="map-osm" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Standard OpenStreetMap<br>
+                    <strong>Cost:</strong> Completely free<br>
+                    <strong>Features:</strong> Familiar, detailed
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">6. ESRI World Topo + CSS Filter</div>
+                <div id="map-esri-filtered" class="map-container" style="filter: sepia(0.3) saturate(0.8) brightness(0.9);"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> ESRI Topo with vintage filter<br>
+                    <strong>Cost:</strong> Free with attribution<br>
+                    <strong>Features:</strong> Muted, vintage appearance
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SWCP bounds (same as your app)
+        const bounds = [
+            [49.9, -5.9], // Southwest coordinates (Land's End area)
+            [51.2, -1.8]  // Northeast coordinates (Minehead area)
+        ];
+        
+        // Sample route coordinates
+        const routeCoordinates = [
+            [50.1, -5.5],
+            [50.2, -5.0],
+            [50.3, -4.5],
+            [50.4, -4.0],
+            [50.5, -3.5],
+            [50.6, -3.0],
+            [50.7, -2.5]
+        ];
+        
+        // Map configurations - additional providers
+        const mapConfigs = [
+            {
+                id: 'map-esri',
+                tileLayer: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+                attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
+            },
+            {
+                id: 'map-esri-imagery',
+                tileLayer: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}',
+                attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
+            },
+            {
+                id: 'map-esri-street',
+                tileLayer: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Street_Map/MapServer/tile/{z}/{y}/{x}',
+                attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
+            },
+            {
+                id: 'map-topo',
+                tileLayer: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://opentopomap.org/">OpenTopoMap</a> contributors'
+            },
+            {
+                id: 'map-osm',
+                tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            },
+            {
+                id: 'map-esri-filtered',
+                tileLayer: 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}',
+                attribution: '&copy; <a href="https://www.esri.com/">Esri</a>'
+            }
+        ];
+        
+        // Initialize all maps
+        mapConfigs.forEach(config => {
+            const mapElement = document.getElementById(config.id);
+            if (mapElement) {
+                try {
+                    // Create map
+                    const map = L.map(config.id, {
+                        minZoom: 8,
+                        maxZoom: 14
+                    });
+                    
+                    // Add tile layer
+                    L.tileLayer(config.tileLayer, {
+                        attribution: config.attribution,
+                        maxZoom: 14
+                    }).addTo(map);
+                    
+                    // Add route line
+                    L.polyline(routeCoordinates, {
+                        color: '#2563eb',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                    
+                    // Fit to bounds
+                    map.fitBounds(bounds);
+                    
+                } catch (error) {
+                    console.error('Error creating map for', config.id, error);
+                    mapElement.innerHTML = '<div style="padding: 20px; text-align: center; color: red;">Map failed to load: ' + error.message + '</div>';
+                }
+            }
+        });
+    </script>
+</body>
+</html> 

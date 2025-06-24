@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OpenLayers Style Preview - SW Coast Path Tracker</title>
+    
+    <!-- OpenLayers CSS and JS -->
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/ol@v8.2.0/ol.css" type="text/css">
+    <script src="https://cdn.jsdelivr.net/npm/ol@v8.2.0/dist/ol.js"></script>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2d3748;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .map-option {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .map-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-title {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .map-container {
+            height: 300px;
+            width: 100%;
+        }
+        
+        .map-description {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #4a5568;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .zoom-info {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .zoom-info h3 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+        
+        .free-info {
+            background: #f0fff4;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #48bb78;
+        }
+        
+        .free-info h3 {
+            margin-top: 0;
+            color: #2f855a;
+        }
+        
+        .fractional-zoom-demo {
+            background: #fef5e7;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #ed8936;
+        }
+        
+        .fractional-zoom-demo h3 {
+            margin-top: 0;
+            color: #c05621;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>OpenLayers Style Preview - SW Coast Path Tracker</h1>
+        
+        <div class="zoom-info">
+            <h3>🎯 Fractional Zoom Support!</h3>
+            <p><strong>OpenLayers supports fractional zoom levels (8.5, 9.2, etc.)</strong></p>
+            <p>This solves your zoom granularity issue! You can now get that perfect zoom level between 8 and 9.</p>
+        </div>
+        
+        <div class="free-info">
+            <h3>🆓 Completely Free!</h3>
+            <p><strong>No API keys required!</strong> No card details needed!</p>
+            <p><strong>No usage limits!</strong> OpenLayers is completely free and open source.</p>
+            <p><strong>No external dependencies!</strong> Works entirely with free tile providers.</p>
+        </div>
+        
+        <div class="fractional-zoom-demo">
+            <h3>🧪 Try Fractional Zoom</h3>
+            <p>Click on any map below and try zooming with your mouse wheel. Notice how you can get zoom levels like 8.5, 8.7, etc. - exactly what you wanted!</p>
+        </div>
+        
+        <div class="map-grid">
+            <div class="map-option">
+                <div class="map-title">1. OpenStreetMap (Standard)</div>
+                <div id="map-osm" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Standard street map<br>
+                    <strong>Best for:</strong> Familiar, detailed navigation<br>
+                    <strong>Zoom:</strong> Supports fractional levels!
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">2. CartoDB Positron</div>
+                <div id="map-positron" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Clean, minimal design<br>
+                    <strong>Best for:</strong> Modern, clean look<br>
+                    <strong>Features:</strong> Subtle colors, good contrast
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">3. CartoDB Dark Matter</div>
+                <div id="map-dark" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Dark theme<br>
+                    <strong>Best for:</strong> Dark mode preference<br>
+                    <strong>Features:</strong> Easy on the eyes
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">4. OpenTopoMap</div>
+                <div id="map-topo" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Topographic with elevation<br>
+                    <strong>Best for:</strong> Hiking/outdoor focus<br>
+                    <strong>Features:</strong> Trails, terrain, elevation contours
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">5. Stamen Terrain</div>
+                <div id="map-terrain" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Terrain-focused<br>
+                    <strong>Best for:</strong> Natural landscape view<br>
+                    <strong>Features:</strong> Beautiful terrain rendering
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">6. CartoDB Voyager</div>
+                <div id="map-voyager" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Balanced, colorful<br>
+                    <strong>Best for:</strong> Good balance of detail and style<br>
+                    <strong>Features:</strong> Rich colors, good readability
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // SWCP bounds (same as your app)
+        const bounds = [
+            [-5.9, 49.9], // Southwest coordinates
+            [-1.8, 51.2]  // Northeast coordinates
+        ];
+        
+        // Sample route coordinates
+        const routeCoordinates = [
+            [-5.5, 50.1],
+            [-5.0, 50.2],
+            [-4.5, 50.3],
+            [-4.0, 50.4],
+            [-3.5, 50.5],
+            [-3.0, 50.6],
+            [-2.5, 50.7]
+        ];
+        
+        // Map configurations
+        const mapConfigs = [
+            {
+                id: 'map-osm',
+                tileLayer: 'https://{a-c}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+            },
+            {
+                id: 'map-positron',
+                tileLayer: 'https://{a-c}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            },
+            {
+                id: 'map-dark',
+                tileLayer: 'https://{a-c}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            },
+            {
+                id: 'map-topo',
+                tileLayer: 'https://{a-c}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                attribution: '&copy; <a href="https://opentopomap.org/">OpenTopoMap</a> contributors'
+            },
+            {
+                id: 'map-terrain',
+                tileLayer: 'https://stamen-tiles-{a-c}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://stamen.com/">Stamen Design</a>'
+            },
+            {
+                id: 'map-voyager',
+                tileLayer: 'https://{a-c}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+            }
+        ];
+        
+        // Initialize all maps
+        mapConfigs.forEach(config => {
+            const mapElement = document.getElementById(config.id);
+            if (mapElement) {
+                // Create tile layer
+                const tileLayer = new ol.layer.Tile({
+                    source: new ol.source.XYZ({
+                        url: config.tileLayer,
+                        attributions: config.attribution
+                    })
+                });
+                
+                // Create route feature
+                const routeFeature = new ol.Feature({
+                    geometry: new ol.geom.LineString(routeCoordinates)
+                });
+                
+                // Create vector layer for route
+                const routeLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector({
+                        features: [routeFeature]
+                    }),
+                    style: new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: '#2563eb',
+                            width: 4
+                        })
+                    })
+                });
+                
+                // Create map
+                const map = new ol.Map({
+                    target: config.id,
+                    layers: [tileLayer, routeLayer],
+                    view: new ol.View({
+                        center: ol.proj.fromLonLat([-3.5, 50.5]),
+                        zoom: 8.5, // Fractional zoom!
+                        minZoom: 8,
+                        maxZoom: 14
+                    }),
+                    controls: ol.control.defaults({
+                        attribution: false
+                    })
+                });
+                
+                // Add attribution
+                const attribution = new ol.control.Attribution({
+                    collapsible: false
+                });
+                map.addControl(attribution);
+                
+                // Fit to bounds
+                const extent = ol.proj.transformExtent(bounds, 'EPSG:4326', 'EPSG:3857');
+                map.getView().fit(extent, {
+                    padding: [20, 20, 20, 20],
+                    constrainResolution: false // This allows fractional zoom
+                });
+            }
+        });
+    </script>
+</body>
+</html> 

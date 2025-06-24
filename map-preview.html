@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Map Style Preview - SW Coast Path Tracker</title>
+    
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" crossorigin=""/>
+    
+    <style>
+        body {
+            margin: 0;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            font-family: 'Inter', sans-serif;
+            color: #333;
+        }
+        
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            padding: 40px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        h1 {
+            text-align: center;
+            margin-bottom: 40px;
+            color: #2d3748;
+        }
+        
+        .map-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(400px, 1fr));
+            gap: 30px;
+            margin-bottom: 40px;
+        }
+        
+        .map-option {
+            border-radius: 15px;
+            overflow: hidden;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+        
+        .map-option:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-title {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-weight: 600;
+            color: #2d3748;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        .map-container {
+            height: 300px;
+            width: 100%;
+        }
+        
+        .map-description {
+            background: #f8f9fa;
+            padding: 15px 20px;
+            font-size: 14px;
+            color: #4a5568;
+            border-top: 1px solid #e2e8f0;
+        }
+        
+        .zoom-info {
+            background: #e6fffa;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 30px;
+            border-left: 4px solid #38b2ac;
+        }
+        
+        .zoom-info h3 {
+            margin-top: 0;
+            color: #2c7a7b;
+        }
+        
+        .recommendation {
+            background: #fef5e7;
+            padding: 20px;
+            border-radius: 10px;
+            border-left: 4px solid #ed8936;
+        }
+        
+        .recommendation h3 {
+            margin-top: 0;
+            color: #c05621;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Map Style Preview - SW Coast Path Tracker</h1>
+        
+        <div class="zoom-info">
+            <h3>⚠️ Zoom Level Limitation</h3>
+            <p><strong>All web map providers use integer zoom levels only (8, 9, 10, etc.)</strong></p>
+            <p>This means we can't get fractional zoom levels like 8.5. The gap you're seeing might be the minimum necessary to show the full route.</p>
+        </div>
+        
+        <div class="recommendation">
+            <h3>💡 Recommendation</h3>
+            <p>Look for maps that have good contrast and readability for the SWCP route. Consider which style will work best with your completed route overlays.</p>
+        </div>
+        
+        <div class="map-grid">
+            <div class="map-option">
+                <div class="map-title">1. OpenStreetMap (Current)</div>
+                <div id="map-osm" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Standard street map<br>
+                    <strong>Zoom:</strong> 0-19 (integer only)<br>
+                    <strong>Best for:</strong> Familiar, detailed street view
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">2. CartoDB Positron</div>
+                <div id="map-positron" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Clean, minimal design<br>
+                    <strong>Zoom:</strong> 0-18 (integer only)<br>
+                    <strong>Best for:</strong> Clean, modern look
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">3. CartoDB Dark Matter</div>
+                <div id="map-dark" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Dark theme<br>
+                    <strong>Zoom:</strong> 0-18 (integer only)<br>
+                    <strong>Best for:</strong> Dark mode preference
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">4. OpenTopoMap</div>
+                <div id="map-topo" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Topographic with elevation<br>
+                    <strong>Zoom:</strong> 0-17 (integer only)<br>
+                    <strong>Best for:</strong> Hiking/outdoor focus
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">5. Stamen Terrain</div>
+                <div id="map-terrain" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Terrain-focused<br>
+                    <strong>Zoom:</strong> 0-18 (integer only)<br>
+                    <strong>Best for:</strong> Natural landscape view
+                </div>
+            </div>
+            
+            <div class="map-option">
+                <div class="map-title">6. CartoDB Voyager</div>
+                <div id="map-voyager" class="map-container"></div>
+                <div class="map-description">
+                    <strong>Style:</strong> Balanced, colorful<br>
+                    <strong>Zoom:</strong> 0-18 (integer only)<br>
+                    <strong>Best for:</strong> Good balance of detail and style
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" crossorigin=""></script>
+    <script>
+        // Wait for DOM and Leaflet to be ready
+        document.addEventListener('DOMContentLoaded', function() {
+            // SWCP bounds (same as your app)
+            const corner1 = L.latLng(49.9, -5.9);
+            const corner2 = L.latLng(51.2, -1.8);
+            const bounds = L.latLngBounds(corner1, corner2);
+            
+            // Map configurations
+            const mapConfigs = [
+                {
+                    id: 'map-osm',
+                    tileLayer: 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png',
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                },
+                {
+                    id: 'map-positron',
+                    tileLayer: 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png',
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                },
+                {
+                    id: 'map-dark',
+                    tileLayer: 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png',
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                },
+                {
+                    id: 'map-topo',
+                    tileLayer: 'https://{s}.tile.opentopomap.org/{z}/{x}/{y}.png',
+                    attribution: '&copy; <a href="https://opentopomap.org/">OpenTopoMap</a> contributors'
+                },
+                {
+                    id: 'map-terrain',
+                    tileLayer: 'https://stamen-tiles-{s}.a.ssl.fastly.net/terrain/{z}/{x}/{y}{r}.png',
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://stamen.com/">Stamen Design</a>'
+                },
+                {
+                    id: 'map-voyager',
+                    tileLayer: 'https://{s}.basemaps.cartocdn.com/rastertiles/voyager/{z}/{x}/{y}{r}.png',
+                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>'
+                }
+            ];
+            
+            // Initialize all maps
+            mapConfigs.forEach(config => {
+                const mapElement = document.getElementById(config.id);
+                if (mapElement) {
+                    const map = L.map(config.id, {
+                        maxBounds: bounds,
+                        minZoom: 8,
+                        maxZoom: 14,
+                        zoomControl: false
+                    });
+                    
+                    L.tileLayer(config.tileLayer, {
+                        attribution: config.attribution,
+                        maxZoom: 14
+                    }).addTo(map);
+                    
+                    // Fit to bounds
+                    map.fitBounds(bounds);
+                    
+                    // Add a sample route line to show how it looks
+                    const sampleRoute = [
+                        [50.1, -5.5],
+                        [50.2, -5.0],
+                        [50.3, -4.5],
+                        [50.4, -4.0],
+                        [50.5, -3.5],
+                        [50.6, -3.0],
+                        [50.7, -2.5]
+                    ];
+                    
+                    L.polyline(sampleRoute, {
+                        color: '#2563eb',
+                        weight: 4,
+                        opacity: 0.8
+                    }).addTo(map);
+                }
+            });
+        });
+    </script>
+</body>
+</html> 

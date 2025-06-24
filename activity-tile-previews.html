@@ -1,0 +1,488 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Activity Tile Design Previews</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        body { 
+            font-family: 'Source Sans Pro', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif; 
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+        
+        .preview-section {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(10px);
+            border-radius: 20px;
+            padding: 30px;
+            margin-bottom: 30px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+        
+        .activity-card {
+            transition: all 0.3s ease;
+            border-radius: 16px;
+            overflow: hidden;
+        }
+        
+        .activity-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 20px 40px rgba(0,0,0,0.15);
+        }
+        
+        .map-placeholder {
+            background: linear-gradient(45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(-45deg, #f0f0f0 25%, transparent 25%), 
+                        linear-gradient(45deg, transparent 75%, #f0f0f0 75%), 
+                        linear-gradient(-45deg, transparent 75%, #f0f0f0 75%);
+            background-size: 20px 20px;
+            background-position: 0 0, 0 10px, 10px -10px, -10px 0px;
+            height: 150px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #666;
+            font-weight: 600;
+        }
+        
+        .gradient-bg-1 { background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); }
+        .gradient-bg-2 { background: linear-gradient(135deg, #f093fb 0%, #f5576c 100%); }
+        .gradient-bg-3 { background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%); }
+        .gradient-bg-4 { background: linear-gradient(135deg, #43e97b 0%, #38f9d7 100%); }
+        .gradient-bg-5 { background: linear-gradient(135deg, #fa709a 0%, #fee140 100%); }
+        .gradient-bg-6 { background: linear-gradient(135deg, #a8edea 0%, #fed6e3 100%); }
+        
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 8px;
+            margin-top: 12px;
+        }
+        
+        .stat-item {
+            text-align: center;
+            padding: 8px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 8px;
+            backdrop-filter: blur(10px);
+        }
+        
+        .badge {
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+        
+        .badge-hike { background: linear-gradient(135deg, #667eea, #764ba2); color: white; }
+        .badge-walk { background: linear-gradient(135deg, #4facfe, #00f2fe); color: white; }
+        
+        .progress-ring {
+            width: 60px;
+            height: 60px;
+            transform: rotate(-90deg);
+        }
+        
+        .progress-ring-circle {
+            stroke: #e5e7eb;
+            stroke-width: 4;
+            fill: transparent;
+        }
+        
+        .progress-ring-progress {
+            stroke: #10b981;
+            stroke-width: 4;
+            fill: transparent;
+            stroke-linecap: round;
+            transition: stroke-dasharray 0.3s ease;
+        }
+    </style>
+</head>
+<body>
+    <div class="max-w-7xl mx-auto">
+        <div class="text-center mb-8">
+            <h1 class="text-4xl font-bold text-white mb-4">Activity Tile Design Previews</h1>
+            <p class="text-white/80 text-lg">Different ways to improve the activity cards</p>
+        </div>
+
+        <!-- Option 1: Modern Gradient Cards -->
+        <div class="preview-section">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Option 1: Modern Gradient Cards</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="gradient-bg-1 p-4 text-white">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="badge bg-white/20 text-white">Hike</span>
+                            <span class="text-sm opacity-90">2 days ago</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">Coastal Walk - Port Isaac</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">12.5</div>
+                                <div class="text-xs opacity-80">km</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">3:24</div>
+                                <div class="text-xs opacity-80">time</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">245</div>
+                                <div class="text-xs opacity-80">m</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-placeholder">Map Preview</div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">SWCP Progress</span>
+                            <span class="text-sm font-semibold text-green-600">+2.1 km</span>
+                        </div>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 65%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="gradient-bg-2 p-4 text-white">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="badge bg-white/20 text-white">Walk</span>
+                            <span class="text-sm opacity-90">1 week ago</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">Beach Trail - St Ives</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">8.2</div>
+                                <div class="text-xs opacity-80">km</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">2:15</div>
+                                <div class="text-xs opacity-80">time</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">180</div>
+                                <div class="text-xs opacity-80">m</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-placeholder">Map Preview</div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">SWCP Progress</span>
+                            <span class="text-sm font-semibold text-green-600">+1.8 km</span>
+                        </div>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 45%"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="gradient-bg-3 p-4 text-white">
+                        <div class="flex justify-between items-start mb-3">
+                            <span class="badge bg-white/20 text-white">Hike</span>
+                            <span class="text-sm opacity-90">2 weeks ago</span>
+                        </div>
+                        <h3 class="font-bold text-lg mb-2">Cliff Path - Tintagel</h3>
+                        <div class="stats-grid">
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">15.8</div>
+                                <div class="text-xs opacity-80">km</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">4:12</div>
+                                <div class="text-xs opacity-80">time</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="text-lg font-bold">320</div>
+                                <div class="text-xs opacity-80">m</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="map-placeholder">Map Preview</div>
+                    <div class="p-4">
+                        <div class="flex justify-between items-center">
+                            <span class="text-sm text-gray-600">SWCP Progress</span>
+                            <span class="text-sm font-semibold text-green-600">+3.2 km</span>
+                        </div>
+                        <div class="mt-2 w-full bg-gray-200 rounded-full h-2">
+                            <div class="bg-green-500 h-2 rounded-full" style="width: 78%"></div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 2: Compact Stats Cards -->
+        <div class="preview-section">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Option 2: Compact Stats Cards</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">Coastal Walk - Port Isaac</h3>
+                                <span class="badge badge-hike">Hike</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-blue-600">12.5</div>
+                                <div class="text-sm text-gray-500">kilometers</div>
+                            </div>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div class="text-lg font-bold text-gray-800">3:24</div>
+                                <div class="text-xs text-gray-500">Duration</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-800">245m</div>
+                                <div class="text-xs text-gray-500">Elevation</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-green-600">+2.1</div>
+                                <div class="text-xs text-gray-500">SWCP km</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">Beach Trail - St Ives</h3>
+                                <span class="badge badge-walk">Walk</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-purple-600">8.2</div>
+                                <div class="text-sm text-gray-500">kilometers</div>
+                            </div>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div class="text-lg font-bold text-gray-800">2:15</div>
+                                <div class="text-xs text-gray-500">Duration</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-800">180m</div>
+                                <div class="text-xs text-gray-500">Elevation</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-green-600">+1.8</div>
+                                <div class="text-xs text-gray-500">SWCP km</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800 mb-1">Cliff Path - Tintagel</h3>
+                                <span class="badge badge-hike">Hike</span>
+                            </div>
+                            <div class="text-right">
+                                <div class="text-2xl font-bold text-teal-600">15.8</div>
+                                <div class="text-sm text-gray-500">kilometers</div>
+                            </div>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="grid grid-cols-3 gap-4 text-center">
+                            <div>
+                                <div class="text-lg font-bold text-gray-800">4:12</div>
+                                <div class="text-xs text-gray-500">Duration</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-gray-800">320m</div>
+                                <div class="text-xs text-gray-500">Elevation</div>
+                            </div>
+                            <div>
+                                <div class="text-lg font-bold text-green-600">+3.2</div>
+                                <div class="text-xs text-gray-500">SWCP km</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 3: Progress Ring Cards -->
+        <div class="preview-section">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Option 3: Progress Ring Cards</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800">Coastal Walk - Port Isaac</h3>
+                                <span class="badge badge-hike">Hike</span>
+                            </div>
+                            <div class="relative">
+                                <svg class="progress-ring" width="60" height="60">
+                                    <circle class="progress-ring-circle" cx="30" cy="30" r="26"></circle>
+                                    <circle class="progress-ring-progress" cx="30" cy="30" r="26" 
+                                            stroke-dasharray="163.4" stroke-dashoffset="57.2"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-sm font-bold text-green-600">65%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Distance:</span>
+                                <span class="text-sm font-semibold">12.5 km</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Duration:</span>
+                                <span class="text-sm font-semibold">3:24</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">SWCP Progress:</span>
+                                <span class="text-sm font-semibold text-green-600">+2.1 km</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800">Beach Trail - St Ives</h3>
+                                <span class="badge badge-walk">Walk</span>
+                            </div>
+                            <div class="relative">
+                                <svg class="progress-ring" width="60" height="60">
+                                    <circle class="progress-ring-circle" cx="30" cy="30" r="26"></circle>
+                                    <circle class="progress-ring-progress" cx="30" cy="30" r="26" 
+                                            stroke-dasharray="163.4" stroke-dashoffset="89.9"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-sm font-bold text-green-600">45%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Distance:</span>
+                                <span class="text-sm font-semibold">8.2 km</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Duration:</span>
+                                <span class="text-sm font-semibold">2:15</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">SWCP Progress:</span>
+                                <span class="text-sm font-semibold text-green-600">+1.8 km</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg">
+                    <div class="p-6">
+                        <div class="flex items-center justify-between mb-4">
+                            <div>
+                                <h3 class="font-bold text-lg text-gray-800">Cliff Path - Tintagel</h3>
+                                <span class="badge badge-hike">Hike</span>
+                            </div>
+                            <div class="relative">
+                                <svg class="progress-ring" width="60" height="60">
+                                    <circle class="progress-ring-circle" cx="30" cy="30" r="26"></circle>
+                                    <circle class="progress-ring-progress" cx="30" cy="30" r="26" 
+                                            stroke-dasharray="163.4" stroke-dashoffset="36.0"></circle>
+                                </svg>
+                                <div class="absolute inset-0 flex items-center justify-center">
+                                    <span class="text-sm font-bold text-green-600">78%</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Distance:</span>
+                                <span class="text-sm font-semibold">15.8 km</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">Duration:</span>
+                                <span class="text-sm font-semibold">4:12</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-gray-600">SWCP Progress:</span>
+                                <span class="text-sm font-semibold text-green-600">+3.2 km</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Option 4: Minimalist Cards -->
+        <div class="preview-section">
+            <h2 class="text-2xl font-bold mb-6 text-gray-800">Option 4: Minimalist Cards</h2>
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                <div class="activity-card bg-white shadow-lg border-l-4 border-blue-500">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-bold text-lg text-gray-800">Coastal Walk - Port Isaac</h3>
+                            <span class="text-xs text-gray-500">2 days ago</span>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600">12.5 km • 3:24 • 245m</span>
+                            <span class="font-semibold text-green-600">+2.1 km SWCP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg border-l-4 border-purple-500">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-bold text-lg text-gray-800">Beach Trail - St Ives</h3>
+                            <span class="text-xs text-gray-500">1 week ago</span>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600">8.2 km • 2:15 • 180m</span>
+                            <span class="font-semibold text-green-600">+1.8 km SWCP</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="activity-card bg-white shadow-lg border-l-4 border-teal-500">
+                    <div class="p-6">
+                        <div class="flex justify-between items-start mb-3">
+                            <h3 class="font-bold text-lg text-gray-800">Cliff Path - Tintagel</h3>
+                            <span class="text-xs text-gray-500">2 weeks ago</span>
+                        </div>
+                        <div class="map-placeholder mb-4">Map Preview</div>
+                        <div class="flex justify-between items-center text-sm">
+                            <span class="text-gray-600">15.8 km • 4:12 • 320m</span>
+                            <span class="font-semibold text-green-600">+3.2 km SWCP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center mt-8">
+            <p class="text-white/80 text-lg">Which design style do you prefer? I can implement any of these options!</p>
+        </div>
+    </div>
+</body>
+</html> 
