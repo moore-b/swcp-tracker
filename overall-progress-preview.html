@@ -1,0 +1,258 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overall Progress Card Floating Tiles Preview</title>
+    <link rel="stylesheet" href="tailwind.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: #e5e7eb;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            flex-direction: column;
+            gap: 3rem;
+            padding: 2rem;
+        }
+        .tile-header {
+            background: linear-gradient(135deg, #5b6f54 0%, #7ba37a 100%);
+        }
+        .floating-tile {
+            background: #7ba37a;
+            box-shadow: 0 4px 16px 0 rgba(60,80,60,0.18), 0 1.5px 4px 0 rgba(60,80,60,0.10);
+            border-radius: 1rem;
+            color: #fff;
+            min-width: 90px;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 0.25rem;
+            padding: 0.75rem 1.1rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="space-y-8">
+        <!-- Font Awesome -->
+        <div>
+            <div class="mb-2 text-sm font-semibold text-gray-700">Font Awesome</div>
+            <div class="rounded-2xl shadow-2xl w-full max-w-md bg-gradient-to-br from-[#5b6f54] to-[#7ba37a] p-1">
+                <div class="rounded-2xl overflow-hidden bg-white/0">
+                    <div class="p-4 tile-header rounded-t-2xl">
+                        <h2 class="font-bold text-lg mb-2 flex items-center text-white">
+                            <img width="50" height="50" src="https://img.icons8.com/ios-filled/50/in-progress.png" alt="in-progress" class="mr-2" />
+                            Overall Progress
+                        </h2>
+                        <div class="flex justify-between text-sm mt-2">
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">123 km</div>
+                                <div class="text-xs opacity-90">Completed</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">630 km</div>
+                                <div class="text-xs opacity-90">Total</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">20%</div>
+                                <div class="text-xs opacity-90">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 card-content-underlap">
+                        <div class="mb-4">
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 20%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-analyze flex-1">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                </svg>
+                                Reset Progress
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Phosphor -->
+        <div>
+            <div class="mb-2 text-sm font-semibold text-gray-700">Phosphor</div>
+            <div class="rounded-2xl shadow-2xl w-full max-w-md bg-gradient-to-br from-[#5b6f54] to-[#7ba37a] p-1">
+                <div class="rounded-2xl overflow-hidden bg-white/0">
+                    <div class="p-4 tile-header rounded-t-2xl">
+                        <h2 class="font-bold text-lg mb-2 flex items-center text-white">
+                            <img width="50" height="50" src="https://img.icons8.com/ios-filled/50/in-progress.png" alt="in-progress" class="mr-2" />
+                            Overall Progress
+                        </h2>
+                        <div class="flex justify-between text-sm mt-2">
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">123 km</div>
+                                <div class="text-xs opacity-90">Completed</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">630 km</div>
+                                <div class="text-xs opacity-90">Total</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">20%</div>
+                                <div class="text-xs opacity-90">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 card-content-underlap">
+                        <div class="mb-4">
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 20%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-analyze flex-1">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                </svg>
+                                Reset Progress
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Material Icons -->
+        <div>
+            <div class="mb-2 text-sm font-semibold text-gray-700">Material Icons</div>
+            <div class="rounded-2xl shadow-2xl w-full max-w-md bg-gradient-to-br from-[#5b6f54] to-[#7ba37a] p-1">
+                <div class="rounded-2xl overflow-hidden bg-white/0">
+                    <div class="p-4 tile-header rounded-t-2xl">
+                        <h2 class="font-bold text-lg mb-2 flex items-center text-white">
+                            <img width="50" height="50" src="https://img.icons8.com/ios-filled/50/in-progress.png" alt="in-progress" class="mr-2" />
+                            Overall Progress
+                        </h2>
+                        <div class="flex justify-between text-sm mt-2">
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">123 km</div>
+                                <div class="text-xs opacity-90">Completed</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">630 km</div>
+                                <div class="text-xs opacity-90">Total</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">20%</div>
+                                <div class="text-xs opacity-90">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 card-content-underlap">
+                        <div class="mb-4">
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 20%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-analyze flex-1">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                </svg>
+                                Reset Progress
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- SVG Repo -->
+        <div>
+            <div class="mb-2 text-sm font-semibold text-gray-700">SVG Repo</div>
+            <div class="rounded-2xl shadow-2xl w-full max-w-md bg-gradient-to-br from-[#5b6f54] to-[#7ba37a] p-1">
+                <div class="rounded-2xl overflow-hidden bg-white/0">
+                    <div class="p-4 tile-header rounded-t-2xl">
+                        <h2 class="font-bold text-lg mb-2 flex items-center text-white">
+                            <img width="50" height="50" src="https://img.icons8.com/ios-filled/50/in-progress.png" alt="in-progress" class="mr-2" />
+                            Overall Progress
+                        </h2>
+                        <div class="flex justify-between text-sm mt-2">
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">123 km</div>
+                                <div class="text-xs opacity-90">Completed</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">630 km</div>
+                                <div class="text-xs opacity-90">Total</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">20%</div>
+                                <div class="text-xs opacity-90">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 card-content-underlap">
+                        <div class="mb-4">
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 20%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-analyze flex-1">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                </svg>
+                                Reset Progress
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+        <!-- Noun Project (placeholder, as direct SVG fetch is not possible) -->
+        <div>
+            <div class="mb-2 text-sm font-semibold text-gray-700">Noun Project</div>
+            <div class="rounded-2xl shadow-2xl w-full max-w-md bg-gradient-to-br from-[#5b6f54] to-[#7ba37a] p-1">
+                <div class="rounded-2xl overflow-hidden bg-white/0">
+                    <div class="p-4 tile-header rounded-t-2xl">
+                        <h2 class="font-bold text-lg mb-2 flex items-center text-white">
+                            <img width="50" height="50" src="https://img.icons8.com/ios-filled/50/in-progress.png" alt="in-progress" class="mr-2" />
+                            Overall Progress
+                        </h2>
+                        <div class="flex justify-between text-sm mt-2">
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">123 km</div>
+                                <div class="text-xs opacity-90">Completed</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">630 km</div>
+                                <div class="text-xs opacity-90">Total</div>
+                            </div>
+                            <div class="floating-tile">
+                                <div class="font-bold text-lg">20%</div>
+                                <div class="text-xs opacity-90">Complete</div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="p-4 card-content-underlap">
+                        <div class="mb-4">
+                            <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                                <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 20%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                            </div>
+                        </div>
+                        <div class="flex gap-2">
+                            <button class="btn-analyze flex-1">
+                                <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                    <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                </svg>
+                                Reset Progress
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

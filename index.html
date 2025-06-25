@@ -68,154 +68,129 @@
     </div>
 
     <div id="main-layout-container" class="hidden">
-        <div id="header-section" class="rounded-2xl shadow-xl overflow-hidden">
-            <div class="p-3 text-white" style="background: linear-gradient(135deg, #5a8a6e 0%, #2d5016 100%);">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="badge bg-white/20 text-white text-xs">Tracker</span>
-                    <span class="text-xs opacity-90">SWCP</span>
-                </div>
-                <h1 class="font-bold text-base mb-2 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 12a2 2 0 114 0 2 2 0 01-4 0z"/>
-                    </svg>
-                    South West Coast Path Tracker
-                </h1>
-                <div class="flex justify-between text-sm">
-                    <div class="text-center">
-                        <div class="font-bold">Coastal</div>
-                        <div class="text-xs opacity-80">Adventure</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="font-bold">Progress</div>
-                        <div class="text-xs opacity-80">Tracking</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="font-bold">Strava</div>
-                        <div class="text-xs opacity-80">Integration</div>
-                    </div>
-                </div>
+        <!-- Header blurred background tile as a grid item -->
+        <div id="header-section" class="blurred-tile-background rounded-2xl shadow-xl flex flex-row items-center gap-6 p-4">
+            <!-- Logo Tile (standalone card, left-aligned) -->
+            <div class="rounded-2xl shadow-xl flex items-center justify-center p-4 ml-2 transition-all duration-300 hover:transform hover:translateY(-2px)" style="background: #49614b; width: 8rem; min-width: 8rem; max-width: 8rem; min-height: 7rem; max-height: 7rem; color: #fff; z-index:1; box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);">
+                <img src="swcp-logo.png" alt="SWCP Logo" class="w-24 h-24 object-contain transition-all duration-300 hover:transform hover:translateY(-3px) hover:scale-105" style="filter: drop-shadow(0 4px 16px rgba(120,120,120,0.4)) drop-shadow(0 2px 6px rgba(120,120,120,0.25));" />
             </div>
-            <div class="p-4 bg-white">
-                <div class="flex items-center justify-between">
-                    <div class="flex items-center space-x-3">
-                        <div class="w-12 h-12 bg-gradient-to-br from-blue-500 to-blue-700 rounded-xl flex items-center justify-center">
-                            <svg class="w-6 h-6 text-white" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 2a8 8 0 100 16 8 8 0 000-16zM8 12a2 2 0 114 0 2 2 0 01-4 0z"/>
-                            </svg>
-                        </div>
-                        <div>
-                            <h2 class="text-xl font-bold text-gray-900">Track your coastal adventure progress</h2>
-                            <p class="text-gray-600">Connect with Strava to analyze your activities</p>
-                        </div>
+            <!-- Title Tile (fills gap, green gradient background) -->
+            <div class="relative flex-grow flex items-center justify-center rounded-2xl shadow-xl px-8 py-6 transition-all duration-300 hover:transform hover:translateY(-2px)" style="background: #49614b; min-height: 7rem; max-height: 7rem; color: #fff; z-index:1; box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);">
+                <h1 class="font-bold text-4xl m-0 text-center w-full">South West Coast Path Tracker</h1>
+            </div>
+            <!-- Controls Tile (mirror of logo tile, right-aligned) -->
+            <div class="rounded-2xl shadow-xl flex flex-col items-center justify-center p-4 mr-2 transition-all duration-300 hover:transform hover:translateY(-2px)" style="background: #49614b; width: 8rem; min-width: 8rem; max-width: 8rem; min-height: 7rem; max-height: 7rem; color: #fff; z-index:1; box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);">
+                <!-- Powered by Strava tile -->
+                <div class="rounded-lg px-1 py-0.5 flex items-center justify-start shadow-md w-full mb-2 transition-all duration-300 hover:transform hover:translateY(-1px) hover:scale-105" style="background: #fd8640; filter: drop-shadow(0 3px 10px rgba(120,120,120,0.4)) drop-shadow(0 1px 4px rgba(120,120,120,0.25));">
+                    <div class="flex items-center justify-start gap-1">
+                        <svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg">
+                            <title>Strava icon</title>
+                            <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
+                        </svg>
+                        <span class="text-white font-bold text-xs">Powered by Strava</span>
                     </div>
-                    <div class="flex items-center space-x-2">
-                        <button id="dark-mode-toggle" class="p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200">
-                            <svg class="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>
-                            </svg>
-                        </button>
-                        <div id="strava-user-info" class="text-right"></div>
-                    </div>
+                </div>
+                <!-- User tile -->
+                <div class="rounded-lg px-1 py-0.5 flex items-center justify-start shadow-md w-full mb-1 transition-all duration-300 hover:transform hover:translateY(-1px) hover:scale-105" style="background: rgba(255,255,255,0.2); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); filter: drop-shadow(0 3px 10px rgba(120,120,120,0.4)) drop-shadow(0 1px 4px rgba(120,120,120,0.25));">
+                    <span id="strava-account-name" class="text-white font-semibold text-xs text-left flex items-center gap-1">
+                        <svg class="inline-block align-middle" width="1.25em" height="1.25em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
+                            <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
+                        </svg>
+                        Ben Moore
+                    </span>
                 </div>
             </div>
         </div>
 
-        <div class="p-6 rounded-2xl shadow-xl blurred-tile-background border border-white/20">
+        <div id="dashboard-blur-bg" class="p-6 rounded-2xl shadow-xl blurred-tile-background border border-white/20">
             <!-- Overall Progress Card -->
-            <div id="progress-summary-section" class="rounded-2xl shadow-xl overflow-hidden mb-6">
-                <div class="p-3 text-white" style="background: linear-gradient(135deg, #5a8a6e 0%, #2d5016 100%);">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="badge bg-white/20 text-white text-xs">Progress</span>
-                        <span class="text-xs opacity-90">Overall</span>
-                    </div>
-                    <h2 class="font-bold text-base mb-2 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+            <div class="rounded-2xl shadow-xl mb-6" style="background: #758966;">
+                <div class="p-3 text-white tile-header rounded-t-2xl pr-28 relative">
+                    <!-- Dark Mode button (top-left corner) -->
+                    <button id="dark-mode-toggle" class="absolute top-3 left-3 rounded-lg px-2 py-1 flex items-center justify-center shadow-md" style="background: rgba(192,192,192,0.5); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);">
+                    </button>
+                    <h2 class="font-bold text-base mb-4 flex items-center justify-center">
+                        <svg class="w-6 h-6 mr-2" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                          <polyline points="8 11 10 9 12 13 14 8 16 11" style="fill: none; stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></polyline>
+                          <path d="M19,17H5a1,1,0,0,1-1-1V4H20V16A1,1,0,0,1,19,17ZM3,4H21M10.4,17,8,20m5.6-3L16,20" style="fill: none; stroke: #fff; stroke-linecap: round; stroke-linejoin: round; stroke-width: 2;"></path>
                         </svg>
-                        Overall Progress
+                        Dashboard
                     </h2>
-                    <div class="flex justify-between text-sm">
-                        <div class="text-center">
-                            <div class="font-bold" id="completed-distance">0.00 km</div>
-                            <div class="text-xs opacity-80">Completed</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold" id="total-distance">0.00 km</div>
-                            <div class="text-xs opacity-80">Total</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold" id="progress-percentage">0.00%</div>
-                            <div class="text-xs opacity-80">Complete</div>
+                    <!-- Reset button in top right corner -->
+                    <button id="reset-button" class="reset-btn group">
+                        <svg class="reset-icon w-4 h-4 text-white transition-all duration-200" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                    </button>
+                    <div class="w-full flex justify-center">
+                        <div class="flex gap-4">
+                            <div class="floating-tile flex flex-col md:flex-row md:items-center md:gap-2 md:justify-center">
+                                <span class="text-xs opacity-90 whitespace-nowrap">Completed:</span>
+                                <span class="font-bold text-lg whitespace-nowrap" id="completed-distance">0 km</span>
+                            </div>
+                            <div class="floating-tile flex flex-col md:flex-row md:items-center md:gap-2 md:justify-center">
+                                <span class="text-xs opacity-90 whitespace-nowrap">Remaining:</span>
+                                <span class="font-bold text-lg whitespace-nowrap" id="remaining-distance">0 km</span>
+                            </div>
+                            <div class="floating-tile flex flex-col md:flex-row md:items-center md:gap-2 md:justify-center">
+                                <span class="text-xs opacity-90 whitespace-nowrap">Total:</span>
+                                <span class="font-bold text-lg whitespace-nowrap" id="total-distance">0 km</span>
+                            </div>
+                            <div class="floating-tile flex flex-col md:flex-row md:items-center md:gap-2 md:justify-center">
+                                <span class="text-xs opacity-90 whitespace-nowrap">Complete:</span>
+                                <span class="font-bold text-lg whitespace-nowrap" id="progress-percentage">0%</span>
+                            </div>
+                            <div class="floating-tile flex flex-col md:flex-row md:items-center md:gap-2 md:justify-center">
+                                <span class="text-xs opacity-90 whitespace-nowrap">Elevation:</span>
+                                <span class="font-bold text-lg whitespace-nowrap" id="elevation-gained">0 m</span>
+                            </div>
+                            <div class="floating-tile flex flex-col md:flex-row md:items-center md:gap-2 md:justify-center">
+                                <span class="text-xs opacity-90 whitespace-nowrap">Time:</span>
+                                <span class="font-bold text-lg whitespace-nowrap" id="time-taken">0h 0m</span>
+                            </div>
                         </div>
                     </div>
-                </div>
-                <div class="p-4 bg-white">
-                    <div class="mb-4">
-                        <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                    <div class="mt-6 mb-6">
+                        <div class="w-full rounded-full h-3 overflow-hidden" style="background: linear-gradient(to right, #f8f9fa, #e9ecef); border: 1px solid #dee2e6; box-shadow: inset 0 1px 3px rgba(0,0,0,0.1);">
                             <div id="progress-bar" class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 0%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
                         </div>
                     </div>
-                    <div class="flex gap-2">
-                        <button id="reset-button" class="btn-analyze flex-1">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
-                            </svg>
-                            Reset Progress
-                        </button>
-                    </div>
                 </div>
-                <div id="overall-progress-loading" class="flex items-center justify-center p-4 hidden bg-white">
+                <div id="overall-progress-loading" class="flex items-center justify-center p-4 hidden card-content-underlap">
                     <div class="loader mr-3"></div>
                     <span class="text-gray-600">Calculating overall progress...</span>
                 </div>
             </div>
 
             <!-- Map Card -->
-            <div id="map-section" class="rounded-2xl shadow-xl overflow-hidden">
-                <div class="p-3 text-white" style="background: linear-gradient(135deg, #5a8a6e 0%, #2d5016 100%);">
-                    <div class="flex justify-between items-center mb-2">
-                        <span class="badge bg-white/20 text-white text-xs">Map</span>
-                        <span class="text-xs opacity-90">SWCP Route</span>
-                    </div>
-                    <h3 class="font-bold text-base mb-2 flex items-center">
-                        <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M5.05 4.05a7 7 0 119.9 9.9L10 18.9l-4.95-4.95a7 7 0 010-9.9zM10 11a2 2 0 100-4 2 2 0 000 4z" clip-rule="evenodd"/>
+            <div class="rounded-2xl shadow-xl overflow-hidden">
+                <div class="p-3 text-white tile-header rounded-2xl">
+                    <h3 class="font-bold text-base flex items-center justify-center text-center mb-3">
+                        <svg class="mr-2" width="20" height="20" viewBox="0 0 100 100" fill="white" xmlns="http://www.w3.org/2000/svg">
+                            <g>
+                                <path d="M91.967,7.961c0-0.016,0.005-0.031,0.005-0.047c0-1.51-1.223-2.731-2.73-2.733v0H89.24c0,0,0,0-0.001,0s0,0-0.001,0H39.57
+                                    v0l0,0h-0.011v0.011L8.031,36.721H8.028l0,55.365h0.003c0,0,0,0,0,0.001c0,1.507,1.227,2.731,2.734,2.731v0h78.479v0
+                                    c1.307-0.002,2.397-0.923,2.663-2.15h0.06v-0.536c0-0.015,0.004-0.029,0.004-0.044s-0.004-0.029-0.004-0.044L91.967,7.961z
+                                     M67.639,15.138h14.371l0,24.597L63.897,21.621L67.639,15.138z M39.57,39.453v-0.001c1.504-0.006,2.722-1.226,2.722-2.73
+                                    c0,0,0-0.001,0-0.001h0V15.138H61.88l-27.17,47.06L17.985,45.473l0-6.02H39.57z M17.985,84.862l0-32.335L32.128,66.67
+                                    L21.626,84.862H17.985z M27.385,84.862l33.93-58.769l20.696,20.696l0,38.073H27.385z"/>
+                                <path d="M62.03,45.576c-6.645,0-12.026,5.387-12.026,12.027c0,2.659,0.873,5.109,2.334,7.1l7.759,13.439
+                                    c0.047,0.094,0.097,0.186,0.157,0.271l0.016,0.027l0.004-0.002c0.394,0.544,1.028,0.899,1.764,0.899
+                                    c0.664,0,1.243-0.302,1.641-0.767l0.02,0.011l0.075-0.129c0.114-0.153,0.214-0.317,0.287-0.497l7.608-13.178
+                                    c1.494-2.004,2.39-4.482,2.39-7.175C74.056,50.963,68.675,45.576,62.03,45.576z M61.911,63.7c-3.274,0-5.926-2.651-5.926-5.925
+                                    s2.652-5.928,5.926-5.928c3.274,0,5.926,2.654,5.926,5.928S65.185,63.7,61.911,63.7z"/>
+                            </g>
                         </svg>
-                        South West Coast Path
+                        Map: South West Coast Path
                     </h3>
-                    <div class="flex justify-between text-sm">
-                        <div class="text-center">
-                            <div class="font-bold">630</div>
-                            <div class="text-xs opacity-80">Total km</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold">England</div>
-                            <div class="text-xs opacity-80">Location</div>
-                        </div>
-                        <div class="text-center">
-                            <div class="font-bold">Coastal</div>
-                            <div class="text-xs opacity-80">Type</div>
-                        </div>
-                    </div>
-                </div>
-                <div class="p-4 bg-white">
-                    <div class="mb-4">
-                        <div id="map" class="relative h-64 rounded-lg overflow-hidden">
-                            <div id="map-loading-overlay" class="absolute top-0 left-0 w-full h-full bg-white bg-opacity-90 flex justify-center items-center z-[1000] hidden rounded-lg">
-                                <div class="text-center">
-                                    <div class="loader-large mb-3"></div>
-                                    <p class="text-gray-600">Loading map...</p>
-                                </div>
+                    <div id="map" class="relative h-64 w-full rounded-lg overflow-hidden">
+                        <div id="map-loading-overlay" class="absolute top-0 left-0 w-full h-full bg-white bg-opacity-90 flex justify-center items-center z-[1000] hidden rounded-lg">
+                            <div class="text-center">
+                                <div class="loader-large mb-3"></div>
+                                <p class="text-gray-600">Loading map...</p>
                             </div>
                         </div>
-                    </div>
-                    <div class="flex gap-2">
-                        <button id="map-fullscreen-btn" class="btn-analyze flex-1">
-                            <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                                <path d="M3 4a1 1 0 011-1h4a1 1 0 010 2H6.414l2.293 2.293a1 1 0 11-1.414 1.414L5 6.414V8a1 1 0 01-2 0V4zm9 1a1 1 0 010-2h4a1 1 0 011 1v4a1 1 0 01-2 0V6.414l-2.293 2.293a1 1 0 11-1.414-1.414L13.586 5H12z"/>
-                            </svg>
-                            Fullscreen
-                        </button>
                     </div>
                 </div>
             </div>
@@ -224,8 +199,8 @@
         <div id="status-log-section-container" class="p-6 rounded-2xl shadow-xl text-gray-800 blurred-tile-background border border-white/20">
             <details open id="status-log-details" class="h-full flex flex-col">
                 <summary class="text-xl font-semibold p-4 sticky top-0 bg-inherit z-10 flex items-center cursor-pointer hover:bg-white/10 rounded-lg transition-colors duration-200">
-                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clip-rule="evenodd"/>
+                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 448 448">
+                        <path d="m 264,724.36206 a 40,40.000015 0 0 1 -40,40.00002 40,40.000015 0 0 1 -40,-40.00002 40,40.000015 0 0 1 40,-40.00001 40,40.000015 0 0 1 40,40.00001 z m -72,72 64,0 0,160.00003 -64,0 z m 32,-191.99997 a 224,224 0 0 0 -224,224 224,224 0 0 0 224,224.00001 224,224 0 0 0 224,-224.00001 224,224 0 0 0 -224,-224 z m 0,32 a 192,192 0 0 1 192,192 192,192 0 0 1 -192,192.00001 192,192 0 0 1 -192,-192.00001 192,192 0 0 1 192,-192 z"/>
                     </svg>
                     Status Log
                 </summary>
@@ -233,77 +208,45 @@
             </details>
         </div>
 
-        <div id="activities-section" class="rounded-2xl shadow-xl overflow-hidden">
-            <div class="p-3 text-white" style="background: linear-gradient(135deg, #5a8a6e 0%, #2d5016 100%);">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="badge bg-white/20 text-white text-xs">Activities</span>
-                    <span class="text-xs opacity-90">Strava</span>
-                </div>
-                <h2 class="font-bold text-base mb-2 flex items-center">
-                    <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm1-12a1 1 0 10-2 0v4a1 1 0 00.293.707l2.828 2.829a1 1 0 101.415-1.415L11 9.586V6z" clip-rule="evenodd"/>
-                    </svg>
-                    Your Activities 
-                    <span id="activity-count" class="text-sm font-normal text-white/80 ml-2"></span>
-                </h2>
-                <div class="flex justify-between text-sm">
-                    <div class="text-center">
-                        <div class="font-bold">Hike</div>
-                        <div class="text-xs opacity-80">Walking</div>
+        <div id="activities-section" class="blurred-tile-background p-6 rounded-2xl shadow-xl overflow-hidden" id="activities-blur-bg">
+            <div>
+                <div class="p-3 text-white tile-header rounded-t-2xl relative">
+                    <div class="flex justify-between items-center mb-2">
                     </div>
-                    <div class="text-center">
-                        <div class="font-bold">Progress</div>
-                        <div class="text-xs opacity-80">Tracking</div>
-                    </div>
-                    <div class="text-center">
-                        <div class="font-bold">Analysis</div>
-                        <div class="text-xs opacity-80">SWCP</div>
-                    </div>
-                </div>
-            </div>
-            <div class="p-4 bg-white">
-                <div class="flex justify-between items-center mb-4">
-                    <button id="mobile-menu-btn" class="lg:hidden p-2 rounded-lg bg-gray-100 hover:bg-gray-200 transition-all duration-200">
-                        <svg class="w-5 h-5 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd"/>
+                    <h2 class="font-bold text-base mb-2 flex items-center">
+                        <svg class="mr-2" height="2em" viewBox="0 0 14 14" fill="white" xmlns="http://www.w3.org/2000/svg" style="min-width:2em; min-height:2em;">
+                          <path d="M7.04909245 2.15677102a1.15677082 1.15677082 0 0 1-1.15677082 1.15677083A1.15677082 1.15677082 0 0 1 4.7355508 2.15677103 1.15677082 1.15677082 0 0 1 5.89232163 1.0000002a1.15677082 1.15677082 0 0 1 1.15677082 1.15677083zm-4.7881791 1.59573492l1.44438058.15415493.18303768.01953116c.08988718.00959511.17909247.0007306.26552152-.01916586-.09587804.14494947-.16472417.310526-.18951559.4942699l-.23430089 1.72957939 1.01523079-.57497598-.35876943-.99372702c-.09607286-.2661547-.06952802-.54553313.04775637-.78012625.0150502-.01052053.03151287-.01848398.04588118-.0301004.10052948-.08121748.1757074-.1860818.22714109-.30207547.03363159-.07585982.05908054-.15561612.06804247-.23970727.00689192-.06448693.00387214-.12739091-.00409131-.18902853-.04670919-.36130215-.33373447-.6575329-.7119133-.69793463l-1.62802708-.1736861c-.21245618-.02269706-.42508284.03991468-.59138995.17402704-.1661123.13435589-.27236474.32893691-.2950131.54197757-.04729365.44273881.27331451.8397182.71602897.88698752zm10.0406003 2.42566318c-.17522035-.13199364-.42430355-.0967304-.55590754.07831947l-1.49001823 1.97983154c-.02946722.0393302-.05155545.08353103-.06492529.13082469l-.61347818 2.16959065-.94144098.13452636c-.04885226.00698933-.0959511.02286753-.13898297.04729366L5.7714571 12.25740163c-.19092807.10776234-.25819125.34988056-.15042891.54080863.07288873.12929045.2074151.20178954.34600841.20178954.06609424 0 .1331626-.01648703.19477586-.05136063l2.66018325-1.5020243 1.12306617-.16048673c.15527518-.02208823.28300703-.13374706.32584408-.28493092l.66369422-2.34656441 1.44523293-1.92050745c.132018-.17526905.0967304-.42413307-.07831947-.55595624zm-4.46089796 4.34673076l-.24482141-1.6888854c-.02829827-.19499504-.13800885-.36868113-.3018076-.47819689l-.99260678-.66274444-.34868725-.23281535c.00150989-.01015523.00340943-.02301366.00577167-.03950068l.02486449-.18369521-.20398132-.05608512c-.31091564-.08547928-.56094861-.31673603-.67046437-.61988304l-.2268732-.62845533-1.21891986.69028777s-.04856002.35850154-.06473046.4779777c-.01368642.10089477-.01638961.43292453.02829827.5762667.0706239.22662967.28269044.90651868.28269044.90651868l.37964 1.21750738-.53092127 2.01877209c-.09770452.3711895.12405454.75112174.4950492.84860708.05932408.0155129.11881863.02306235.17716859.02306235.30799327 0 .5894417-.20644097.6714385-.51811156l.58169742-2.21184323c.03314453-.1261976.03024651-.25916537-.0087184-.38360956l-.24925367-.79921905.8396695.56060767.20040141 1.3826212c.05021603.34600842.34715302.59526209.68675658.59506726.03314453 0 .0666787-.00231354.1004077-.0071598.37976178-.05496488.64299411-.4073538.58793182-.78709122zM5.87999873 4.02292243c-.111464-.30916223-.45279663-.4700386-.76215368-.35781966-.30935704.11165882-.4696733.45279663-.35781965.76215368l.72243382 2.00094564c.06550976.18201485.21554902.320803.4022153.3719688l1.87260497.5148239c.0527244.01453877.10583844.0215281.15817319.0215281.26128408 0 .50106441-.17349127.57375832-.4378682.0872327-.31710132-.09923876-.64469882-.41636443-.73190716L6.4977387 5.7337256l-.61773998-1.71080316zm-2.67511168 3.0267213l.06816424-.50315878-1.28769292-1.5301521-.19041666 1.78542098c-.0472693.4426901.2733145.83964515.71602897.88698752l.76948395.08206984c-.07671217-.22546072-.10968623-.46908883-.07556758-.72116746zM2.0978939 3.96106563l-.05423429.50839469 1.30128195 1.546079.22589907-1.66757647c.01054488-.07783241.03258441-.15076986.0535524-.22409695L2.0978939 3.96106563z"/>
                         </svg>
-                    </button>
+                        Your Activities
+                        <span id="activity-count" class="text-sm font-normal text-white/80 ml-2"></span>
+                    </h2>
                 </div>
-                
-                <div id="mobile-filter-menu" class="lg:hidden mb-4 p-4 bg-gray-50 rounded-xl hidden">
-                    <div class="flex flex-wrap gap-2 mb-3">
-                        <button data-filter="all" class="filter-btn active">All</button>
-                        <button data-filter="Hike" class="filter-btn">Hike</button>
-                        <button data-filter="Walk" class="filter-btn">Walk</button>
+                <div class="p-4">
+                    <!-- Only keep this set of filter/search/refresh controls -->
+                    <div class="hidden lg:block mb-4">
+                        <div class="flex justify-between items-center mb-3">
+                            <div id="filter-buttons" class="flex space-x-2">
+                                <button data-filter="all" class="filter-btn active">All</button>
+                                <button data-filter="Hike" class="filter-btn">Hike</button>
+                                <button data-filter="Walk" class="filter-btn">Walk</button>
+                            </div>
+                        </div>
+                        <input type="text" id="activity-search-box" placeholder="Search activities..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
                     </div>
-                    <input type="text" id="activity-search-box-mobile" placeholder="Search activities..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
-                </div>
-
-                <div class="hidden lg:block mb-4">
-                    <div class="flex justify-between items-center mb-3">
-                        <div id="filter-buttons" class="flex space-x-2">
-                            <button data-filter="all" class="filter-btn active">All</button>
-                            <button data-filter="Hike" class="filter-btn">Hike</button>
-                            <button data-filter="Walk" class="filter-btn">Walk</button>
+                    <button id="refresh-activities-btn" class="w-full btn-base btn-strava btn-enhanced mb-4">
+                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Refresh Activities
+                    </button>
+                    <div id="activities-loading-spinner" class="flex justify-center items-center h-32 hidden">
+                        <div class="text-center">
+                            <div class="loader-large mb-3"></div>
+                            <p class="text-gray-600">Loading activities...</p>
                         </div>
                     </div>
-                    <input type="text" id="activity-search-box" placeholder="Search activities..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                    <div id="activity-list-container" class="space-y-4 activity-list-scroll"></div>
                 </div>
-
-                <button id="refresh-activities-btn" class="w-full btn-base btn-strava btn-enhanced mb-4">
-                    <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
-                    </svg>
-                    Refresh Activities
-                </button>
-                
-                <div id="activities-loading-spinner" class="flex justify-center items-center h-32 hidden">
-                    <div class="text-center">
-                        <div class="loader-large mb-3"></div>
-                        <p class="text-gray-600">Loading activities...</p>
-                    </div>
-                </div>
-                <div id="activity-list-container" class="space-y-4"></div>
             </div>
         </div>
     </div>
@@ -330,33 +273,33 @@
 
     <template id="activity-card-template">
         <div class="activity-card bg-white shadow-lg">
-            <div class="p-3 text-white" id="gradient-header">
-                <div class="flex justify-between items-center mb-2">
-                    <span class="badge bg-white/20 text-white text-xs" data-type>Type</span>
-                    <span class="text-xs opacity-90" data-date>Date</span>
-                </div>
-                <h3 class="font-bold text-base mb-2" data-name>Activity Name</h3>
-                <div class="flex justify-between text-sm">
-                    <div class="text-center">
-                        <div class="font-bold" data-distance-display>0.00 km</div>
-                        <div class="text-xs opacity-80">Distance</div>
+            <div class="activity-card-header rounded-t-2xl">
+                <h3 class="font-bold text-base mb-2 text-center" data-name>Activity Name</h3>
+                <div class="flex flex-wrap justify-center gap-2 mb-2">
+                    <div class="floating-tile flex flex-col items-center justify-center min-w-[90px]">
+                        <span class="text-xs opacity-90">Distance:</span>
+                        <span class="font-bold text-base" data-distance-display>0.00 km</span>
                     </div>
-                    <div class="text-center">
-                        <div class="font-bold" data-time-display>0:00</div>
-                        <div class="text-xs opacity-80">Time</div>
+                    <div class="floating-tile flex flex-col items-center justify-center min-w-[90px]">
+                        <span class="text-xs opacity-90">Time:</span>
+                        <span class="font-bold text-base" data-time-display>0:00</span>
                     </div>
-                    <div class="text-center">
-                        <div class="font-bold" data-elevation-display>0m</div>
-                        <div class="text-xs opacity-80">Elevation</div>
+                    <div class="floating-tile flex flex-col items-center justify-center min-w-[90px]">
+                        <span class="text-xs opacity-90">Elevation:</span>
+                        <span class="font-bold text-base" data-elevation-display>0m</span>
+                    </div>
+                    <div class="floating-tile flex flex-col items-center justify-center min-w-[90px]">
+                        <span class="text-xs opacity-90">Date:</span>
+                        <span class="font-bold text-base" data-date>Date</span>
+                    </div>
+                    <div class="floating-tile flex flex-col items-center justify-center min-w-[90px]">
+                        <span class="text-xs opacity-90">Type:</span>
+                        <span class="font-bold text-base capitalize" data-type>Type</span>
                     </div>
                 </div>
             </div>
             <div class="activity-map" data-map-id></div>
             <div class="p-4">
-                <div class="flex justify-between items-center mb-4">
-                    <span class="text-sm text-gray-600">SWCP Progress</span>
-                    <span class="text-sm font-semibold text-green-600" data-swcp-progress>+0.0 km</span>
-                </div>
                 <div class="flex gap-2">
                     <button data-analyze-btn data-activity-id="" class="btn-analyze flex-1">
                         <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
@@ -411,40 +354,6 @@
             min-width: 10px !important;
         }
         
-        .btn-analyze {
-            background: linear-gradient(90deg, #90844a, #7a6f3e);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-analyze:hover {
-            background: linear-gradient(90deg, #7a6f3e, #655a33);
-            transform: translateY(-1px);
-        }
-        
-        .btn-description {
-            background: linear-gradient(90deg, #56801E, #436229);
-            color: white;
-            padding: 8px 16px;
-            border-radius: 8px;
-            font-size: 0.875rem;
-            font-weight: 600;
-            border: none;
-            cursor: pointer;
-            transition: all 0.2s ease;
-        }
-        
-        .btn-description:hover {
-            background: linear-gradient(90deg, #4a6b1a, #2d4a1c);
-            transform: translateY(-1px);
-        }
-        
         .btn-secondary {
             background: #f3f4f6;
             color: #374151;
@@ -456,10 +365,110 @@
             cursor: pointer;
             transition: all 0.2s ease;
         }
+
+        .floating-tile {
+            background: #617253;
+            box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);
+            border-radius: 1rem;
+            color: #fff;
+            min-width: 90px;
+            min-height: 60px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            margin: 0 0.25rem;
+            padding: 0.75rem 1.1rem;
+        }
+
+        .activity-list-scroll {
+            max-height: 420px;
+            overflow-y: auto;
+            scrollbar-width: thin;
+            scrollbar-color: transparent transparent;
+        }
+        .activity-list-scroll::-webkit-scrollbar {
+            width: 8px;
+            background: transparent;
+        }
+        .activity-list-scroll::-webkit-scrollbar-thumb {
+            background: rgba(255,255,255,0.15);
+            border-radius: 8px;
+            border: 2px solid transparent;
+            background-clip: padding-box;
+        }
+        .activity-list-scroll::-webkit-scrollbar-track {
+            background: transparent;
+        }
+
+        /* Topographic contour lines pattern */
+        .topographic-header {
+            position: relative;
+            overflow: hidden;
+        }
         
-        .btn-secondary:hover {
-            background: #e5e7eb;
-            transform: translateY(-1px);
+        .topographic-header::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(245, 222, 179, 0.6) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(245, 222, 179, 0.5) 0%, transparent 50%),
+                radial-gradient(circle at 40% 80%, rgba(245, 222, 179, 0.4) 0%, transparent 50%),
+                radial-gradient(circle at 90% 20%, rgba(245, 222, 179, 0.35) 0%, transparent 50%),
+                radial-gradient(circle at 10% 60%, rgba(245, 222, 179, 0.3) 0%, transparent 50%);
+            background-size: 200px 200px, 150px 150px, 180px 180px, 120px 120px, 160px 160px;
+            background-position: 0 0, 50px 50px, 100px 100px, 150px 150px, 200px 200px;
+            animation: topographic-float 20s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        .topographic-header::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                repeating-linear-gradient(
+                    45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(245, 222, 179, 0.5) 2px,
+                    rgba(245, 222, 179, 0.5) 4px
+                ),
+                repeating-linear-gradient(
+                    -45deg,
+                    transparent,
+                    transparent 2px,
+                    rgba(245, 222, 179, 0.4) 2px,
+                    rgba(245, 222, 179, 0.4) 4px
+                );
+            background-size: 20px 20px, 15px 15px;
+            animation: topographic-shift 15s ease-in-out infinite;
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        @keyframes topographic-float {
+            0%, 100% { transform: translateY(0px) rotate(0deg); }
+            50% { transform: translateY(-10px) rotate(1deg); }
+        }
+        
+        @keyframes topographic-shift {
+            0%, 100% { transform: translateX(0px) scale(1); }
+            50% { transform: translateX(5px) scale(1.02); }
+        }
+        
+        /* Ensure content stays above the topographic pattern */
+        .topographic-header > * {
+            position: relative;
+            z-index: 2;
         }
     </style>
 </body>

@@ -1,0 +1,289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Overall Progress Card Ideas</title>
+    <link rel="stylesheet" href="tailwind.css">
+    <link rel="stylesheet" href="style.css">
+    <style>
+        body {
+            background: #f5f1e8;
+            min-height: 100vh;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+            flex-wrap: wrap;
+            gap: 2rem;
+            padding: 2rem;
+        }
+        .preview-label {
+            font-size: 1rem;
+            font-weight: 700;
+            color: #5b6f54;
+            margin-bottom: 0.5rem;
+            text-align: center;
+            letter-spacing: 0.03em;
+        }
+        .card-preview {
+            width: 340px;
+            max-width: 100vw;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        .circular-progress {
+            width: 90px;
+            height: 90px;
+            position: relative;
+            margin: 0 auto 1rem auto;
+        }
+        .circular-progress svg {
+            transform: rotate(-90deg);
+        }
+        .circular-progress-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #5b6f54;
+        }
+    </style>
+</head>
+<body>
+    <!-- Classic Card -->
+    <div class="card-preview">
+        <div class="preview-label">Classic Card</div>
+        <div class="rounded-2xl shadow-xl bg-white w-full">
+            <div class="p-3 text-white tile-header rounded-t-2xl rounded-b-2xl">
+                <div class="flex justify-between items-center mb-2">
+                    <span class="badge bg-white/20 text-white text-xs">Progress</span>
+                    <span class="text-xs opacity-90">Overall</span>
+                </div>
+                <h2 class="font-bold text-base mb-2 flex items-center">
+                    <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Overall Progress
+                </h2>
+                <div class="flex justify-between text-sm">
+                    <div class="text-center">
+                        <div class="font-bold">123.45 km</div>
+                        <div class="text-xs opacity-80">Completed</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-bold">630.00 km</div>
+                        <div class="text-xs opacity-80">Total</div>
+                    </div>
+                    <div class="text-center">
+                        <div class="font-bold">19.6%</div>
+                        <div class="text-xs opacity-80">Complete</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 card-content-underlap">
+                <div class="mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 19.6%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-analyze flex-1">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Reset Progress
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Vertical Stats -->
+    <div class="card-preview">
+        <div class="preview-label">Vertical Stats</div>
+        <div class="rounded-2xl shadow-xl bg-white w-full">
+            <div class="p-3 text-white tile-header rounded-t-2xl rounded-b-2xl">
+                <div class="flex flex-col items-center mb-2">
+                    <span class="badge bg-white/20 text-white text-xs mb-1">Progress</span>
+                    <span class="text-xs opacity-90">Overall</span>
+                </div>
+                <h2 class="font-bold text-base mb-2 flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Overall Progress
+                </h2>
+                <div class="flex flex-col gap-1 items-center text-sm">
+                    <div class="font-bold">123.45 km <span class="text-xs opacity-80 ml-1">Completed</span></div>
+                    <div class="font-bold">630.00 km <span class="text-xs opacity-80 ml-1">Total</span></div>
+                    <div class="font-bold">19.6% <span class="text-xs opacity-80 ml-1">Complete</span></div>
+                </div>
+            </div>
+            <div class="p-4 card-content-underlap">
+                <div class="mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden">
+                        <div class="h-4 rounded-full transition-all duration-1000 ease-out" style="width: 19.6%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-analyze flex-1">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Reset Progress
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Circular Progress -->
+    <div class="card-preview">
+        <div class="preview-label">Circular Progress</div>
+        <div class="rounded-2xl shadow-xl bg-white w-full flex flex-col items-center">
+            <div class="p-3 text-white tile-header rounded-t-2xl rounded-b-2xl flex flex-col items-center">
+                <span class="badge bg-white/20 text-white text-xs mb-2">Progress</span>
+                <div class="circular-progress">
+                    <svg width="90" height="90">
+                        <circle cx="45" cy="45" r="38" stroke="#e5e7eb" stroke-width="8" fill="none"/>
+                        <circle cx="45" cy="45" r="38" stroke="#5a8a6e" stroke-width="8" fill="none" stroke-dasharray="238.76" stroke-dashoffset="192.23" stroke-linecap="round"/>
+                    </svg>
+                    <span class="circular-progress-text">19.6%</span>
+                </div>
+                <div class="flex flex-col gap-1 items-center text-sm">
+                    <div class="font-bold">123.45 km <span class="text-xs opacity-80 ml-1">Completed</span></div>
+                    <div class="font-bold">630.00 km <span class="text-xs opacity-80 ml-1">Total</span></div>
+                </div>
+            </div>
+            <div class="p-4 card-content-underlap w-full">
+                <div class="flex gap-2">
+                    <button class="btn-analyze flex-1">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Reset Progress
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Minimalist -->
+    <div class="card-preview">
+        <div class="preview-label">Minimalist</div>
+        <div class="rounded-2xl shadow-xl bg-white w-full flex flex-col items-center">
+            <div class="p-6 w-full flex flex-col items-center">
+                <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden mb-4">
+                    <div class="h-4 rounded-full transition-all duration-1000 ease-out" style="width: 19.6%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                </div>
+                <div class="flex flex-row justify-between w-full text-sm mb-2">
+                    <div class="text-center flex-1">
+                        <div class="font-bold">123.45 km</div>
+                        <div class="text-xs opacity-80">Completed</div>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="font-bold">630.00 km</div>
+                        <div class="text-xs opacity-80">Total</div>
+                    </div>
+                    <div class="text-center flex-1">
+                        <div class="font-bold">19.6%</div>
+                        <div class="text-xs opacity-80">Complete</div>
+                    </div>
+                </div>
+                <button class="btn-analyze w-full">
+                    <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                        <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                    </svg>
+                    Reset Progress
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Icon Accent -->
+    <div class="card-preview">
+        <div class="preview-label">Icon Accent</div>
+        <div class="rounded-2xl shadow-xl bg-white w-full flex flex-col items-center">
+            <div class="relative w-full flex flex-col items-center">
+                <div class="absolute -top-8 left-1/2 transform -translate-x-1/2 z-10 bg-gradient-to-br from-[#748965] to-[#5b6f54] rounded-full p-3 shadow-lg">
+                    <svg class="w-10 h-10 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                </div>
+                <div class="p-6 pt-12 w-full flex flex-col items-center">
+                    <div class="flex flex-row justify-between w-full text-sm mb-2">
+                        <div class="text-center flex-1">
+                            <div class="font-bold">123.45 km</div>
+                            <div class="text-xs opacity-80">Completed</div>
+                        </div>
+                        <div class="text-center flex-1">
+                            <div class="font-bold">630.00 km</div>
+                            <div class="text-xs opacity-80">Total</div>
+                        </div>
+                        <div class="text-center flex-1">
+                            <div class="font-bold">19.6%</div>
+                            <div class="text-xs opacity-80">Complete</div>
+                        </div>
+                    </div>
+                    <div class="w-full bg-gray-200 rounded-full h-4 overflow-hidden mb-4">
+                        <div class="h-4 rounded-full transition-all duration-1000 ease-out" style="width: 19.6%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                    </div>
+                    <button class="btn-analyze w-full">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Reset Progress
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Original with Stat Boxes -->
+    <div class="card-preview">
+        <div class="preview-label">Original + Stat Boxes</div>
+        <div class="rounded-2xl shadow-2xl bg-white w-full">
+            <div class="p-3 text-white tile-header rounded-t-2xl rounded-b-2xl" style="background: linear-gradient(135deg, #748965 0%, #5b6f54 100%); box-shadow: 0 8px 32px rgba(80,120,80,0.18);">
+                <h2 class="font-bold text-base mb-2 flex items-center justify-center">
+                    <svg class="w-5 h-5 mr-2 text-white" fill="currentColor" viewBox="0 0 20 20">
+                        <path d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                    </svg>
+                    Overall Progress
+                </h2>
+                <div class="flex justify-between text-sm gap-2">
+                    <div class="flex-1 flex flex-col items-center rounded-lg py-1 px-2 shadow-md" style="background: #8fae7a;">
+                        <div class="font-bold text-white">123.45 km</div>
+                        <div class="text-xs text-white/90">Completed</div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center rounded-lg py-1 px-2 shadow-md" style="background: #8fae7a;">
+                        <div class="font-bold text-white">630.00 km</div>
+                        <div class="text-xs text-white/90">Total</div>
+                    </div>
+                    <div class="flex-1 flex flex-col items-center rounded-lg py-1 px-2 shadow-md" style="background: #8fae7a;">
+                        <div class="font-bold text-white">19.6%</div>
+                        <div class="text-xs text-white/90">Complete</div>
+                    </div>
+                </div>
+            </div>
+            <div class="p-4 card-content-underlap">
+                <div class="mb-4">
+                    <div class="w-full bg-gray-200 rounded-full h-3 overflow-hidden">
+                        <div class="h-3 rounded-full transition-all duration-1000 ease-out" style="width: 19.6%; background: linear-gradient(to right, #5a8a6e, #2d5016);"></div>
+                    </div>
+                </div>
+                <div class="flex gap-2">
+                    <button class="btn-analyze flex-1">
+                        <svg class="w-4 h-4 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                        </svg>
+                        Reset Progress
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 

@@ -160,17 +160,34 @@ function toggleDarkMode() {
     isDarkMode = !isDarkMode;
     document.body.classList.toggle('dark-mode', isDarkMode);
     localStorage.setItem(DARK_MODE_KEY, isDarkMode.toString());
-    
-    // Update dark mode toggle icon
+    updateDarkModeToggle();
+}
+
+function updateDarkModeToggle() {
     if (UIElements.darkModeToggle) {
-        const icon = UIElements.darkModeToggle.querySelector('svg');
-        if (icon) {
-            if (isDarkMode) {
-                icon.innerHTML = `<path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>`;
-            } else {
-                icon.innerHTML = `<path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>`;
-            }
+        // Remove existing SVG
+        const oldSvg = UIElements.darkModeToggle.querySelector('svg');
+        if (oldSvg) oldSvg.remove();
+        let svgHtml = '';
+        if (isDarkMode) {
+            // Moon icon (Dark Mode)
+            svgHtml = `
+<svg width="28" height="28" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+<path d="M13.3986 7.64605C13.495 7.37724 13.88 7.37724 13.9764 7.64605L14.2401 8.38111C14.271 8.46715 14.3395 8.53484 14.4266 8.56533L15.1709 8.82579C15.443 8.92103 15.443 9.30119 15.1709 9.39644L14.4266 9.65689C14.3395 9.68738 14.271 9.75507 14.2401 9.84112L13.9764 10.5762C13.88 10.845 13.495 10.845 13.3986 10.5762L13.1349 9.84112C13.104 9.75507 13.0355 9.68738 12.9484 9.65689L12.2041 9.39644C11.932 9.30119 11.932 8.92103 12.2041 8.82579L12.9484 8.56533C13.0355 8.53484 13.104 8.46715 13.1349 8.38111L13.3986 7.64605Z" fill="white"/>
+<path d="M16.3074 10.9122C16.3717 10.733 16.6283 10.733 16.6926 10.9122L16.8684 11.4022C16.889 11.4596 16.9347 11.5047 16.9928 11.525L17.4889 11.6987C17.6704 11.7622 17.6704 12.0156 17.4889 12.0791L16.9928 12.2527C16.9347 12.2731 16.889 12.3182 16.8684 12.3756L16.6926 12.8656C16.6283 13.0448 16.3717 13.0448 16.3074 12.8656L16.1316 12.3756C16.111 12.3182 16.0653 12.2731 16.0072 12.2527L15.5111 12.0791C15.3296 12.0156 15.3296 11.7622 15.5111 11.6987L16.0072 11.525C16.0653 11.5047 16.111 11.4596 16.1316 11.4022L16.3074 10.9122Z" fill="white"/>
+<path d="M17.7693 3.29184C17.9089 2.90272 18.4661 2.90272 18.6057 3.29184L19.0842 4.62551C19.1288 4.75006 19.2281 4.84805 19.3542 4.89219L20.7045 5.36475C21.0985 5.50263 21.0985 6.05293 20.7045 6.19081L19.3542 6.66337C19.2281 6.7075 19.1288 6.80549 19.0842 6.93005L18.6057 8.26372C18.4661 8.65284 17.9089 8.65284 17.7693 8.26372L17.2908 6.93005C17.2462 6.80549 17.1469 6.7075 17.0208 6.66337L15.6705 6.19081C15.2765 6.05293 15.2765 5.50263 15.6705 5.36475L17.0208 4.89219C17.1469 4.84805 17.2462 4.75006 17.2908 4.62551L17.7693 3.29184Z" fill="white"/>
+<path d="M3 13.4597C3 17.6241 6.4742 21 10.7598 21C14.0591 21 16.8774 18.9993 18 16.1783C17.1109 16.5841 16.1181 16.8109 15.0709 16.8109C11.2614 16.8109 8.17323 13.8101 8.17323 10.1084C8.17323 8.56025 8.71338 7.13471 9.62054 6C5.87502 6.5355 3 9.67132 3 13.4597Z" stroke="white" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+`;
+        } else {
+            // Sun icon (Light Mode)
+            svgHtml = `
+<svg width="28" height="28" viewBox="0 0 16 16" fill="none" xmlns="http://www.w3.org/2000/svg">
+  <path d="M15.5 7.5H12.949a4.94 4.94 0 0 0-1.1-2.647l1.8-1.8a.5.5 0 1 0-.707-.707l-1.8 1.8A4.947 4.947 0 0 0 8.5 3.051V.5a.5.5 0 0 0-1 0V3.051a4.947 4.947 0 0 0-2.646 1.095l-1.8-1.8a.5.5 0 1 0-.707.707l1.8 1.8a4.94 4.94 0 0 0-1.1 2.647H.5a.5.5 0 0 0 0 1h2.551a4.94 4.94 0 0 0 1.1 2.647l-1.8 1.8a.5.5 0 1 0 .707.707l1.8-1.8a4.947 4.947 0 0 0 2.646 1.1V15.5a.5.5 0 0 0 1 0V12.949a4.947 4.947 0 0 0 2.646-1.1l1.8 1.8a.5.5 0 1 0 .707-.707l-1.8-1.8a4.94 4.94 0 0 0 1.1-2.647H15.5a.5.5 0 0 0 0-1ZM8 12a4 4 0 1 1 4-4 4 4 0 0 1-4 4Zm6-6.5a.5.5 0 1 1 .5.5.5.5 0 0 1-.5-.5Zm1 5a.5.5 0 1 1-.5-.5.5.5 0 0 1 .5.5Zm-14-5a.5.5 0 1 1 .5.5.5.5 0 0 1-.5-.5Zm1 5a.5.5 0 1 1-.5-.5.5.5 0 0 1 .5.5Zm9 4a.5.5 0 1 1-.5-.5.5.5 0 0 1 .5.5Zm-5 0a.5.5 0 1 1-.5-.5.5.5 0 0 1 .5.5Zm4-13a.5.5 0 1 1 .5.5.5.5 0 0 1-.5-.5Zm-5 0a.5.5 0 1 1 .5.5.5.5 0 0 1-.5-.5Z" fill="white"/>
+</svg>
+`;
         }
+        UIElements.darkModeToggle.insertAdjacentHTML('afterbegin', svgHtml);
     }
 }
 
@@ -344,7 +361,6 @@ function updateGridLayout() {
                 UIElements.activitiesSection.style.gridColumn = '2';
                 UIElements.activitiesSection.style.gridRow = '1 / span 4';
                 UIElements.activitiesSection.style.position = 'sticky';
-                UIElements.activitiesSection.style.height = 'calc(100vh - 3rem)';
                 UIElements.activitiesSection.style.top = '1.5rem'; // Ensure sticky top is set
             }
             UIElements.mainLayoutContainer.dataset.layout = 'desktop';
@@ -422,11 +438,19 @@ async function getAccessToken(code) {
 async function showMainApp() {
     log('Loading main application...');
     const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
-    if (UIElements.stravaUserInfo) { // Defensive check
+    // Update Strava account name in header
+    const accountNameEl = document.getElementById('strava-account-name');
+    if (accountNameEl) {
         if (athlete.firstname) {
-            UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">${athlete.firstname} ${athlete.lastname}</p>`;
+            accountNameEl.innerHTML = `<svg class="inline-block align-middle" width="1.5em" height="1.5em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
+            </svg> ${athlete.firstname} ${athlete.lastname}`;
         } else {
-            UIElements.stravaUserInfo.innerHTML = `<p class="font-semibold">Strava User</p>`; // Fallback
+            accountNameEl.innerHTML = `<svg class="inline-block align-middle" width="1.5em" height="1.5em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
+                <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
+            </svg> Strava User`;
         }
     }
    
@@ -568,17 +592,29 @@ async function loadSwcpData() {
             const leafletGeoJson = L.geoJSON(data, {
                 style: { 
                     color: '#2563eb', 
-                    weight: 4, 
-                    opacity: 0.8,
-                    fillOpacity: 0.1
+                    weight: 3, 
+                    opacity: 0.7,
+                    fillOpacity: 0.1,
+                    lineCap: 'round',
+                    lineJoin: 'round'
                 }
             }).addTo(mainMap);
+            
+            // Add subtle glow effect to the full route
+            leafletGeoJson.on('add', function() {
+                const paths = this.getLayers().map(layer => layer.getElement());
+                paths.forEach(path => {
+                    if (path) {
+                        path.classList.add('map-glow-3d-combined-blue');
+                    }
+                });
+            });
             mainMap.fitBounds(leafletGeoJson.getBounds());
         } else {
             log('Main map not initialized, cannot render SWCP route. This is an unexpected state.', 'error');
         }
        
-        if (UIElements.totalDistance) UIElements.totalDistance.textContent = swcpTotalDistance.toFixed(2);
+        if (UIElements.totalDistance) UIElements.totalDistance.textContent = `${swcpTotalDistance.toFixed(2)} km`;
         log('SWCP route rendered on map.', 'success');
     } catch(e) {
         log(`Failed to load SWCP map data: ${e.message}. Please check your 'routes.geojson' file and its deployment.`, 'error');
@@ -687,8 +723,8 @@ async function refreshActivities() {
 
 // Function to generate consistent pine green gradient for all activity cards
 function getActivityGradient(activityId) {
-    // Always use the same pine green gradient with more contrast for consistency
-    return 'linear-gradient(135deg, #5a8a6e 0%, #2d5016 100%)';
+    // Use the new pine green gradient for all activity cards
+    return 'linear-gradient(135deg, #5a8a5e 0%, #4a7a4e 100%)';
 }
 
 function renderActivityList(activities) {
@@ -717,7 +753,12 @@ function renderActivityList(activities) {
         
         // Populate activity data
         cardDiv.querySelector('[data-name]').textContent = activity.name;
-        cardDiv.querySelector('[data-date]').textContent = new Date(activity.start_date).toLocaleDateString();
+        // Format date as DD/MM/YY
+        const dateObj = new Date(activity.start_date);
+        const day = String(dateObj.getDate()).padStart(2, '0');
+        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+        const year = String(dateObj.getFullYear()).slice(-2);
+        cardDiv.querySelector('[data-date]').textContent = `${day}/${month}/${year}`;
         cardDiv.querySelector('[data-type]').textContent = activity.type;
         
         // Data display
@@ -727,7 +768,6 @@ function renderActivityList(activities) {
         cardDiv.querySelector('[data-distance-display]').textContent = `${distance} km`;
         cardDiv.querySelector('[data-time-display]').textContent = time;
         cardDiv.querySelector('[data-elevation-display]').textContent = `${elevation}m`;
-        cardDiv.querySelector('[data-swcp-progress]').textContent = '+0.0 km';
        
         const mapEl = card.querySelector('[data-map-id]');
         mapEl.id = `map-${activity.id}`;
@@ -770,7 +810,7 @@ function renderActivityList(activities) {
                     L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
                         attribution: 'Tiles &copy; Esri &mdash; Esri, DeLorme, NAVTEQ, TomTom, Intermap, iPC, USGS, FAO, NPS, NRCAN, GeoBase, Kadaster NL, Ordnance Survey, Esri Japan, METI, Esri China (Hong Kong), and the GIS User Community'
                     }).addTo(activityMap);
-                    L.polyline(latlngs, {color: '#FC5200', weight: 3}).addTo(activityMap);
+                    L.polyline(latlngs, {color: '#fd8640', weight: 3}).addTo(activityMap);
                     mapEl.style.filter = 'sepia(0.1) saturate(0.9) brightness(0.95)';
                     const bounds = L.latLngBounds(latlngs);
                     activityMap.fitBounds(bounds, { padding: [10, 10] });
@@ -941,7 +981,32 @@ function updateProgressUI(payload) {
     if (segments && segments.length > 0) {
         segments.forEach(seg => {
             const leafletCoords = seg.map(c => [c[1], c[0]]);
-            L.polyline(leafletCoords, { color: '#FC5200', weight: 5, opacity: 0.8 }).addTo(completedSegmentsLayer);
+            
+            // Create a shadow/glow layer underneath
+            L.polyline(leafletCoords, { 
+                color: '#fd8640', 
+                weight: 6, 
+                opacity: 0.3,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(completedSegmentsLayer);
+            
+            // Main line with glow effect
+            const mainLine = L.polyline(leafletCoords, { 
+                color: '#fd8640', 
+                weight: 3, 
+                opacity: 0.9,
+                lineCap: 'round',
+                lineJoin: 'round'
+            }).addTo(completedSegmentsLayer);
+            
+            // Add glow effect by applying CSS class to the SVG element
+            mainLine.on('add', function() {
+                const path = this.getElement();
+                if (path) {
+                    path.classList.add('map-glow-3d-combined');
+                }
+            });
         });
         log(`Rendered ${segments.length} completed segments on the map.`, 'info');
     } else {
@@ -949,11 +1014,28 @@ function updateProgressUI(payload) {
     }
 
     // --- Updating text fields and progress bar ---
-    // Ensure values are numbers before setting textContent and style.width
-    // Added parseFloat to explicitly convert even if they are strings from worker payload
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
+    if (UIElements.totalDistance) {
+        UIElements.totalDistance.textContent = `${swcpTotalDistance.toFixed(2)} km`;
+    }
+
+    // --- Elevation Gained: sum from processed (SWCP) activities only ---
+    if (UIElements.elevationGained) {
+        let elevationSum = 0;
+        // Get processed activity IDs from localStorage
+        const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+        if (Array.isArray(allFetchedActivities) && allFetchedActivities.length > 0) {
+            elevationSum = allFetchedActivities.reduce((sum, act) => {
+                if (processedIds.has(String(act.id))) {
+                    return sum + (Number(act.total_elevation_gain) || 0);
+                }
+                return sum;
+            }, 0);
+        }
+        UIElements.elevationGained.textContent = `${Math.round(elevationSum)} m`;
+    }
    
     // --- CRITICAL: Update global currentPercentage variable ---
     currentPercentage = parseFloat(percentage); // Update the global variable here
@@ -967,6 +1049,32 @@ function updateProgressUI(payload) {
         console.log("updateProgressUI: Saved newCompletedPoints to localStorage:", newCompletedPoints.length);
     } else {
         console.warn("updateProgressUI: newCompletedPoints was null or undefined in payload. Not saving to localStorage.");
+    }
+
+    // --- Time Taken: sum from processed (SWCP) activities only ---
+    if (UIElements.timeTaken) {
+        let timeSum = 0;
+        const processedIds = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+        if (Array.isArray(allFetchedActivities) && allFetchedActivities.length > 0) {
+            timeSum = allFetchedActivities.reduce((sum, act) => {
+                if (processedIds.has(String(act.id))) {
+                    return sum + (Number(act.moving_time) || 0);
+                }
+                return sum;
+            }, 0);
+        }
+        // Format as Hh Mm
+        const hours = Math.floor(timeSum / 3600);
+        const minutes = Math.floor((timeSum % 3600) / 60);
+        UIElements.timeTaken.textContent = `${hours}h ${minutes}m`;
+    }
+
+    // --- Remaining Distance: total - completed ---
+    if (UIElements.remainingDistance && UIElements.completedDistance && UIElements.totalDistance) {
+        const completed = parseFloat(UIElements.completedDistance.textContent) || 0;
+        const total = parseFloat(UIElements.totalDistance.textContent) || 0;
+        const remaining = Math.max(total - completed, 0);
+        UIElements.remainingDistance.textContent = `${remaining.toFixed(2)} km`;
     }
 
     log(`Overall progress updated: ${totalDistance.toFixed(2)} km (${parseFloat(percentage).toFixed(2)}%)`, 'success');
@@ -1060,6 +1168,9 @@ const init = async () => {
     UIElements.fabMap = document.getElementById('fab-map');
     UIElements.mapFullscreenBtn = document.getElementById('map-fullscreen-btn');
     UIElements.bottomSheet = document.getElementById('bottom-sheet');
+    UIElements.elevationGained = document.getElementById('elevation-gained');
+    UIElements.timeTaken = document.getElementById('time-taken');
+    UIElements.remainingDistance = document.getElementById('remaining-distance');
 
     log('Application initialization started.');
 
@@ -1071,7 +1182,19 @@ const init = async () => {
         if (UIElements.darkModeToggle) {
             const icon = UIElements.darkModeToggle.querySelector('svg');
             if (icon) {
-                icon.innerHTML = `<path d="M10 2a1 1 0 011 1v1a1 1 0 11-2 0V3a1 1 0 011-1zm4 8a4 4 0 11-8 0 4 4 0 018 0zm-.464 4.95l.707.707a1 1 0 001.414-1.414l-.707-.707a1 1 0 00-1.414 1.414zm2.12-10.607a1 1 0 010 1.414l-.706.707a1 1 0 11-1.414-1.414l.707-.707a1 1 0 011.414 0zM17 11a1 1 0 100-2h-1a1 1 0 100 2h1zm-7 4a1 1 0 011 1v1a1 1 0 11-2 0v-1a1 1 0 011-1zM5.05 6.464A1 1 0 106.465 5.05l-.708-.707a1 1 0 00-1.414 1.414l.707.707zm1.414 8.486l-.707.707a1 1 0 01-1.414-1.414l.707-.707a1 1 0 011.414 1.414zM4 11a1 1 0 100-2H3a1 1 0 000 2h1z"/>`;
+                icon.innerHTML = `
+                    <circle cx="12" cy="12" r="4.5"/>
+                    <path stroke-linecap="round" stroke-linejoin="round" d="
+                      M12 3v1.5
+                      M12 19.5V21
+                      M20.2 12h-1.2
+                      M5.5 12H3
+                      M17.07 6.93l-1.06 1.06
+                      M6.93 17.07l-1.06 1.06
+                      M17.07 17.07l-1.06-1.06
+                      M6.93 6.93l-1.06-1.06
+                    "/>
+                `;
             }
         }
     }
@@ -1083,15 +1206,16 @@ const init = async () => {
         // Add timeout for worker initialization
         const workerTimeout = setTimeout(() => {
             if (analysisWorker) {
-                log('Worker initialization timeout - CDN might be slow', 'warn');
-                console.warn('Worker initialization taking longer than expected. This might be due to slow CDN response.');
+                log('Worker initialization taking longer than expected - Turf.js library may be loading slowly', 'warn');
+                console.warn('Worker initialization taking longer than expected. This might be due to slow Turf.js library loading.');
             }
-        }, 10000); // 10 second timeout
+        }, 30000); // 30 second timeout
         
         // This single handler is responsible for ALL messages from the worker.
         // It now uses document.querySelector to target specific buttons.
         analysisWorker.onmessage = (e) => {
             clearTimeout(workerTimeout); // Clear timeout on first message
+            log('Worker successfully initialized and ready for analysis', 'success');
             const { type, payload } = e.data;
             
             // Handle worker initialization errors
@@ -1193,6 +1317,7 @@ const init = async () => {
     // New Event Listeners
     if (UIElements.darkModeToggle) {
         UIElements.darkModeToggle.addEventListener('click', toggleDarkMode);
+        updateDarkModeToggle(); // Set correct icon/label on load
     }
 
     if (UIElements.mobileMenuBtn) {
@@ -1315,3 +1440,25 @@ const init = async () => {
 };
 
 document.addEventListener('DOMContentLoaded', init);
+
+function syncActivitiesSectionHeight() {
+    const mapCard = document.querySelector('.p-6 .rounded-2xl.shadow-xl.overflow-hidden');
+    const activitiesSection = document.getElementById('activities-section');
+    if (mapCard && activitiesSection) {
+        const mapCardRect = mapCard.getBoundingClientRect();
+        activitiesSection.style.height = mapCardRect.height + 'px';
+    }
+}
+
+window.addEventListener('DOMContentLoaded', syncActivitiesSectionHeight);
+window.addEventListener('resize', syncActivitiesSectionHeight);
+
+function syncBlurredBgHeights() {
+    const dashBg = document.getElementById('dashboard-blur-bg');
+    const actBg = document.getElementById('activities-blur-bg');
+    if (dashBg && actBg) {
+        actBg.style.height = dashBg.offsetHeight + 'px';
+    }
+}
+window.addEventListener('DOMContentLoaded', syncBlurredBgHeights);
+window.addEventListener('resize', syncBlurredBgHeights);

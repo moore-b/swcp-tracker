@@ -1,0 +1,253 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>SWCP Tracker - Palette Experiments</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&family=Source+Sans+Pro:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        body { background: #f5f1e8; font-family: 'Source Sans Pro', sans-serif; margin: 0; padding: 0; }
+        .palette-preview { margin: 3rem auto; max-width: 1400px; border-radius: 2rem; box-shadow: 0 8px 32px rgba(80,80,80,0.08); overflow: hidden; padding: 2rem 0; }
+        .palette-title { font-size: 2.2rem; font-weight: bold; text-align: center; margin-bottom: 2rem; letter-spacing: 0.04em; }
+        .main-grid { display: grid; grid-template-columns: 2fr 1fr; grid-template-rows: auto auto 1fr auto; gap: 1.5rem; min-height: 900px; }
+        .header { grid-column: 1 / span 2; grid-row: 1; display: flex; align-items: center; gap: 2rem; border-radius: 2rem; margin-bottom: 0.5rem; }
+        .dashboard { grid-column: 1; grid-row: 2; border-radius: 1.5rem; margin-bottom: 0.5rem; }
+        .map-card { grid-column: 1; grid-row: 3; border-radius: 1.5rem; margin-bottom: 0.5rem; }
+        .status-log { grid-column: 1; grid-row: 4; border-radius: 1.5rem; }
+        .activities { grid-column: 2; grid-row: 1 / span 4; border-radius: 1.5rem; display: flex; flex-direction: column; }
+        .dashboard-tiles, .activity-card-stats { display: flex; gap: 1rem; flex-wrap: wrap; justify-content: center; }
+        .tile, .activity-card-tile { border-radius: 1rem; padding: 1rem 2rem; font-weight: bold; font-size: 1.1rem; min-width: 120px; text-align: center; margin: 0.5rem 0; }
+        .activity-card { border-radius: 1.2rem; box-shadow: 0 2px 8px rgba(60,80,60,0.10); margin-bottom: 1.5rem; overflow: hidden; background: #fff; }
+        .activity-card-header { padding: 1.2rem; font-weight: bold; font-size: 1.2rem; display: flex; align-items: center; justify-content: center; }
+        .activity-map { height: 120px; background: #e0e4d8 url('https://images.unsplash.com/photo-1506744038136-46273834b3fb?auto=format&fit=crop&w=600&q=80') center/cover no-repeat; border-radius: 0.7rem; margin-bottom: 1rem; }
+        .btn { border-radius: 0.7rem; padding: 0.6rem 1.2rem; font-weight: 600; border: none; cursor: pointer; margin-right: 0.5rem; }
+        .strava-tile { border-radius: 0.7rem; padding: 0.3rem 0.8rem; display: flex; align-items: center; gap: 0.5rem; font-size: 1rem; font-weight: bold; }
+        .user-tile { border-radius: 0.7rem; padding: 0.3rem 0.8rem; font-size: 1rem; font-weight: 600; }
+        .logo-tile { border-radius: 1.2rem; width: 8rem; min-width: 8rem; max-width: 8rem; min-height: 7rem; max-height: 7rem; display: flex; align-items: center; justify-content: center; }
+        .logo-img { width: 6rem; height: 6rem; object-fit: contain; }
+        .header-title { flex-grow: 1; text-align: center; font-size: 2.2rem; font-weight: bold; }
+        @media (max-width: 1100px) { .main-grid { grid-template-columns: 1fr; grid-template-rows: auto auto auto auto auto; } .activities { grid-column: 1; grid-row: 5; } }
+    </style>
+    <!-- Palette 1: Woodland Canopy (varied) -->
+    <style>
+        .woodland .header { background: linear-gradient(90deg, #2A5245 0%, #5A735E 100%); color: #fff; }
+        .woodland .dashboard { background: #A7A89A; color: #2A5245; }
+        .woodland .map-card { background: #8DA382; color: #2A5245; }
+        .woodland .status-log { background: #70614B; color: #fff; }
+        .woodland .activities { background: #B4C1C1; color: #2A5245; }
+        .woodland .tile { background: #5A735E; color: #fff; box-shadow: 0 2px 8px #70614B; }
+        .woodland .activity-card-tile { background: #8DA382; color: #2A5245; box-shadow: 0 2px 8px #A7A89A; }
+        .woodland .activity-card-header { background: #2A5245; color: #fff; }
+        .woodland .btn { background: #70614B; color: #fff; }
+        .woodland .strava-tile { background: #A7A89A; color: #2A5245; }
+        .woodland .user-tile { background: #B4C1C1; color: #2A5245; }
+        .woodland .logo-tile { background: linear-gradient(90deg, #2A5245 0%, #5A735E 100%); color: #fff; }
+    </style>
+    <!-- Palette 2: Coastal Meadow (varied) -->
+    <style>
+        .meadow .header { background: linear-gradient(90deg, #7CAF7D 0%, #A0BD98 100%); color: #fff; }
+        .meadow .dashboard { background: #E3DDCF; color: #7CAF7D; }
+        .meadow .map-card { background: #C0D8E0; color: #7CAF7D; }
+        .meadow .status-log { background: #D7BF6B; color: #7CAF7D; }
+        .meadow .activities { background: #E3DDCF; color: #7CAF7D; }
+        .meadow .tile { background: #A0BD98; color: #fff; box-shadow: 0 2px 8px #D7BF6B; }
+        .meadow .activity-card-tile { background: #C0D8E0; color: #7CAF7D; box-shadow: 0 2px 8px #9D8C9C; }
+        .meadow .activity-card-header { background: #7CAF7D; color: #fff; }
+        .meadow .btn { background: #9D8C9C; color: #fff; }
+        .meadow .strava-tile { background: #D7BF6B; color: #7CAF7D; }
+        .meadow .user-tile { background: #E3DDCF; color: #7CAF7D; }
+        .meadow .logo-tile { background: linear-gradient(90deg, #7CAF7D 0%, #A0BD98 100%); color: #fff; }
+    </style>
+    <!-- Palette 3: Estuary Marsh (varied) -->
+    <style>
+        .estuary .header { background: linear-gradient(90deg, #4D6B6B 0%, #6E8E9B 100%); color: #fff; }
+        .estuary .dashboard { background: #D8E3E3; color: #4D6B6B; }
+        .estuary .map-card { background: #8EAB9B; color: #4D6B6B; }
+        .estuary .status-log { background: #BFB49C; color: #4D6B6B; }
+        .estuary .activities { background: #D8E3E3; color: #4D6B6B; }
+        .estuary .tile { background: #6E8E9B; color: #fff; box-shadow: 0 2px 8px #BFB49C; }
+        .estuary .activity-card-tile { background: #8EAB9B; color: #4D6B6B; box-shadow: 0 2px 8px #7C8C8C; }
+        .estuary .activity-card-header { background: #4D6B6B; color: #fff; }
+        .estuary .btn { background: #7C8C8C; color: #fff; }
+        .estuary .strava-tile { background: #BFB49C; color: #4D6B6B; }
+        .estuary .user-tile { background: #D8E3E3; color: #4D6B6B; }
+        .estuary .logo-tile { background: linear-gradient(90deg, #4D6B6B 0%, #6E8E9B 100%); color: #fff; }
+    </style>
+</head>
+<body>
+    <!-- Woodland Canopy -->
+    <div class="palette-preview woodland">
+        <div class="palette-title">Woodland Canopy</div>
+        <div class="main-grid">
+            <div class="header">
+                <div class="logo-tile"><img src="swcp-logo.png" alt="SWCP Logo" class="logo-img" /></div>
+                <div class="header-title">South West Coast Path Tracker</div>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:center;">
+                    <div class="strava-tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><title>Strava icon</title><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>Powered by Strava</div>
+                    <div class="user-tile">User: Ben Moore</div>
+                </div>
+            </div>
+            <div class="dashboard">
+                <div class="dashboard-tiles">
+                    <div class="tile">Completed: 123 km</div>
+                    <div class="tile">Remaining: 507 km</div>
+                    <div class="tile">Total: 630 km</div>
+                    <div class="tile">Complete: 19.5%</div>
+                    <div class="tile">Elevation: 12,345 m</div>
+                    <div class="tile">Time: 120h 30m</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="activity-card-header">Map: South West Coast Path</div>
+                <div class="activity-map"></div>
+            </div>
+            <div class="status-log">
+                <div class="activity-card-header">Status Log</div>
+                <div style="padding:1rem;">• Loaded activities successfully.<br>• Map initialized.<br>• Progress updated.</div>
+            </div>
+            <div class="activities">
+                <div class="activity-card">
+                    <div class="activity-card-header">Lunch Walk</div>
+                    <div class="activity-card-stats">
+                        <div class="activity-card-tile">Distance: 2.75 km</div>
+                        <div class="activity-card-tile">Time: 00:34:41</div>
+                        <div class="activity-card-tile">Elevation: 30m</div>
+                        <div class="activity-card-tile">Date: 16/06/25</div>
+                        <div class="activity-card-tile">Type: Walk</div>
+                    </div>
+                    <div class="activity-map"></div>
+                    <div><button class="btn">Analyze</button><button class="btn">Add to Description</button></div>
+                </div>
+                <div class="activity-card">
+                    <div class="activity-card-header">SW Coast Path - Sidmouth to Budleigh</div>
+                    <div class="activity-card-stats">
+                        <div class="activity-card-tile">Distance: 9.66 km</div>
+                        <div class="activity-card-tile">Time: 02:07:27</div>
+                        <div class="activity-card-tile">Elevation: 184m</div>
+                        <div class="activity-card-tile">Date: 15/06/25</div>
+                        <div class="activity-card-tile">Type: Hike</div>
+                    </div>
+                    <div class="activity-map"></div>
+                    <div><button class="btn">Reanalyze</button><button class="btn">Add to Description</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Coastal Meadow -->
+    <div class="palette-preview meadow">
+        <div class="palette-title">Coastal Meadow</div>
+        <div class="main-grid">
+            <div class="header">
+                <div class="logo-tile"><img src="swcp-logo.png" alt="SWCP Logo" class="logo-img" /></div>
+                <div class="header-title">South West Coast Path Tracker</div>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:center;">
+                    <div class="strava-tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><title>Strava icon</title><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>Powered by Strava</div>
+                    <div class="user-tile">User: Ben Moore</div>
+                </div>
+            </div>
+            <div class="dashboard">
+                <div class="dashboard-tiles">
+                    <div class="tile">Completed: 123 km</div>
+                    <div class="tile">Remaining: 507 km</div>
+                    <div class="tile">Total: 630 km</div>
+                    <div class="tile">Complete: 19.5%</div>
+                    <div class="tile">Elevation: 12,345 m</div>
+                    <div class="tile">Time: 120h 30m</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="activity-card-header">Map: South West Coast Path</div>
+                <div class="activity-map"></div>
+            </div>
+            <div class="status-log">
+                <div class="activity-card-header">Status Log</div>
+                <div style="padding:1rem;">• Loaded activities successfully.<br>• Map initialized.<br>• Progress updated.</div>
+            </div>
+            <div class="activities">
+                <div class="activity-card">
+                    <div class="activity-card-header">Lunch Walk</div>
+                    <div class="activity-card-stats">
+                        <div class="activity-card-tile">Distance: 2.75 km</div>
+                        <div class="activity-card-tile">Time: 00:34:41</div>
+                        <div class="activity-card-tile">Elevation: 30m</div>
+                        <div class="activity-card-tile">Date: 16/06/25</div>
+                        <div class="activity-card-tile">Type: Walk</div>
+                    </div>
+                    <div class="activity-map"></div>
+                    <div><button class="btn">Analyze</button><button class="btn">Add to Description</button></div>
+                </div>
+                <div class="activity-card">
+                    <div class="activity-card-header">SW Coast Path - Sidmouth to Budleigh</div>
+                    <div class="activity-card-stats">
+                        <div class="activity-card-tile">Distance: 9.66 km</div>
+                        <div class="activity-card-tile">Time: 02:07:27</div>
+                        <div class="activity-card-tile">Elevation: 184m</div>
+                        <div class="activity-card-tile">Date: 15/06/25</div>
+                        <div class="activity-card-tile">Type: Hike</div>
+                    </div>
+                    <div class="activity-map"></div>
+                    <div><button class="btn">Reanalyze</button><button class="btn">Add to Description</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <!-- Estuary Marsh -->
+    <div class="palette-preview estuary">
+        <div class="palette-title">Estuary Marsh</div>
+        <div class="main-grid">
+            <div class="header">
+                <div class="logo-tile"><img src="swcp-logo.png" alt="SWCP Logo" class="logo-img" /></div>
+                <div class="header-title">South West Coast Path Tracker</div>
+                <div style="display:flex; flex-direction:column; gap:0.5rem; align-items:center;">
+                    <div class="strava-tile"><svg width="24" height="24" viewBox="0 0 24 24" fill="white" xmlns="http://www.w3.org/2000/svg"><title>Strava icon</title><path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/></svg>Powered by Strava</div>
+                    <div class="user-tile">User: Ben Moore</div>
+                </div>
+            </div>
+            <div class="dashboard">
+                <div class="dashboard-tiles">
+                    <div class="tile">Completed: 123 km</div>
+                    <div class="tile">Remaining: 507 km</div>
+                    <div class="tile">Total: 630 km</div>
+                    <div class="tile">Complete: 19.5%</div>
+                    <div class="tile">Elevation: 12,345 m</div>
+                    <div class="tile">Time: 120h 30m</div>
+                </div>
+            </div>
+            <div class="map-card">
+                <div class="activity-card-header">Map: South West Coast Path</div>
+                <div class="activity-map"></div>
+            </div>
+            <div class="status-log">
+                <div class="activity-card-header">Status Log</div>
+                <div style="padding:1rem;">• Loaded activities successfully.<br>• Map initialized.<br>• Progress updated.</div>
+            </div>
+            <div class="activities">
+                <div class="activity-card">
+                    <div class="activity-card-header">Lunch Walk</div>
+                    <div class="activity-card-stats">
+                        <div class="activity-card-tile">Distance: 2.75 km</div>
+                        <div class="activity-card-tile">Time: 00:34:41</div>
+                        <div class="activity-card-tile">Elevation: 30m</div>
+                        <div class="activity-card-tile">Date: 16/06/25</div>
+                        <div class="activity-card-tile">Type: Walk</div>
+                    </div>
+                    <div class="activity-map"></div>
+                    <div><button class="btn">Analyze</button><button class="btn">Add to Description</button></div>
+                </div>
+                <div class="activity-card">
+                    <div class="activity-card-header">SW Coast Path - Sidmouth to Budleigh</div>
+                    <div class="activity-card-stats">
+                        <div class="activity-card-tile">Distance: 9.66 km</div>
+                        <div class="activity-card-tile">Time: 02:07:27</div>
+                        <div class="activity-card-tile">Elevation: 184m</div>
+                        <div class="activity-card-tile">Date: 15/06/25</div>
+                        <div class="activity-card-tile">Type: Hike</div>
+                    </div>
+                    <div class="activity-map"></div>
+                    <div><button class="btn">Reanalyze</button><button class="btn">Add to Description</button></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html> 
