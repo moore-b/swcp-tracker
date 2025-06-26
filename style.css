@@ -81,11 +81,13 @@ body.dark-mode #app-background {
 }
 
 .activity-map { 
-    height: 150px; 
+    height: 170px; 
     width: 100%; 
     border-radius: 0; 
     background-color: #f3f4f6; 
     transition: all 0.3s ease;
+    padding: 0 1rem;
+    box-sizing: border-box;
 }
 
 body.dark-mode .activity-map {
@@ -222,24 +224,24 @@ body.dark-mode .btn-danger:hover {
     border-radius: 0.5rem; 
     font-weight: 600; 
     transition: all 0.2s ease; 
-    background-color: rgba(255, 255, 255, 0.5); 
-    border: 1px solid rgba(255, 255, 255, 0.3); 
+    background-color: #f5f1e8; 
+    border: 1px solid #e5e1d8; 
     color: #374151; 
     cursor: pointer; 
     font-size: 0.875rem;
 }
 
 .filter-btn:hover { 
-    background-color: #f3f4f6; 
+    background-color: #ebe7e0; 
     transform: translateY(-1px);
     box-shadow: 0 2px 4px rgba(0,0,0,0.1);
 }
 
 .filter-btn.active { 
-    background: #8babb8; 
-    color: #ffffff; 
-    border-color: #8babb8; 
-    box-shadow: 0 2px 8px rgba(139, 171, 184, 0.3);
+    background: #f5f1e8; 
+    color: #49614b; 
+    border-color: #49614b; 
+    box-shadow: 0 2px 8px rgba(245, 241, 232, 0.3);
 }
 
 body.dark-mode .filter-btn {
@@ -271,7 +273,7 @@ body.dark-mode .filter-btn:hover {
 #main-layout-container { 
     display: grid; 
     grid-template-columns: 2fr 1fr; 
-    grid-template-rows: auto auto 1fr auto; 
+    grid-template-rows: auto auto auto auto; 
     gap: 1.5rem; 
     min-height: 100vh; 
     padding: 1.5rem; 
@@ -280,15 +282,15 @@ body.dark-mode .filter-btn:hover {
 
 #header-section { grid-column: 1; grid-row: 1; }
 #progress-summary-section { grid-column: 1; grid-row: 2; }
-#map-section { grid-column: 1; grid-row: 3; }
+#map-section { grid-column: 1; grid-row: 3; align-self: start; }
 #status-log-section-container { grid-column: 1; grid-row: 4; }
 #activities-section {
     grid-column: 2;
     grid-row: 1 / span 4;
     position: sticky;
     top: 1.5rem;
-    height: auto;
-    max-height: none;
+    height: calc(100vh - 3rem);
+    max-height: calc(100vh - 3rem);
     overflow-y: auto;
     scrollbar-width: thin;
     scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
@@ -340,7 +342,7 @@ body.dark-mode .filter-btn:hover {
     #main-layout-container { 
         grid-template-columns: 1fr; 
         grid-template-rows: auto auto auto auto auto; 
-        gap: 1rem;
+        gap: 0.75rem;
         padding: 1rem;
     }
     
@@ -365,14 +367,14 @@ body.dark-mode .filter-btn:hover {
     }
     
     .activity-map {
-        height: 150px;
+        height: 170px;
     }
 
-    #dashboard-blur-bg .w-full.flex.justify-center > .flex.gap-4,
-    #dashboard-blur-bg .flex.gap-4 {
-        display: grid !important;
-        grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-        justify-items: center;
+    #progress-summary-section .w-full.flex.justify-center > .flex.gap-4,
+    #progress-summary-section .flex.gap-4 {
+        display: flex !important;
+        flex-wrap: wrap !important;
+        justify-content: center !important;
         gap: 0.5rem !important;
         margin-left: 0 !important;
         margin-right: 0 !important;
@@ -459,10 +461,7 @@ body.dark-mode .filter-btn:hover {
     box-shadow: 0 8px 32px 0 rgba(0,0,0,0.4), 0 4px 16px 0 rgba(0,0,0,0.3);
 }
 
-/* Progress Bar Animation */
-#progress-bar {
-    transition: width 1s cubic-bezier(0.4, 0, 0.2, 1);
-}
+
 
 /* Input Enhancements */
 input[type="text"], input[type="password"] {
@@ -639,7 +638,7 @@ button:focus, input:focus, select:focus, textarea:focus {
     border-top-right-radius: 1rem;
     padding: 1rem;
     box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);
-    margin-bottom: 1rem !important;
+    margin-bottom: 0 !important;
 }
 
 .activity-type-corner-tile, .activity-date-corner-tile {
@@ -682,40 +681,46 @@ button:focus, input:focus, select:focus, textarea:focus {
 
 /* Dashboard Stat Tiles Hover Effects */
 .floating-tile {
-    transition: all 0.7s cubic-bezier(0.4, 0, 0.2, 1);
+    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
     cursor: pointer;
     border-radius: 8px;
     transform-style: preserve-3d;
     perspective: 1000px;
+    background: #f5f1e8 !important;
+    color: #49614b !important;
+    border: 1px solid #e5e1d8 !important;
+    box-shadow: 0 4px 16px 0 rgba(0,0,0,0.1), 0 2px 8px 0 rgba(0,0,0,0.05) !important;
+    width: 120px !important;
+    min-width: 120px !important;
+    max-width: 120px !important;
 }
 
 .floating-tile:hover {
-    background: #6a8a99;
-    color: #fff;
-    transform: scale(1.04);
-    box-shadow: none;
-    border: none;
+    background: #ebe7e0 !important;
+    color: #49614b !important;
+    transform: translateY(-4px) scale(1.02) !important;
+    box-shadow: 0 12px 24px 0 rgba(0,0,0,0.15), 0 6px 12px 0 rgba(0,0,0,0.1) !important;
+    border: 1px solid #d5d1c8 !important;
 }
 
 /* Responsive dashboard tiles centering */
 @media (max-width: 768px) {
     /* Dashboard tiles container */
-    #dashboard-blur-bg .flex.gap-4 {
+    #progress-summary-section .flex.gap-4 {
         flex-wrap: wrap;
         justify-content: center;
         gap: 0.5rem !important;
     }
     
     /* Individual dashboard tiles */
-    #dashboard-blur-bg .floating-tile {
+    #progress-summary-section .floating-tile {
         flex: 0 0 auto;
-        min-width: 120px;
         text-align: center;
         padding: 0.5rem;
     }
     
     /* Ensure tiles are centered when they wrap */
-    #dashboard-blur-bg .w-full.flex.justify-center {
+    #progress-summary-section .w-full.flex.justify-center {
         display: flex;
         justify-content: center;
         align-items: center;
@@ -724,16 +729,16 @@ button:focus, input:focus, select:focus, textarea:focus {
 
 @media (max-width: 480px) {
     /* Even smaller screens - stack tiles vertically */
-    #dashboard-blur-bg .flex.gap-4 {
+    #progress-summary-section .flex.gap-4 {
         flex-direction: column;
         align-items: center;
         gap: 0.25rem !important;
     }
     
-    #dashboard-blur-bg .floating-tile {
-        width: 100%;
-        max-width: 200px;
-        min-width: auto;
+    #progress-summary-section .floating-tile {
+        width: 120px !important;
+        max-width: 120px !important;
+        min-width: 120px !important;
     }
 }
 
@@ -850,21 +855,29 @@ button:focus, input:focus, select:focus, textarea:focus {
   z-index: 2;
 }
 
-#dark-mode-toggle:hover,
-#dark-mode-toggle:focus {
+#dark-mode-toggle:hover:not(:focus) {
   background: #ffe066 !important;
   box-shadow: 0 0 16px 4px #ffe066, 0 2px 8px rgba(0,0,0,0.08);
   color: #b8860b;
   transition: background 0.2s, box-shadow 0.2s;
 }
 
+#dark-mode-toggle:focus {
+  outline: none;
+  background: rgba(255,255,255,0.2);
+  box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+}
+
 #dark-mode-toggle svg {
   transition: transform 0.2s;
 }
 
-#dark-mode-toggle:hover svg,
-#dark-mode-toggle:focus svg {
+#dark-mode-toggle:hover:not(:focus) svg {
   transform: scale(1.4);
+}
+
+#dark-mode-toggle:focus svg {
+  transform: scale(1);
 }
 
 /* Map Line Styling Effects */
@@ -945,15 +958,15 @@ button:focus, input:focus, select:focus, textarea:focus {
   #map-section {
     display: flex;
     flex-direction: column;
-    justify-content: flex-end;
+    justify-content: flex-start;
   }
 }
 
 /* Always center dashboard stat tiles row */
-#dashboard-blur-bg .w-full.flex.justify-center {
+#progress-summary-section .w-full.flex.justify-center {
   text-align: center;
 }
-#dashboard-blur-bg .flex.gap-4 {
+#progress-summary-section .flex.gap-4 {
   display: inline-flex !important;
   flex-wrap: wrap !important;
   justify-content: center !important;
@@ -978,7 +991,7 @@ button:focus, input:focus, select:focus, textarea:focus {
     padding-right: 0.5rem !important;
   }
   /* Restore border-radius for cards/tiles */
-  #dashboard-blur-bg,
+  #progress-summary-section,
   #activities-section,
   .activity-card,
   .rounded-2xl,
@@ -987,8 +1000,8 @@ button:focus, input:focus, select:focus, textarea:focus {
     border-radius: 1rem !important;
   }
   /* Dashboard stat tiles: wrap and keep original size */
-  #dashboard-blur-bg .w-full.flex.justify-center > .flex.gap-4,
-  #dashboard-blur-bg .flex.gap-4 {
+  #progress-summary-section .w-full.flex.justify-center > .flex.gap-4,
+  #progress-summary-section .flex.gap-4 {
     display: grid !important;
     grid-template-columns: repeat(2, 1fr);
     justify-items: center;
@@ -996,18 +1009,19 @@ button:focus, input:focus, select:focus, textarea:focus {
     width: 100%;
     margin: 0 auto !important;
   }
-  #dashboard-blur-bg .floating-tile {
-    min-width: 80px !important;
-    max-width: 48%;
+  #progress-summary-section .floating-tile {
+    width: 120px !important;
+    min-width: 120px !important;
+    max-width: 120px !important;
     font-size: 0.85rem !important;
     padding: 0.3rem 0.5rem !important;
     margin: 0.25rem !important;
   }
   /* Section gaps */
-  #dashboard-blur-bg {
-    margin-bottom: 1.2rem !important;
+  #progress-summary-section {
+    margin-bottom: 0 !important;
   }
-  #dashboard-blur-bg > .p-6 {
+  #progress-summary-section > .p-6 {
   }
   /* Main title tile: allow to grow wider and fit text */
   #header-section {
@@ -1039,10 +1053,11 @@ button:focus, input:focus, select:focus, textarea:focus {
     letter-spacing: -0.01em !important;
   }
   #map-section {
-    margin-top: 1.2rem !important;
+    margin-top: 0 !important;
+    padding: 1.5rem !important;
   }
   /* Remove extra green background from around dashboard */
-  #dashboard-blur-bg > .p-6 {
+  #progress-summary-section > .p-6 {
   }
   /* Restore rounded corners for title tiles */
   .tile-header {
@@ -1054,8 +1069,9 @@ button:focus, input:focus, select:focus, textarea:focus {
     padding: 0.5rem !important;
   }
   .floating-tile {
-    min-width: 0 !important;
-    width: 100% !important;
+    width: 120px !important;
+    min-width: 120px !important;
+    max-width: 120px !important;
     font-size: 0.9rem !important;
     margin: 0.25rem 0 !important;
     padding: 0.5rem !important;
@@ -1105,6 +1121,17 @@ button:focus, input:focus, select:focus, textarea:focus {
 #refresh-activities-btn {
     margin-top: 1rem !important;
     margin-bottom: 1rem !important;
+    background: #f5f1e8 !important;
+    color: #49614b !important;
+    border: 1px solid #e5e1d8 !important;
+}
+
+#refresh-activities-btn:hover {
+    background: #ebe7e0 !important;
+    color: #49614b !important;
+    border: 1px solid #d5d1c8 !important;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
 }
 #activity-list-container > * {
     margin-bottom: 1.5rem !important;
@@ -1138,4 +1165,106 @@ button:focus, input:focus, select:focus, textarea:focus {
 .activity-card .p-4 > .flex {
   padding-left: 1rem !important;
   padding-right: 1rem !important;
+}
+
+/* 🔧 Debug: Add critical UI debugging styles */
+.bg-red-500 { background-color: #ef4444 !important; }
+.bg-green-500 { background-color: #10b981 !important; }
+.bg-blue-500 { background-color: #3b82f6 !important; }
+
+/* Official Strava Branding Compliance Styles */
+
+/* Official Connect with Strava button styling */
+.strava-connect-btn {
+    background-color: #FC5200 !important;
+    color: white !important;
+    font-weight: bold !important;
+    border: none !important;
+    border-radius: 6px !important;
+    padding: 10px 16px !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: background-color 0.2s ease !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    justify-content: center !important;
+    text-decoration: none !important;
+    min-height: 40px !important;
+}
+
+.strava-connect-btn:hover {
+    background-color: #E04700 !important;
+    text-decoration: none !important;
+}
+
+.strava-connect-btn:active {
+    background-color: #CC3F00 !important;
+}
+
+.strava-connect-btn svg {
+    margin-right: 8px !important;
+    flex-shrink: 0 !important;
+}
+
+/* Official Powered by Strava styling */
+.powered-by-strava {
+    background-color: rgba(0, 0, 0, 0.1) !important;
+    backdrop-filter: blur(8px) !important;
+    border-radius: 6px !important;
+    padding: 6px 12px !important;
+    display: inline-flex !important;
+    align-items: center !important;
+    font-size: 12px !important;
+    color: white !important;
+    font-weight: 500 !important;
+}
+
+.powered-by-strava svg {
+    margin-left: 8px !important;
+    height: 16px !important;
+    width: auto !important;
+}
+
+/* Official View on Strava link styling */
+.view-on-strava {
+    color: #FC5200 !important;
+    font-weight: bold !important;
+    text-decoration: underline !important;
+    font-size: 14px !important;
+    cursor: pointer !important;
+    transition: color 0.2s ease !important;
+}
+
+.view-on-strava:hover {
+    color: #E04700 !important;
+    text-decoration: underline !important;
+}
+
+.view-on-strava:visited {
+    color: #FC5200 !important;
+}
+
+/* Ensure Strava logo is never modified */
+.strava-logo {
+    /* Never modify, alter or animate Strava logos */
+    animation: none !important;
+    transform: none !important;
+    filter: none !important;
+}
+
+/* Override any existing orange button styles to match official Strava colors */
+.bg-orange-500, .hover\:bg-orange-600:hover {
+    background-color: #FC5200 !important;
+}
+
+.hover\:bg-orange-600:hover {
+    background-color: #E04700 !important;
+}
+
+.text-orange-600 {
+    color: #FC5200 !important;
+}
+
+.hover\:text-orange-700:hover {
+    color: #E04700 !important;
 }

@@ -1,0 +1,17 @@
+# Strava API Configuration (contains sensitive credentials)
+config.js
+
+# Node modules (if using any build tools)
+node_modules/
+
+# Environment files
+.env
+.env.local
+
+# IDE files
+.vscode/
+.idea/
+
+# OS files
+.DS_Store
+Thumbs.db 

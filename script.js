@@ -66,6 +66,7 @@ const sleep = (ms) => new Promise(resolve => setTimeout(resolve, ms));
  * @returns {Promise<Response|null>} The fetch response or null on critical failure.
  */
 async function makeStravaApiCall(url, options = {}, retries = 1) {
+    // Get tokens fresh each time to ensure user-specific data
     let accessToken = localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY);
     let expiresAt = localStorage.getItem(STRAVA_EXPIRES_AT_KEY);
    
@@ -118,11 +119,18 @@ async function makeStravaApiCall(url, options = {}, retries = 1) {
 async function refreshAccessToken() {
     log('Attempting to refresh access token...');
     const refreshToken = localStorage.getItem(STRAVA_REFRESH_TOKEN_KEY);
-    const clientId = localStorage.getItem('stravaClientId');
-    const clientSecret = localStorage.getItem('stravaClientSecret');
+    
+    // Try global credentials first (from Firebase), then fall back to localStorage
+    const clientId = window.STRAVA_CLIENT_ID || localStorage.getItem('stravaClientId');
+    const clientSecret = window.STRAVA_CLIENT_SECRET || localStorage.getItem('stravaClientSecret');
 
-    if (!refreshToken || !clientId || !clientSecret) {
-        log('Missing refresh token or client credentials for refresh.', 'error');
+    if (!refreshToken) {
+        log('No refresh token found. Please connect your Strava account first.', 'error');
+        return null;
+    }
+    
+    if (!clientId || !clientSecret) {
+        log('Strava API credentials not found. Please set up credentials first by opening setup-strava-credentials.html', 'error');
         return null;
     }
 
@@ -161,6 +169,11 @@ function toggleDarkMode() {
     document.body.classList.toggle('dark-mode', isDarkMode);
     localStorage.setItem(DARK_MODE_KEY, isDarkMode.toString());
     updateDarkModeToggle();
+    
+    // Remove focus from the button to prevent hover effect from sticking
+    if (UIElements.darkModeToggle) {
+        UIElements.darkModeToggle.blur();
+    }
 }
 
 function updateDarkModeToggle() {
@@ -350,20 +363,34 @@ function updateGridLayout() {
             UIElements.mainLayoutContainer.dataset.layout = 'mobile';
         }
     } else {
-        if (UIElements.mainLayoutContainer.dataset.layout !== 'desktop') {
+        if (UIElements.mainLayoutContainer && UIElements.mainLayoutContainer.dataset.layout !== 'desktop') {
             UIElements.mainLayoutContainer.style.gridTemplateColumns = '2fr 1fr';
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto 1fr auto';
-            if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
-            if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '4';
+            if (UIElements.headerSection) {
+                UIElements.headerSection.style.gridColumn = '1'; 
+                UIElements.headerSection.style.gridRow = '1';
+            }
+            if (UIElements.progressSummarySection) {
+                UIElements.progressSummarySection.style.gridColumn = '1'; 
+                UIElements.progressSummarySection.style.gridRow = '2';
+            }
+            if (UIElements.mapSection) {
+                UIElements.mapSection.style.gridColumn = '1'; 
+                UIElements.mapSection.style.gridRow = '3';
+            }
+            if (UIElements.statusLogSectionContainer) {
+                UIElements.statusLogSectionContainer.style.gridColumn = '1'; 
+                UIElements.statusLogSectionContainer.style.gridRow = '4';
+            }
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.gridColumn = '2';
                 UIElements.activitiesSection.style.gridRow = '1 / span 4';
                 UIElements.activitiesSection.style.position = 'sticky';
                 UIElements.activitiesSection.style.top = '1.5rem'; // Ensure sticky top is set
             }
-            UIElements.mainLayoutContainer.dataset.layout = 'desktop';
+            if (UIElements.mainLayoutContainer) {
+                UIElements.mainLayoutContainer.dataset.layout = 'desktop';
+            }
         }
     }
     // Invalidate map size after layout change to ensure tiles load correctly
@@ -398,6 +425,7 @@ function connectToStrava() {
     localStorage.setItem('stravaClientId', clientId);
     localStorage.setItem('stravaClientSecret', clientSecret);
     const redirectUri = window.location.origin + window.location.pathname;
+    // Official Strava OAuth URL as required by brand guidelines
     window.location.href = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${redirectUri}&response_type=code&scope=read,activity:read_all,activity:write`;
 }
 
@@ -407,13 +435,22 @@ function connectToStrava() {
  */
 async function getAccessToken(code) {
     log('Exchanging authorization code for token...');
+    
+    // Try global credentials first (from Firebase), then fall back to localStorage
+    const clientId = window.STRAVA_CLIENT_ID || localStorage.getItem('stravaClientId');
+    const clientSecret = window.STRAVA_CLIENT_SECRET || localStorage.getItem('stravaClientSecret');
+    
+    if (!clientId || !clientSecret) {
+        throw new Error('Strava API credentials not found. Please set up credentials first.');
+    }
+    
     try {
         const response = await fetch('https://www.strava.com/oauth/token', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                client_id: localStorage.getItem('stravaClientId'),
-                client_secret: localStorage.getItem('stravaClientSecret'),
+                client_id: clientId,
+                client_secret: clientSecret,
                 code, grant_type: 'authorization_code'
             }),
         });
@@ -436,33 +473,66 @@ async function getAccessToken(code) {
    
 /** Hides the login screen and displays the main application. */
 async function showMainApp() {
+    console.log('📱 script.js showMainApp() started');
     log('Loading main application...');
-    const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
-    // Update Strava account name in header
-    const accountNameEl = document.getElementById('strava-account-name');
-    if (accountNameEl) {
-        if (athlete.firstname) {
-            accountNameEl.innerHTML = `<svg class="inline-block align-middle" width="1.5em" height="1.5em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
-            </svg> ${athlete.firstname} ${athlete.lastname}`;
-        } else {
-            accountNameEl.innerHTML = `<svg class="inline-block align-middle" width="1.5em" height="1.5em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
-                <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
-            </svg> Strava User`;
+    
+    try {
+        console.log('🔄 Updating athlete info...');
+        const athlete = JSON.parse(localStorage.getItem('stravaAthlete') || '{}');
+        // Update Strava account name in header
+        const accountNameEl = document.getElementById('strava-account-name');
+        if (accountNameEl) {
+            if (athlete.firstname) {
+                accountNameEl.innerHTML = `<svg class="inline-block align-middle" width="1.5em" height="1.5em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
+                </svg> ${athlete.firstname} ${athlete.lastname}`;
+            } else {
+                accountNameEl.innerHTML = `<svg class="inline-block align-middle" width="1.5em" height="1.5em" viewBox="0 0 15 15" fill="none" xmlns="http://www.w3.org/2000/svg">
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M10.5 3.49804C10.5 5.15396 9.157 6.49609 7.5 6.49609C5.843 6.49609 4.5 5.15396 4.5 3.49804C4.5 1.84212 5.843 0.5 7.5 0.5C9.157 0.5 10.5 1.84212 10.5 3.49804Z" stroke="white" stroke-linecap="square"/>
+                    <path fill-rule="evenodd" clip-rule="evenodd" d="M12.5 14.4909H2.5C2.5 13.7808 2.5 13.1053 2.5 12.4936C2.5 10.8368 3.84315 9.49414 5.5 9.49414H9.5C11.1569 9.49414 12.5 10.8368 12.5 12.4936C12.5 13.1053 12.5 13.7808 12.5 14.4909Z" stroke="white" stroke-linecap="square"/>
+                </svg> Strava User`;
+            }
         }
-    }
-   
-    // Initialize map and load SWCP data
-    initializeMapAndData(); // This will also initiate swcpDataPromise inside
-   
-    await fetchAndRenderActivities();
+        console.log('✅ Athlete info updated');
+       
+        // Initialize map and load SWCP data
+        console.log('🗺️ Initializing map and data...');
+        initializeMapAndData(); // This will also initiate swcpDataPromise inside
+        console.log('✅ Map initialization completed');
+       
+        // Only fetch activities if user has Strava connected
+        const accessToken = localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY);
+        if (accessToken) {
+            console.log('📊 Fetching and rendering activities...');
+            await fetchAndRenderActivities();
+            console.log('✅ Activities fetched and rendered');
+        } else {
+            console.log('⏭️ Skipping activity fetch - no Strava connection');
+            // Initialize empty activities array and render empty list
+            allFetchedActivities = [];
+            renderActivityList([]);
+            log('No Strava connection - activities section will be empty until you connect.', 'info');
+        }
 
-    // Ensure loadProgressFromStorage waits for SWCP data to be loaded
-    await loadProgressFromStorage();
-    if (mainMap) mainMap.invalidateSize(); // Ensure map tiles load correctly
-    log('Application loaded.', 'success');
+        // Ensure loadProgressFromStorage waits for SWCP data to be loaded
+        console.log('💾 Loading progress from storage...');
+        await loadProgressFromStorage();
+        console.log('✅ Progress loaded from storage');
+        
+        if (mainMap) {
+            console.log('🗺️ Invalidating map size...');
+            mainMap.invalidateSize(); // Ensure map tiles load correctly
+            console.log('✅ Map size invalidated');
+        }
+        
+        log('Application loaded.', 'success');
+        console.log('✅ script.js showMainApp() completed successfully');
+    } catch (error) {
+        console.error('❌ Error in script.js showMainApp():', error);
+        log(`Error loading main application: ${error.message}`, 'error');
+        throw error; // Re-throw so auth-controller can catch it
+    }
 }
    
 /** Fetches and then renders Strava activities. */
@@ -474,11 +544,13 @@ async function fetchAndRenderActivities() {
     
     try {
         allFetchedActivities = await fetchAllActivities();
-        if (allFetchedActivities === null) {
+        if (!allFetchedActivities || !Array.isArray(allFetchedActivities)) {
             log('Failed to fetch activities. Please check your connection and try again.', 'error');
             UIElements.activitiesLoadingSpinner.classList.add('hidden');
             return;
         }
+        
+        console.log(`🎯 fetchAndRenderActivities: Got ${allFetchedActivities.length} activities`);
         
         const filteredActivities = filterActivities();
         renderActivityList(filteredActivities);
@@ -486,6 +558,7 @@ async function fetchAndRenderActivities() {
         log(`Successfully loaded and rendered ${filteredActivities.length} activities.`, 'success');
     } catch (error) {
         log(`Error fetching activities: ${error.message}`, 'error');
+        console.log('🚫 Error in fetchAndRenderActivities:', error);
     } finally {
         UIElements.activitiesLoadingSpinner.classList.add('hidden');
     }
@@ -627,9 +700,7 @@ async function loadSwcpData() {
 /** Loads existing progress data from local storage and initiates re-calculation. */
 async function loadProgressFromStorage() {
     // --- SHOW LOADING INDICATOR ---
-    if (UIElements.overallProgressLoading) {
-        UIElements.overallProgressLoading.classList.remove('hidden');
-    }
+
 
     await swcpDataPromise; // Ensure SWCP data is loaded before processing points
     const completedPoints = JSON.parse(localStorage.getItem(COMPLETED_POINTS_KEY) || '[]');
@@ -641,7 +712,7 @@ async function loadProgressFromStorage() {
         // If no completed points, immediately update UI to 0 and hide loader
         updateProgressUI({ segments: [], totalDistance: 0, percentage: "0.00", newCompletedPoints: [] });
         log('No existing progress found. Overall progress set to 0.', 'info');
-        if (UIElements.overallProgressLoading) UIElements.overallProgressLoading.classList.add('hidden');
+    
     }
 }
    
@@ -788,6 +859,12 @@ function renderActivityList(activities) {
         const addDescriptionBtn = card.querySelector('[data-update-btn]');
         addDescriptionBtn.dataset.activityId = activity.id;
         addDescriptionBtn.onclick = () => addDescriptionToStrava(activity, addDescriptionBtn);
+        
+        // Set up the required "View on Strava" link
+        const stravaLink = card.querySelector('[data-strava-link]');
+        stravaLink.href = `https://www.strava.com/activities/${activity.id}`;
+        stravaLink.dataset.activityId = activity.id;
+        
         const isMobile = window.innerWidth <= 1024;
         if (isMobile) {
             cardDiv.addEventListener('click', (e) => {
@@ -927,10 +1004,26 @@ async function getActivityStream(activityId) {
 async function fetchAllActivities() {
     const cachedData = localStorage.getItem(CACHED_ACTIVITIES_KEY);
     const timestamp = localStorage.getItem(CACHED_ACTIVITIES_TIMESTAMP_KEY);
+    
+    console.log('🔍 CRITICAL DEBUG - fetchAllActivities:', {
+        cachedDataExists: !!cachedData,
+        timestampExists: !!timestamp,
+        cachedDataLength: cachedData ? JSON.parse(cachedData).length : 0,
+        firstActivityName: cachedData ? JSON.parse(cachedData)[0]?.name : 'none'
+    });
+    
     if (cachedData && timestamp && (Date.now() - timestamp < CACHE_EXPIRY_MS)) {
         let activities = JSON.parse(cachedData);
         log(`Loaded ${activities.length} total activities from cache.`, 'info');
         return activities.filter(act => ['Hike', 'Walk'].includes(act.type));
+    }
+
+    // Check if user has Strava tokens - if not, return empty array
+    const accessToken = localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY);
+    if (!accessToken) {
+        console.log('🚫 No Strava access token found - user skipped Strava connection');
+        log('No Strava connection found. Connect to Strava to fetch your activities.', 'info');
+        return []; // Return empty array instead of null
     }
 
     log('Fetching all activities from Strava...');
@@ -938,8 +1031,14 @@ async function fetchAllActivities() {
     for (let page = 1; page < 10; page++) {
         try {
             const response = await makeStravaApiCall(`https://www.strava.com/api/v3/athlete/activities?page=${page}&per_page=100`);
-            if (!response) return null;
-            if (!response.ok) { continue; }
+            if (!response) {
+                console.log('🚫 API call returned null - likely authentication issue');
+                return [];
+            }
+            if (!response.ok) { 
+                console.log(`⚠️ API call failed with status ${response.status}`);
+                continue; 
+            }
             const pageActivities = await response.json();
             if (pageActivities.length === 0) break;
             activities.push(...pageActivities);
@@ -947,7 +1046,8 @@ async function fetchAllActivities() {
             await sleep(200);
         } catch (e) {
             log(`Error during activity fetch loop: ${e.message}`, 'error');
-            return null;
+            console.log('🚫 Error in fetchAllActivities, returning empty array');
+            return [];
         }
     }
     log(`Fetched ${activities.length} total activities from API.`);
@@ -966,7 +1066,7 @@ function updateProgressUI(payload) {
     // --- END DEBUGGING LOGS ---
 
     // Defensive checks for UIElements properties being non-null
-    if (!completedSegmentsLayer || !UIElements.completedDistance || !UIElements.progressPercentage || !UIElements.progressBar || !mainMap) {
+    if (!completedSegmentsLayer || !UIElements.completedDistance || !UIElements.progressPercentage || !mainMap) {
         console.error('UI elements or map for progress update are not ready. Cannot update UI. Re-initializing map if possible.');
         log('Critical UI elements missing for progress update.', 'error');
         // Attempt to re-initialize map if components are missing (might already be done by init)
@@ -1013,10 +1113,9 @@ function updateProgressUI(payload) {
         log('No new completed segments to render on map.', 'info');
     }
 
-    // --- Updating text fields and progress bar ---
+    // --- Updating text fields ---
     UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
-    UIElements.progressBar.style.width = `${parseFloat(percentage)}%`;
     if (UIElements.totalDistance) {
         UIElements.totalDistance.textContent = `${swcpTotalDistance.toFixed(2)} km`;
     }
@@ -1046,7 +1145,7 @@ function updateProgressUI(payload) {
     // leading to 0% overall progress being calculated by the worker.
     if (newCompletedPoints) { // Defensive check
         localStorage.setItem(COMPLETED_POINTS_KEY, JSON.stringify(newCompletedPoints));
-        console.log("updateProgressUI: Saved newCompletedPoints to localStorage:", newCompletedPoints.length);
+
     } else {
         console.warn("updateProgressUI: newCompletedPoints was null or undefined in payload. Not saving to localStorage.");
     }
@@ -1123,10 +1222,7 @@ async function addDescriptionToStrava(activity, button) {
 }
    
 const init = async () => {
-    // Initialize all UI elements
-    UIElements.clientId = document.getElementById('clientId');
-    UIElements.clientSecret = document.getElementById('clientSecret');
-    UIElements.connectButton = document.getElementById('connect-button');
+    // Initialize all UI elements (excluding old auth elements)
     UIElements.configSection = document.getElementById('config-section');
     UIElements.activityListContainer = document.getElementById('activity-list-container');
     UIElements.activityCardTemplate = document.getElementById('activity-card-template');
@@ -1135,7 +1231,7 @@ const init = async () => {
     UIElements.resetButton = document.getElementById('reset-button');
     UIElements.statusLog = document.getElementById('status-log');
     UIElements.stravaUserInfo = document.getElementById('strava-user-info');
-    UIElements.progressBar = document.getElementById('progress-bar');
+
     UIElements.progressPercentage = document.getElementById('progress-percentage');
     UIElements.completedDistance = document.getElementById('completed-distance');
     UIElements.totalDistance = document.getElementById('total-distance');
@@ -1154,7 +1250,7 @@ const init = async () => {
     UIElements.progressSummarySection = document.getElementById('progress-summary-section');
     UIElements.appBackground = document.getElementById('app-background');
     UIElements.initialLoadingScreen = document.getElementById('initial-loading-screen');
-    UIElements.overallProgressLoading = document.getElementById('overall-progress-loading');
+
     
     // New UI elements
     UIElements.darkModeToggle = document.getElementById('dark-mode-toggle');
@@ -1211,20 +1307,27 @@ const init = async () => {
             }
         }, 30000); // 30 second timeout
         
+        // Flag to track if worker ready message has been logged
+        let workerReadyLogged = false;
+        
         // This single handler is responsible for ALL messages from the worker.
         // It now uses document.querySelector to target specific buttons.
         analysisWorker.onmessage = (e) => {
             clearTimeout(workerTimeout); // Clear timeout on first message
-            log('Worker successfully initialized and ready for analysis', 'success');
+            
+            // Only log worker ready message once
+            if (!workerReadyLogged) {
+                log('Worker successfully initialized and ready for analysis', 'success');
+                workerReadyLogged = true;
+            }
+            
             const { type, payload } = e.data;
             
             // Handle worker initialization errors
             if (type === 'error' && payload && payload.activityId === 'worker_init') {
                 log(`Worker initialization error: ${payload.error}`, 'error');
                 alert(`Analysis system failed to initialize: ${payload.error}`);
-                if (UIElements.overallProgressLoading) {
-                    UIElements.overallProgressLoading.classList.add('hidden');
-                }
+
                 return;
             }
             
@@ -1257,10 +1360,7 @@ const init = async () => {
                     processedIds.add(activityId);
                     localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(Array.from(processedIds)));
                 } else { // This is for activityId === 'initial_load'
-                    // --- HIDE OVERALL PROGRESS LOADING INDICATOR ---
-                    if (UIElements.overallProgressLoading) {
-                        UIElements.overallProgressLoading.classList.add('hidden');
-                    }
+                    // Initial load complete
                 }
                 updateProgressUI(payload); // Update main progress bar and map segments
             } else if (type === 'error') {
@@ -1272,10 +1372,7 @@ const init = async () => {
                     if(loaderSpan) loaderSpan.remove(); // Remove loader
                 }
                 alert(`Analysis failed for activity ${activityId}: ${error}. Check console for details.`);
-                // Hide overall progress loading indicator also on initial load error
-                if (activityId === 'initial_load' && UIElements.overallProgressLoading) {
-                    UIElements.overallProgressLoading.classList.add('hidden');
-                }
+
             }
         };
 
@@ -1290,28 +1387,27 @@ const init = async () => {
                 alert(`A critical error occurred with the analysis worker: ${e.message || 'Check console for details'}. Please refresh the page.`);
             }
             
-            // Hide progress indicator if worker crashes
-            if (UIElements.overallProgressLoading) {
-                UIElements.overallProgressLoading.classList.add('hidden');
-            }
+
         };
     } catch (e) {
         log(`Failed to initialize analysis worker: ${e.message}`, 'error');
         alert('Failed to load background analysis. Progress tracking might not work. Check console for "swcp_analysis_worker.js" errors.');
-        // Hide progress indicator if worker fails to initialize
-        if (UIElements.overallProgressLoading) {
-            UIElements.overallProgressLoading.classList.add('hidden');
-        }
+
     }
 
-    // Enhanced Event Listeners
-    UIElements.connectButton.addEventListener('click', connectToStrava);
-    UIElements.resetButton.addEventListener('click', resetProgress);
-    UIElements.filterButtons.addEventListener('click', handleFilterClick);
-    UIElements.activitySearchBox.addEventListener('input', debouncedSearch);
-    UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
-    UIElements.clientId.addEventListener('input', checkInputs);
-    UIElements.clientSecret.addEventListener('input', checkInputs);
+    // Enhanced Event Listeners (only for elements that exist in the new auth system)
+    if (UIElements.resetButton) {
+        UIElements.resetButton.addEventListener('click', resetProgress);
+    }
+    if (UIElements.filterButtons) {
+        UIElements.filterButtons.addEventListener('click', handleFilterClick);
+    }
+    if (UIElements.activitySearchBox) {
+        UIElements.activitySearchBox.addEventListener('input', debouncedSearch);
+    }
+    if (UIElements.refreshActivitiesBtn) {
+        UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
+    }
     window.addEventListener('resize', updateGridLayout);
 
     // New Event Listeners
@@ -1403,43 +1499,33 @@ const init = async () => {
         }
     });
 
-    // Populate input fields from local storage (if available)
-    UIElements.clientId.value = localStorage.getItem('stravaClientId') || '';
-    UIElements.clientSecret.value = localStorage.getItem('stravaClientSecret') || '';
-    checkInputs(); // Check inputs immediately to enable/disable connect button
-
-    // Handle Strava OAuth callback
-    const urlParams = new URLSearchParams(window.location.search);
-    const authCode = urlParams.get('code');
-    const authError = urlParams.get('error'); // Check for OAuth errors
+    // Note: Input field population is now handled by the auth system
 
     UIElements.initialLoadingScreen.classList.add('hidden'); // Hide initial loading screen
 
-    if (authError) {
-        log(`Strava OAuth Error: ${authError}. Please try connecting again.`, 'error');
-        alert(`Strava connection failed: ${authError}`);
-        UIElements.loginScreenWrapper.classList.remove('hidden'); // Show login screen on error
-    } else if (authCode) {
-        // We've been redirected back from Strava with a code
-        UIElements.loginScreenWrapper.innerHTML = `<div class="text-center p-8"><div class="loader mr-3"></div><span class="text-gray-500 text-lg">Authenticating...</span></div>`;
-        UIElements.loginScreenWrapper.classList.remove('hidden');
-        await getAccessToken(authCode);
-    } else if (localStorage.getItem(STRAVA_ACCESS_TOKEN_KEY)) {
-        // User has existing tokens, show main app
-        UIElements.mainLayoutContainer.classList.remove('hidden');
-        if (UIElements.fabContainer) {
-            UIElements.fabContainer.classList.remove('hidden');
-        }
-        await showMainApp();
-    } else {
-        // No code, no existing token, show login screen
-        UIElements.loginScreenWrapper.classList.remove('hidden');
-    }
+    // The auth controller will handle showing/hiding screens based on auth state
    
     updateGridLayout(); // Initial layout adjustment
 };
 
-document.addEventListener('DOMContentLoaded', init);
+// Wait for auth system to be ready before initializing
+document.addEventListener('DOMContentLoaded', async () => {
+    // Wait for auth controller to be available
+    let attempts = 0;
+    while (!window.authController && attempts < 50) {
+        await new Promise(resolve => setTimeout(resolve, 100));
+        attempts++;
+    }
+    
+    if (!window.authController) {
+        console.warn('Auth controller not available, proceeding anyway');
+    }
+    
+    await init();
+});
+
+// Export showMainApp for auth controller
+export { showMainApp };
 
 function syncActivitiesSectionHeight() {
     const mapCard = document.querySelector('.p-6 .rounded-2xl.shadow-xl.overflow-hidden');
