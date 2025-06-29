@@ -2,8 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SW Coast Path Tracker</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <title>waythru</title>
     
     <!-- Google Fonts - Inter + Source Sans Pro -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -28,6 +31,8 @@
     <script src="auth.js" type="module" defer></script>
     <script src="auth-controller.js" type="module" defer></script>
     <script src="startup.js" type="module" defer></script>
+    <!-- Heatmap component -->
+    <script src="components/calendarHeatmap.js" type="module" defer></script>
     
     <!-- Strava API Configuration loaded from Firebase -->
 
@@ -185,9 +190,105 @@
         </div>
     </div>
 
-    <div id="main-layout-container" class="hidden">
-        <!-- Header blurred background tile as a grid item -->
-        <div id="header-section" class="blurred-tile-background rounded-2xl shadow-xl flex flex-row items-center gap-6 p-4">
+
+
+    <!-- Desktop Navigation (Side Panel) - positioned as sibling to main content -->
+    <nav class="desktop-nav" id="desktop-nav">
+        <div class="desktop-nav-tabs">
+            <!-- Collapse Toggle Button as first navigation item -->
+            <button class="desktop-nav-tab desktop-nav-toggle" id="nav-toggle-btn">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 18h18v-2H3v2zm0-5h18v-2H3v2zm0-7v2h18V6H3z"/>
+                </svg>
+                <span>Menu</span>
+            </button>
+            
+            <div class="desktop-nav-header">
+                <h1 class="desktop-nav-title">SWCP Tracker</h1>
+            </div>
+            <!-- User avatar tile (desktop) inserted as first nav button -->
+            <button id="nav-profile-photo-desktop-wrapper" class="desktop-nav-tab profile-tile" tabindex="0">
+                <img id="nav-profile-photo-desktop" src="swcp-logo.png" alt="Profile" />
+            </button>
+
+            <button class="desktop-nav-tab active" data-page="dashboard">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                </svg>
+                <span>Dashboard</span>
+            </button>
+            <button class="desktop-nav-tab" data-page="activities">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.5L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L8 8.5V13h2V9.5l-.2-1z"/>
+                </svg>
+                <span>Activities</span>
+            </button>
+            <button class="desktop-nav-tab" data-page="status">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                <span>Status Log</span>
+            </button>
+            <button class="desktop-nav-tab" data-page="settings">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                </svg>
+                <span>Settings</span>
+            </button>
+            
+            <!-- Powered by Strava - only visible when sidebar is expanded -->
+            <div class="desktop-nav-powered-by-strava" style="margin-top: auto; padding: 1rem;">
+                <div class="bg-white rounded-lg p-3 flex items-center justify-center shadow-md">
+                    <img src="api_logo_pwrdBy_strava_stack_orange.svg" alt="Powered by Strava" class="h-8 w-auto" />
+                </div>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Mobile Navigation (Bottom Tabs) - Always visible -->
+    <nav class="mobile-nav">
+        <div class="mobile-nav-tabs">
+            <!-- User avatar (mobile) -->
+            <button id="nav-profile-photo-mobile-wrapper" class="mobile-nav-avatar">
+                <img id="nav-profile-photo-mobile" src="swcp-logo.png" alt="Profile" class="w-8 h-8 rounded-full object-cover" />
+            </button>
+
+            <button class="mobile-nav-tab active" data-page="dashboard">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M3 13h8V3H3v10zm0 8h8v-6H3v6zm10 0h8V11h-8v10zm0-18v6h8V3h-8z"/>
+                </svg>
+                Dashboard
+            </button>
+            <button class="mobile-nav-tab" data-page="activities">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M13.5 5.5c1.1 0 2-.9 2-2s-.9-2-2-2-2 .9-2 2 .9 2 2 2zM9.8 8.5L7 23h2.1l1.8-8 2.1 2v6h2v-7.5l-2.1-2 .6-3C14.8 12 16.8 13 19 13v-2c-1.9 0-3.5-1-4.3-2.4l-1-1.6c-.4-.6-1-1-1.7-1-.3 0-.5.1-.8.1L8 8.5V13h2V9.5l-.2-1z"/>
+                </svg>
+                Activities
+            </button>
+            <button class="mobile-nav-tab" data-page="status">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z"/>
+                </svg>
+                Status
+            </button>
+            <button class="mobile-nav-tab" data-page="settings">
+                <svg viewBox="0 0 24 24" fill="currentColor">
+                    <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                </svg>
+                Settings
+            </button>
+        </div>
+    </nav>
+
+    <!-- Main Content Area -->
+    <div id="main-layout-container" class="">
+        <div class="mobile-page-content desktop-page-content">
+            
+            <!-- Dashboard Page -->
+            <div id="dashboard-page" class="page-container active">
+                
+                <!-- Header blurred background tile as a grid item -->
+                <div id="header-section" class="blurred-tile-background rounded-2xl shadow-xl flex flex-row items-center gap-6 p-4">
             <!-- Logo Tile (standalone card, left-aligned) -->
             <div class="rounded-2xl shadow-xl flex items-center justify-center p-4 ml-2 transition-all duration-300 hover:transform hover:translateY(-2px)" style="background: #758966; width: 8rem; min-width: 8rem; max-width: 8rem; min-height: 7rem; max-height: 7rem; color: #fff; z-index:1; box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);">
                 <img src="swcp-logo.png" alt="SWCP Logo" class="w-24 h-24 object-contain transition-all duration-300 hover:transform hover:translateY(-3px) hover:scale-105" style="filter: drop-shadow(0 4px 16px rgba(120,120,120,0.4)) drop-shadow(0 2px 6px rgba(120,120,120,0.25));" />
@@ -196,41 +297,13 @@
             <div class="relative flex-grow flex items-center justify-center rounded-2xl shadow-xl px-8 py-6 transition-all duration-300 hover:transform hover:translateY(-2px)" style="background: #758966; min-height: 7rem; max-height: 7rem; color: #fff; z-index:1; box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);">
                 <h1 class="font-bold text-4xl m-0 text-center w-full" style="color: #f5f1e8;">South West Coast Path Tracker</h1>
             </div>
-            <!-- Controls Tile (mirror of logo tile, right-aligned) -->
-            <div class="rounded-2xl shadow-xl flex flex-col items-center justify-center p-4 mr-2 transition-all duration-300 hover:transform hover:translateY(-2px)" style="background: #758966; width: 8rem; min-width: 8rem; max-width: 8rem; min-height: 7rem; max-height: 7rem; color: #fff; z-index:1; box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);">
-                <!-- Official Powered by Strava logo -->
-                <div class="rounded-lg px-2 py-1.5 flex items-center justify-center shadow-md w-full mb-2 transition-all duration-300 hover:transform hover:translateY(-1px) hover:scale-105" style="background: white; filter: drop-shadow(0 3px 10px rgba(120,120,120,0.4)) drop-shadow(0 1px 4px rgba(120,120,120,0.25));">
-                    <img src="api_logo_pwrdBy_strava_stack_orange.svg" alt="Powered by Strava" class="w-full h-auto max-w-[70px] strava-logo" />
-                </div>
-                
-                <!-- User tile -->
-                <div class="relative">
-                    <button id="user-menu-trigger" class="rounded-lg px-2 py-1.5 flex items-center justify-between shadow-md w-full mb-1 transition-all duration-300 hover:transform hover:translateY(-1px) hover:scale-105 cursor-pointer group" style="background: rgba(255,255,255,0.3); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); filter: drop-shadow(0 3px 10px rgba(120,120,120,0.4)) drop-shadow(0 1px 4px rgba(120,120,120,0.25)); border: 1px solid rgba(255,255,255,0.1);">
-                        <div class="flex items-center gap-1.5 min-w-0">
-                            <div class="w-5 h-5 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-sm flex-shrink-0">
-                                <svg class="w-2.5 h-2.5 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z"/>
-                                </svg>
-                            </div>
-                            <span id="current-user-name" class="text-white font-semibold text-xs truncate">User</span>
-                        </div>
-                        <svg class="w-3 h-3 text-white/70 group-hover:text-white group-hover:rotate-180 transition-all duration-300 flex-shrink-0" fill="currentColor" viewBox="0 0 24 24">
-                            <path d="M7 10l5 5 5-5z"/>
-                        </svg>
-                    </button>
-                    
-                    <!-- Quick logout button as backup -->
-                    <button id="quick-logout-btn" class="rounded-lg px-1 py-0.5 flex items-center justify-center shadow-md w-full transition-all duration-300 hover:transform hover:translateY(-1px) hover:scale-105 cursor-pointer" style="background: #f5f1e8; backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px); filter: drop-shadow(0 3px 10px rgba(120,120,120,0.4)) drop-shadow(0 1px 4px rgba(120,120,120,0.25)); border: 1px solid rgba(255,255,255,0.1);" title="Sign Out">
-                        <svg class="w-3 h-3 text-gray-700" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
-                        </svg>
-                    </button>
-                </div>
-            </div>
+
         </div>
 
         <!-- Dashboard Card with its own blurred background -->
         <div id="progress-summary-section" class="p-6 rounded-2xl shadow-xl blurred-tile-background border border-white/20 relative">
+            <!-- dashboard stats and heatmap arranged vertically -->
+
             <!-- Dark Mode button (top-left corner) -->
             <button id="dark-mode-toggle" class="absolute top-3 left-3 rounded-lg px-2 py-1 flex items-center justify-center shadow-md" style="background: rgba(192,192,192,0.5); backdrop-filter: blur(16px); -webkit-backdrop-filter: blur(16px);">
             </button>
@@ -276,6 +349,11 @@
                 </div>
             </div>
 
+            <!-- Heatmap tile styled like stat tiles -->
+            <div id="heatmap-tile" class="floating-tile w-full overflow-hidden p-4 mt-6">
+                <div class="loader-large mx-auto"></div>
+            </div>
+
         </div>
 
         <!-- Map Card with its own blurred background -->
@@ -291,60 +369,192 @@
             </div>
         </div>
 
-        <div id="status-log-section-container" class="p-6 rounded-2xl shadow-xl text-gray-800 blurred-tile-background border border-white/20">
-            <details open id="status-log-details" class="h-full flex flex-col">
-                <summary class="text-xl font-semibold p-4 sticky top-0 bg-inherit z-10 flex items-center cursor-pointer hover:bg-white/10 rounded-lg transition-colors duration-200">
-                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 448 448">
-                        <path d="m 264,724.36206 a 40,40.000015 0 0 1 -40,40.00002 40,40.000015 0 0 1 -40,-40.00002 40,40.000015 0 0 1 40,-40.00001 40,40.000015 0 0 1 40,40.00001 z m -72,72 64,0 0,160.00003 -64,0 z m 32,-191.99997 a 224,224 0 0 0 -224,224 224,224 0 0 0 224,224.00001 224,224 0 0 0 224,-224.00001 224,224 0 0 0 -224,-224 z m 0,32 a 192,192 0 0 1 192,192 192,192 0 0 1 -192,192.00001 192,192 0 0 1 -192,-192.00001 192,192 0 0 1 192,-192 z"/>
-                    </svg>
-                    Status Log
-                </summary>
-                <div id="status-log" class="flex-grow overflow-y-auto max-h-40 p-2 space-y-2"></div>
-            </details>
-        </div>
 
-        <div id="activities-section" class="blurred-tile-background p-6 rounded-2xl shadow-xl overflow-hidden" id="activities-blur-bg">
-            <div>
-                <div class="p-3 text-white tile-header rounded-t-2xl relative">
-                    <div class="flex justify-between items-center mb-2">
-                    </div>
-                    <h2 class="font-bold text-base mb-2 flex items-center">
-                        <svg class="mr-2" height="2em" viewBox="0 0 14 14" fill="white" xmlns="http://www.w3.org/2000/svg" style="min-width:2em; min-height:2em;">
-                          <path d="M7.04909245 2.15677102a1.15677082 1.15677082 0 0 1-1.15677082 1.15677083A1.15677082 1.15677082 0 0 1 4.7355508 2.15677103 1.15677082 1.15677082 0 0 1 5.89232163 1.0000002a1.15677082 1.15677082 0 0 1 1.15677082 1.15677083zm-4.7881791 1.59573492l1.44438058.15415493.18303768.01953116c.08988718.00959511.17909247.0007306.26552152-.01916586-.09587804.14494947-.16472417.310526-.18951559.4942699l-.23430089 1.72957939 1.01523079-.57497598-.35876943-.99372702c-.09607286-.2661547-.06952802-.54553313.04775637-.78012625.0150502-.01052053.03151287-.01848398.04588118-.0301004.10052948-.08121748.1757074-.1860818.22714109-.30207547.03363159-.07585982.05908054-.15561612.06804247-.23970727.00689192-.06448693.00387214-.12739091-.00409131-.18902853-.04670919-.36130215-.33373447-.6575329-.7119133-.69793463l-1.62802708-.1736861c-.21245618-.02269706-.42508284.03991468-.59138995.17402704-.1661123.13435589-.27236474.32893691-.2950131.54197757-.04729365.44273881.27331451.8397182.71602897.88698752zm10.0406003 2.42566318c-.17522035-.13199364-.42430355-.0967304-.55590754.07831947l-1.49001823 1.97983154c-.02946722.0393302-.05155545.08353103-.06492529.13082469l-.61347818 2.16959065-.94144098.13452636c-.04885226.00698933-.0959511.02286753-.13898297.04729366L5.7714571 12.25740163c-.19092807.10776234-.25819125.34988056-.15042891.54080863.07288873.12929045.2074151.20178954.34600841.20178954.06609424 0 .1331626-.01648703.19477586-.05136063l2.66018325-1.5020243 1.12306617-.16048673c.15527518-.02208823.28300703-.13374706.32584408-.28493092l.66369422-2.34656441 1.44523293-1.92050745c.132018-.17526905.0967304-.42413307-.07831947-.55595624zm-4.46089796 4.34673076l-.24482141-1.6888854c-.02829827-.19499504-.13800885-.36868113-.3018076-.47819689l-.99260678-.66274444-.34868725-.23281535c.00150989-.01015523.00340943-.02301366.00577167-.03950068l.02486449-.18369521-.20398132-.05608512c-.31091564-.08547928-.56094861-.31673603-.67046437-.61988304l-.2268732-.62845533-1.21891986.69028777s-.04856002.35850154-.06473046.4779777c-.01368642.10089477-.01638961.43292453.02829827.5762667.0706239.22662967.28269044.90651868.28269044.90651868l.37964 1.21750738-.53092127 2.01877209c-.09770452.3711895.12405454.75112174.4950492.84860708.05932408.0155129.11881863.02306235.17716859.02306235.30799327 0 .5894417-.20644097.6714385-.51811156l.58169742-2.21184323c.03314453-.1261976.03024651-.25916537-.0087184-.38360956l-.24925367-.79921905.8396695.56060767.20040141 1.3826212c.05021603.34600842.34715302.59526209.68675658.59506726.03314453 0 .0666787-.00231354.1004077-.0071598.37976178-.05496488.64299411-.4073538.58793182-.78709122zM5.87999873 4.02292243c-.111464-.30916223-.45279663-.4700386-.76215368-.35781966-.30935704.11165882-.4696733.45279663-.35781965.76215368l.72243382 2.00094564c.06550976.18201485.21554902.320803.4022153.3719688l1.87260497.5148239c.0527244.01453877.10583844.0215281.15817319.0215281.26128408 0 .50106441-.17349127.57375832-.4378682.0872327-.31710132-.09923876-.64469882-.41636443-.73190716L6.4977387 5.7337256l-.61773998-1.71080316zm-2.67511168 3.0267213l.06816424-.50315878-1.28769292-1.5301521-.19041666 1.78542098c-.0472693.4426901.2733145.83964515.71602897.88698752l.76948395.08206984c-.07671217-.22546072-.10968623-.46908883-.07556758-.72116746zM2.0978939 3.96106563l-.05423429.50839469 1.30128195 1.546079.22589907-1.66757647c.01054488-.07783241.03258441-.15076986.0535524-.22409695L2.0978939 3.96106563z"/>
-                        </svg>
-                        Your Activities
-                        <span id="activity-count" class="text-sm font-normal text-white/80 ml-2"></span>
-                    </h2>
-                </div>
-                <div class="p-4">
-                    <!-- Only keep this set of filter/search/refresh controls -->
-                    <div class="hidden lg:block mb-4">
-                        <div class="flex justify-between items-center mb-3">
-                            <div id="filter-buttons" class="flex space-x-2">
-                                <button data-filter="all" class="filter-btn active">All</button>
-                                <button data-filter="Hike" class="filter-btn">Hike</button>
-                                <button data-filter="Walk" class="filter-btn">Walk</button>
+            
+            </div> <!-- Close Dashboard Page -->
+            
+            <!-- Activities Page -->
+            <div id="activities-page" class="page-container">
+                <div id="activities-section" class="blurred-tile-background p-6 rounded-2xl shadow-xl overflow-hidden">
+                            <div>
+                                <div class="p-3 text-white tile-header rounded-t-2xl relative">
+                                    <div class="flex justify-between items-center mb-2">
+                                    </div>
+                                    <h2 class="font-bold text-base mb-2 flex items-center">
+                                        <svg class="mr-2" height="2em" viewBox="0 0 14 14" fill="white" xmlns="http://www.w3.org/2000/svg" style="min-width:2em; min-height:2em;">
+                                          <path d="M7.04909245 2.15677102a1.15677082 1.15677082 0 0 1-1.15677082 1.15677083A1.15677082 1.15677082 0 0 1 4.7355508 2.15677103 1.15677082 1.15677082 0 0 1 5.89232163 1.0000002a1.15677082 1.15677082 0 0 1 1.15677082 1.15677083zm-4.7881791 1.59573492l1.44438058.15415493.18303768.01953116c.08988718.00959511.17909247.0007306.26552152-.01916586-.09587804.14494947-.16472417.310526-.18951559.4942699l-.23430089 1.72957939 1.01523079-.57497598-.35876943-.99372702c-.09607286-.2661547-.06952802-.54553313.04775637-.78012625.0150502-.01052053.03151287-.01848398.04588118-.0301004.10052948-.08121748.1757074-.1860818.22714109-.30207547.03363159-.07585982.05908054-.15561612.06804247-.23970727.00689192-.06448693.00387214-.12739091-.00409131-.18902853-.04670919-.36130215-.33373447-.6575329-.7119133-.69793463l-1.62802708-.1736861c-.21245618-.02269706-.42508284.03991468-.59138995.17402704-.1661123.13435589-.27236474.32893691-.2950131.54197757-.04729365.44273881.27331451.8397182.71602897.88698752zm10.0406003 2.42566318c-.17522035-.13199364-.42430355-.0967304-.55590754.07831947l-1.49001823 1.97983154c-.02946722.0393302-.05155545.08353103-.06492529.13082469l-.61347818 2.16959065-.94144098.13452636c-.04885226.00698933-.0959511.02286753-.13898297.04729366L5.7714571 12.25740163c-.19092807.10776234-.25819125.34988056-.15042891.54080863.07288873.12929045.2074151.20178954.34600841.20178954.06609424 0 .1331626-.01648703.19477586-.05136063l2.66018325-1.5020243 1.12306617-.16048673c.15527518-.02208823.28300703-.13374706.32584408-.28493092l.66369422-2.34656441 1.44523293-1.92050745c.132018-.17526905.0967304-.42413307-.07831947-.55595624zm-4.46089796 4.34673076l-.24482141-1.6888854c-.02829827-.19499504-.13800885-.36868113-.3018076-.47819689l-.99260678-.66274444-.34868725-.23281535c.00150989-.01015523.00340943-.02301366.00577167-.03950068l.02486449-.18369521-.20398132-.05608512c-.31091564-.08547928-.56094861-.31673603-.67046437-.61988304l-.2268732-.62845533-1.21891986.69028777s-.04856002.35850154-.06473046.4779777c-.01368642.10089477-.01638961.43292453.02829827.5762667.0706239.22662967.28269044.90651868.28269044.90651868l.37964 1.21750738-.53092127 2.01877209c-.09770452.3711895.12405454.75112174.4950492.84860708.05932408.0155129.11881863.02306235.17716859.02306235.30799327 0 .5894417-.20644097.6714385-.51811156l.58169742-2.21184323c.03314453-.1261976.03024651-.25916537-.0087184-.38360956l-.24925367-.79921905.8396695.56060767.20040141 1.3826212c.05021603.34600842.34715302.59526209.68675658.59506726.03314453 0 .0666787-.00231354.1004077-.0071598.37976178-.05496488.64299411-.4073538.58793182-.78709122zM5.87999873 4.02292243c-.111464-.30916223-.45279663-.4700386-.76215368-.35781966-.30935704.11165882-.4696733.45279663-.35781965.76215368l.72243382 2.00094564c.06550976.18201485.21554902.320803.4022153.3719688l1.87260497.5148239c.0527244.01453877.10583844.0215281.15817319.0215281.26128408 0 .50106441-.17349127.57375832-.4378682.0872327-.31710132-.09923876-.64469882-.41636443-.73190716L6.4977387 5.7337256l-.61773998-1.71080316zm-2.67511168 3.0267213l.06816424-.50315878-1.28769292-1.5301521-.19041666 1.78542098c-.0472693.4426901.2733145.83964515.71602897.88698752l.76948395.08206984c-.07671217-.22546072-.10968623-.46908883-.07556758-.72116746zM2.0978939 3.96106563l-.05423429.50839469 1.30128195 1.546079.22589907-1.66757647c.01054488-.07783241.03258441-.15076986.0535524-.22409695L2.0978939 3.96106563z"/>
+                                        </svg>
+                                        Your Activities
+                                        <span id="activity-count" class="text-sm font-normal text-white/80 ml-2"></span>
+                                    </h2>
+                                </div>
+                                <div class="p-4">
+                                    <!-- Desktop filter/search controls -->
+                                    <div class="hidden lg:block mb-4">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <div id="filter-buttons" class="flex space-x-2">
+                                                <button data-filter="all" class="filter-btn active">All</button>
+                                                <button data-filter="Hike" class="filter-btn">Hike</button>
+                                                <button data-filter="Walk" class="filter-btn">Walk</button>
+                                            </div>
+                                        </div>
+                                        <input type="text" id="activity-search-box" placeholder="Search activities..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                                    </div>
+                                    
+                                    <!-- Mobile filter/search controls -->
+                                    <div class="block lg:hidden mb-4">
+                                        <div class="flex justify-between items-center mb-3">
+                                            <div id="filter-buttons-mobile" class="flex space-x-2">
+                                                <button data-filter="all" class="filter-btn active">All</button>
+                                                <button data-filter="Hike" class="filter-btn">Hike</button>
+                                                <button data-filter="Walk" class="filter-btn">Walk</button>
+                                            </div>
+                                        </div>
+                                        <input type="text" id="activity-search-box-mobile" placeholder="Search activities..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
+                                    </div>
+                                    <button id="refresh-activities-btn" class="w-full font-bold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center mb-4" style="background: #f5f1e8; color: #49614b; border: 1px solid #e5e1d8;">
+                                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Refresh Activities
+                                    </button>
+                                    <div id="activities-loading-spinner" class="flex justify-center items-center h-32 hidden">
+                                        <div class="text-center">
+                                            <div class="loader-large mb-3"></div>
+                                            <p class="text-gray-600">Loading activities...</p>
+                                        </div>
+                                    </div>
+                                    <div id="activity-list-container" class="space-y-4 activity-list-scroll"></div>
+                                </div>
                             </div>
                         </div>
-                        <input type="text" id="activity-search-box" placeholder="Search activities..." class="w-full px-3 py-2 border border-gray-300 rounded-lg shadow-sm focus:ring-2 focus:ring-orange-500 focus:border-orange-500">
                     </div>
-                    <button id="refresh-activities-btn" class="w-full font-bold py-3 px-4 rounded-lg transition-all duration-200 flex items-center justify-center mb-4" style="background: #f5f1e8; color: #49614b; border: 1px solid #e5e1d8;">
-                        <svg class="w-5 h-5 mr-2" fill="currentColor" viewBox="0 0 20 20">
-                            <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
-                        </svg>
-                        Refresh Activities
-                    </button>
-                    <div id="activities-loading-spinner" class="flex justify-center items-center h-32 hidden">
-                        <div class="text-center">
-                            <div class="loader-large mb-3"></div>
-                            <p class="text-gray-600">Loading activities...</p>
+                
+                <!-- Status Log Page -->
+                <div id="status-page" class="page-container">
+                    <div id="status-log-section-container" class="p-6 rounded-2xl shadow-xl text-gray-800 blurred-tile-background border border-white/20">
+                            <details open id="status-log-details" class="h-full flex flex-col">
+                                <summary class="text-xl font-semibold p-4 sticky top-0 bg-inherit z-10 flex items-center cursor-pointer hover:bg-white/10 rounded-lg transition-colors duration-200">
+                                    <svg class="w-5 h-5 mr-2 text-blue-600" fill="currentColor" viewBox="0 0 448 448">
+                                        <path d="m 264,724.36206 a 40,40.000015 0 0 1 -40,40.00002 40,40.000015 0 0 1 -40,-40.00002 40,40.000015 0 0 1 40,-40.00001 40,40.000015 0 0 1 40,40.00001 z m -72,72 64,0 0,160.00003 -64,0 z m 32,-191.99997 a 224,224 0 0 0 -224,224 224,224 0 0 0 224,224.00001 224,224 0 0 0 224,-224.00001 224,224 0 0 0 -224,-224 z m 0,32 a 192,192 0 0 1 192,192 192,192 0 0 1 -192,192.00001 192,192 0 0 1 -192,-192.00001 192,192 0 0 1 192,-192 z"/>
+                                    </svg>
+                                    Status Log
+                                </summary>
+                                <div id="status-log" class="flex-grow overflow-y-auto p-2 space-y-2"></div>
+                            </details>
                         </div>
                     </div>
-                    <div id="activity-list-container" class="space-y-4 activity-list-scroll"></div>
+                
+                <!-- Settings Page -->
+                <div id="settings-page" class="page-container">
+                    <div class="blurred-tile-background p-6 rounded-2xl shadow-xl border border-white/20">
+                            <div class="p-3 text-white tile-header rounded-t-2xl relative mb-4">
+                                <h2 class="font-bold text-base mb-2 flex items-center">
+                                    <svg class="mr-2 w-8 h-8" viewBox="0 0 24 24" fill="white">
+                                        <path d="M19.14,12.94c0.04-0.3,0.06-0.61,0.06-0.94c0-0.32-0.02-0.64-0.07-0.94l2.03-1.58c0.18-0.14,0.23-0.41,0.12-0.61 l-1.92-3.32c-0.12-0.22-0.37-0.29-0.59-0.22l-2.39,0.96c-0.5-0.38-1.03-0.7-1.62-0.94L14.4,2.81c-0.04-0.24-0.24-0.41-0.48-0.41 h-3.84c-0.24,0-0.43,0.17-0.47,0.41L9.25,5.35C8.66,5.59,8.12,5.92,7.63,6.29L5.24,5.33c-0.22-0.08-0.47,0-0.59,0.22L2.74,8.87 C2.62,9.08,2.66,9.34,2.86,9.48l2.03,1.58C4.84,11.36,4.82,11.69,4.82,12s0.02,0.64,0.07,0.94l-2.03,1.58 c-0.18,0.14-0.23,0.41-0.12,0.61l1.92,3.32c0.12,0.22,0.37,0.29,0.59,0.22l2.39-0.96c0.5,0.38,1.03,0.7,1.62,0.94l0.36,2.54 c0.05,0.24,0.24,0.41,0.48,0.41h3.84c0.24,0,0.44-0.17,0.47-0.41l0.36-2.54c0.59-0.24,1.13-0.56,1.62-0.94l2.39,0.96 c0.22,0.08,0.47,0,0.59-0.22l1.92-3.32c0.12-0.22,0.07-0.47-0.12-0.61L19.14,12.94z M12,15.6c-1.98,0-3.6-1.62-3.6-3.6 s1.62-3.6,3.6-3.6s3.6,1.62,3.6,3.6S13.98,15.6,12,15.6z"/>
+                                    </svg>
+                                    App Settings
+                                </h2>
+                            </div>
+                            
+                            <div class="space-y-6">
+                                <!-- User Profile Section -->
+                                <div class="bg-white/10 p-4 rounded-lg">
+                                    <h3 class="text-lg font-semibold text-white mb-3">Profile</h3>
+                                    <div class="flex items-center gap-4 mb-4">
+                                        <div id="settings-avatar-wrapper" class="relative group cursor-pointer">
+                                            <img id="settings-avatar-photo" class="w-16 h-16 rounded-full object-cover shadow-md hidden" src="" alt="Profile photo" />
+                                            <div id="settings-avatar-placeholder" class="w-16 h-16 bg-gradient-to-br from-green-400 to-green-600 rounded-full flex items-center justify-center shadow-md transition-opacity duration-200 group-hover:opacity-0">
+                                                <span id="settings-avatar-initial" class="text-white font-bold text-xl">U</span>
+                                            </div>
+                                            <div class="absolute inset-0 bg-gray-500 bg-opacity-60 rounded-full flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity duration-200">
+                                                <svg class="w-6 h-6 text-white" viewBox="0 0 32 32" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                                    <polygon fill="none" stroke="currentColor" stroke-width="2" stroke-miterlimit="10" points="21.5,9 20,7 12,7 10.5,9 4,9 4,25 28,25 28,9"/>
+                                                    <circle fill="none" stroke="currentColor" stroke-width="2" stroke-miterlimit="10" cx="16" cy="17" r="5"/>
+                                                    <circle fill="currentColor" cx="8" cy="12" r="1"/>
+                                                </svg>
+                                            </div>
+                                        </div>
+                                        <input type="file" id="profile-photo-input" accept="image/*" class="hidden" />
+                                        <div class="flex-1">
+                                            <p id="settings-user-name" class="font-semibold text-white">User Name</p>
+                                            <p id="settings-user-email" class="text-sm text-white/70">user@example.com</p>
+                                        </div>
+                                    </div>
+                                    <!-- Logout Button -->
+                                    <button id="settings-logout-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
+                                        <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                            <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
+                                        </svg>
+                                        Sign Out
+                                    </button>
+                                </div>
+                                
+                                <!-- App Preferences -->
+                                <div class="bg-white/10 p-4 rounded-lg">
+                                    <h3 class="text-lg font-semibold text-white mb-3">Preferences</h3>
+                                    <div class="space-y-3">
+                                        <div class="flex items-center justify-between">
+                                            <label class="text-white">Dark Mode</label>
+                                            <button id="settings-dark-mode-toggle" class="relative w-12 h-6 bg-gray-300 rounded-full p-1 transition-colors duration-200">
+                                                <div class="absolute left-1 top-1 w-4 h-4 bg-white rounded-full shadow-md transform transition-transform duration-200"></div>
+                                            </button>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <!-- About -->
+                                <div class="bg-white/10 p-4 rounded-lg">
+                                    <h3 class="text-lg font-semibold text-white mb-3">About</h3>
+                                    <p class="text-sm text-white/70">SWCP Tracker helps you track your progress on the South West Coast Path using Strava activities.</p>
+                                </div>
+                            </div> <!-- closes .space-y-6 -->
+                        </div> <!-- closes first blurred-tile-background -->
+                                <!-- Strava Account Tile -->
+                                <div class="blurred-tile-background p-4 rounded-2xl shadow-xl border border-white/20 space-y-4 mt-6">
+                                    <!-- Strava Connection - Show when NOT connected -->
+                                    <div id="settings-strava-connect" class="p-4 rounded-lg">
+                                        <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
+                                            </svg>
+                                            Connect to Strava
+                                        </h3>
+                                        <p class="text-sm text-white/70 mb-4">Link your Strava account to import activities automatically.</p>
+                                        <button class="strava-connect-btn w-full p-0 bg-transparent border-none focus:outline-none">
+                                            <img src="btn_strava_connect_with_orange_x2.svg" alt="Connect with Strava" class="w-full h-auto" style="max-height:48px;" />
+                                        </button>
+                                    </div>
+
+                                    <!-- Strava Connected - Show when already connected -->
+                                    <div id="settings-strava-connected" class="p-4 rounded-lg hidden">
+                                        <h3 class="text-lg font-semibold text-white mb-3 flex items-center gap-2">
+                                            <svg class="w-6 h-6" viewBox="0 0 24 24" fill="currentColor">
+                                                <path d="M15.387 17.944l-2.089-4.116h-3.065L15.387 24l5.15-10.172h-3.066m-7.008-5.599l2.836 5.598h4.172L10.463 0l-7 13.828h4.169"/>
+                                            </svg>
+                                            Strava Account
+                                        </h3>
+                                        <div class="flex items-center gap-4 mb-4">
+                                            <img id="settings-athlete-photo" class="w-16 h-16 rounded-full object-cover shadow-md" src="swcp-logo.png" alt="Profile photo">
+                                            <div class="flex-1">
+                                                <p id="settings-athlete-name" class="font-semibold text-white flex items-center">Athlete Name <span id="settings-athlete-premium" class="hidden ml-2 bg-yellow-400 text-black text-xs font-bold rounded px-2 py-0.5">Premium</span></p>
+                                                <p id="settings-athlete-stats" class="text-sm text-white/70">0 followers · 0 following</p>
+                                                <p id="settings-athlete-location" class="text-sm text-white/70"></p>
+                                            </div>
+                                        </div>
+                                        <button id="settings-disconnect-btn" class="w-full bg-red-600 hover:bg-red-700 text-white font-semibold py-2 px-4 rounded-lg transition-colors duration-200 flex items-center justify-center gap-2">
+                                            <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                                                <path fill-rule="evenodd" d="M3 3a1 1 0 00-1 1v12a1 1 0 102 0V4a1 1 0 00-1-1zm10.293 9.293a1 1 0 001.414 1.414l3-3a1 1 0 000-1.414l-3-3a1 1 0 10-1.414 1.414L14.586 9H7a1 1 0 100 2h7.586l-1.293 1.293z" clip-rule="evenodd"/>
+                                            </svg>
+                                            Disconnect from Strava
+                                        </button>
+                                    </div> <!-- End Strava Connected -->
+                                </div> <!-- End standalone Strava tile -->
+                            </div>
+                        </div>
                 </div>
             </div>
         </div>
-    </div>
 
     <div id="fab-container" class="fixed bottom-6 right-6 z-50 hidden">
         <button id="fab-main" class="w-14 h-14 bg-gradient-to-r from-orange-500 to-orange-600 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center">
@@ -353,6 +563,11 @@
             </svg>
         </button>
         <div id="fab-menu" class="absolute bottom-16 right-0 space-y-2 hidden">
+            <button id="fab-speed" onclick="showSpeedOptimizationSettings()" class="w-12 h-12 bg-purple-500 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center" title="Speed Optimization Settings">
+                <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+                    <path d="M13.024 9.654C13.024 10.4 12.424 11 11.677 11s-1.347-.6-1.347-1.346.6-1.346 1.347-1.346 1.347.6 1.347 1.346zM8.847 16.923c.347.808-.347 1.615-1.27 1.269L6.808 17.8c-.692-.346-1.5-.115-1.846.577l-.462 1.038c-.346.693-1.27.923-1.846.23L2.192 19.2c-.577-.577-.462-1.5.23-1.846l1.039-.462c.692-.346.923-1.154.577-1.846l-.346-.808c-.346-.923.462-1.616 1.27-1.27l.807.347c.693.346 1.5.115 1.846-.577l.462-1.039c.346-.692 1.27-.923 1.846-.23l.462.462c.577.577.462 1.5-.23 1.846l-1.039.462c-.692.346-.923 1.154-.577 1.846l.346.808zm7.5-8.846c0-2.077-1.692-3.769-3.77-3.769S8.808 5.923 8.808 8c0 2.077 1.693 3.769 3.77 3.769S16.347 10.077 16.347 8z"/>
+                </svg>
+            </button>
             <button id="fab-refresh" class="w-12 h-12 bg-blue-500 text-white rounded-full shadow-lg hover:shadow-xl transform hover:scale-110 transition-all duration-200 flex items-center justify-center">
                 <svg class="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
                     <path fill-rule="evenodd" d="M4 2a1 1 0 011 1v2.101a7.002 7.002 0 0111.601 2.566 1 1 0 11-1.885.666A5.002 5.002 0 005.999 7H9a1 1 0 010 2H4a1 1 0 01-1-1V3a1 1 0 011-1zm.008 9.057a1 1 0 011.276.61A5.002 5.002 0 0014.001 13H11a1 1 0 110-2h5a1 1 0 011 1v5a1 1 0 11-2 0v-2.101a7.002 7.002 0 01-11.601-2.566 1 1 0 01.61-1.276z" clip-rule="evenodd"/>
@@ -365,6 +580,8 @@
             </button>
         </div>
     </div>
+
+    </div> <!-- Close main-layout-container -->
 
     <template id="activity-card-template">
         <div class="activity-card bg-white shadow-lg">
@@ -618,6 +835,7 @@
 
     <script type="module" src="auth.js"></script>
     <script type="module" src="auth-controller.js"></script>
+    <script type="module" src="firebase-progress-service.js"></script>
     <script type="module" src="script.js"></script>
     <script type="module" src="startup.js"></script>
 </body>

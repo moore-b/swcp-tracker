@@ -1,14 +1,22 @@
 // swcp_analysis_worker.js
 
-// Import Turf.js library from local file
+// Import Turf.js library from CDN with fallback to local file
 let turfLoaded = false;
 try {
-    self.importScripts('turf.min.js');
+    // Try CDN first (faster and cached)
+    self.importScripts('https://unpkg.com/@turf/turf@6.5.0/turf.min.js');
     turfLoaded = true;
-    console.log('Worker: Turf.js loaded successfully from local file');
+    console.log('Worker: Turf.js loaded successfully from CDN');
 } catch (error) {
-    console.error('Worker: Failed to load Turf.js from local file:', error);
-    turfLoaded = false;
+    console.warn('Worker: Failed to load Turf.js from CDN, trying local file:', error);
+    try {
+        self.importScripts('turf.min.js');
+        turfLoaded = true;
+        console.log('Worker: Turf.js loaded successfully from local file');
+    } catch (localError) {
+        console.error('Worker: Failed to load Turf.js from both CDN and local file:', localError);
+        turfLoaded = false;
+    }
 }
 
 if (!turfLoaded) {
@@ -26,7 +34,7 @@ let swcpGeoJSON = null; // Will store the Turf.js LineString geometry of the SWC
 let swcpTotalDistance = 0; // Total length of SWCP in kilometers
 
 // Thresholds for determining overlap and sampling
-const DISTANCE_THRESHOLD_METERS = 100; // How close an activity point must be to the SWCP to be considered "on path"
+const DISTANCE_THRESHOLD_METERS = 25; // How close an activity point must be to the SWCP to be considered "on path"
 const ACTIVITY_SAMPLE_INTERVAL_METERS = 50; // How frequently to sample points along the activity line (increased precision from 100 to 50 for more accuracy)
 const UNIQUE_POINT_MERGE_THRESHOLD_METERS = 20; // How close points must be to be considered the same unique point for completion tracking
 const SEGMENT_BREAK_THRESHOLD_KM = 0.2; // How far apart points can be along the SWCP before a segment is considered broken
@@ -77,6 +85,10 @@ self.onmessage = function(e) {
         // Calculate overall progress using all unique completed points
         const resultPayload = calculateOverallProgress(allCompletedPoints);
         resultPayload.activityId = activityId; // Attach activityId back to the result
+        
+        // CRITICAL: Report if this specific activity overlaps the route
+        resultPayload.activityOverlapsRoute = newOverlappingPoints.length > 0;
+        resultPayload.activityOverlapPointCount = newOverlappingPoints.length;
 
         self.postMessage({ type: 'result', payload: resultPayload });
     }
@@ -89,6 +101,8 @@ self.onmessage = function(e) {
  * @returns {Array<Array<number>>} Array of [longitude, latitude] points on the SWCP that overlap.
  */
 function findOverlappingPoints(activityStream, activityId) {
+    console.log(`Worker DEBUG: Starting overlap analysis for activity ${activityId} with ${activityStream.length} GPS points`);
+    
     // IMPORTANT FIX: Convert Strava's [lat, lon] to Turf.js's [lon, lat] for activity points
     const turfActivityCoords = activityStream.map(p => [p[1], p[0]]);
 
@@ -112,8 +126,21 @@ function findOverlappingPoints(activityStream, activityId) {
         // nearestPointOnLine returns a Turf.js point, which includes its original coordinates
         const nearestOnSWCP = turf.nearestPointOnLine(swcpGeoJSON, activityPoint); // Default units are meters
 
+        // IMPORTANT FIX: nearestOnSWCP.properties.dist is in KILOMETERS, convert to meters
+        const distanceInMeters = nearestOnSWCP.properties.dist * 1000;
+        
         // If the distance from the activity point to the nearest point on SWCP is within threshold
-        if (nearestOnSWCP.properties.dist <= DISTANCE_THRESHOLD_METERS) {
+        if (distanceInMeters <= DISTANCE_THRESHOLD_METERS) {
+            // DEBUG: Log the matching points to identify potential issues
+            console.log(`Worker DEBUG: Activity point [${activityPoint.geometry.coordinates[1]}, ${activityPoint.geometry.coordinates[0]}] matches SWCP point [${nearestOnSWCP.geometry.coordinates[1]}, ${nearestOnSWCP.geometry.coordinates[0]}] at ${distanceInMeters.toFixed(1)}m distance`);
+            
+            // BOUNDS CHECK: Verify SWCP coordinates are within expected Cornwall/Devon coastal area
+            const swcpLon = nearestOnSWCP.geometry.coordinates[0];
+            const swcpLat = nearestOnSWCP.geometry.coordinates[1];
+            if (swcpLon < -6 || swcpLon > -2 || swcpLat < 49.5 || swcpLat > 51.5) {
+                console.warn(`Worker WARNING: Suspicious SWCP coordinates outside Cornwall/Devon area: [${swcpLat}, ${swcpLon}]`);
+            }
+            
             // Add the coordinates of the point *on the SWCP* to our list of overlapping points
             overlappingPoints.push(nearestOnSWCP.geometry.coordinates); // These are already [lon, lat]
         }

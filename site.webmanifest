@@ -1,9 +1,10 @@
 {
-  "name": "SW Coast Path Tracker",
-  "short_name": "SWCP Tracker",
+  "name": "waythru",
+  "short_name": "waythru",
   "description": "Track your South West Coast Path progress with Strava integration",
   "start_url": "/",
   "display": "standalone",
+  "display_override": ["fullscreen", "standalone"],
   "orientation": "portrait-primary",
   "theme_color": "#49614b",
   "background_color": "#f5f1e8",

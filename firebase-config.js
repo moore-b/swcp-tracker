@@ -47,7 +47,12 @@ class FirebaseConfig {
                 return null;
             }
         } catch (error) {
-            console.error('Error fetching Strava credentials from Firebase:', error);
+            if (error.code === 'permission-denied') {
+                console.log('🔒 Firebase permissions: Cannot read Strava config (user not authenticated)');
+                console.log('💡 This is normal during OAuth callback - using fallback credentials');
+            } else {
+                console.error('Error fetching Strava credentials from Firebase:', error);
+            }
             return null;
         }
     }

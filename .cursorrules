@@ -1,0 +1,78 @@
+# SWCP Tracker - Cursor Rules
+
+## AI Interaction Guidelines
+- **NEVER make code changes without explicit user confirmation**
+- Always explain what changes will be made before implementing them
+- Ask for approval before creating, modifying, or deleting files
+- Provide clear explanations of the reasoning behind suggested changes
+
+## Project Context
+This is a web-based activity tracker that integrates with Strava API and uses Firebase for data storage. The app helps users track their progress on specific routes and challenges.
+
+## Tech Stack
+- Frontend: Vanilla JavaScript, HTML5, CSS3, Tailwind CSS
+- Backend: Firebase (Firestore, Auth)
+- Maps: OpenLayers, Leaflet
+- APIs: Strava API
+- Build: Capacitor for mobile apps
+
+## Coding Standards
+
+### JavaScript
+- Use modern ES6+ features
+- Prefer const/let over var
+- Use arrow functions where appropriate
+- Always use semicolons
+- Use camelCase for variables and functions
+- Use async/await over Promises chains
+- Add proper error handling with try-catch blocks
+
+### HTML/CSS
+- Use semantic HTML elements
+- Follow accessibility best practices (ARIA labels, alt text)
+- Use Tailwind CSS classes for styling
+- Maintain responsive design principles
+- Keep HTML structure clean and readable
+
+### File Organization
+- Keep related functionality in separate modules
+- Use descriptive file names
+- Maintain separation of concerns
+- Keep configuration files organized
+
+## API Integration
+- Always handle API rate limits and error responses
+- Use proper authentication tokens securely
+- Follow Strava API branding guidelines
+- Implement proper loading states for async operations
+
+## Firebase Integration
+- Use Firestore security rules properly
+- Handle authentication state changes
+- Implement proper error handling for Firebase operations
+- Use Firebase best practices for data structure
+
+## UI/UX Guidelines
+- Maintain consistent styling with existing components
+- Ensure mobile-first responsive design
+- Use loading indicators for async operations
+- Provide clear user feedback for actions
+- Follow modern web app UX patterns
+
+## Security
+- Never expose API keys in client-side code
+- Use Firebase security rules properly
+- Validate user inputs
+- Handle authentication securely
+
+## Performance
+- Optimize map rendering and data loading
+- Use efficient data structures
+- Implement proper caching where appropriate
+- Minimize DOM manipulations
+
+## Testing
+- Test on both desktop and mobile
+- Verify Strava API integration
+- Test offline scenarios
+- Validate Firebase integration 

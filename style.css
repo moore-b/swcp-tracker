@@ -269,34 +269,50 @@ body.dark-mode .filter-btn:hover {
     transform: translateY(-2px);
 }
 
-/* Layout Grid */
+/* Layout Grid - Base styles for all screens */
 #main-layout-container { 
-    display: grid; 
-    grid-template-columns: 2fr 1fr; 
-    grid-template-rows: auto auto auto auto; 
-    gap: 1.5rem; 
     min-height: 100vh; 
-    padding: 1.5rem; 
     transition: all 0.3s ease;
 }
 
-#header-section { grid-column: 1; grid-row: 1; }
-#progress-summary-section { grid-column: 1; grid-row: 2; }
-#map-section { grid-column: 1; grid-row: 3; align-self: start; }
-#status-log-section-container { grid-column: 1; grid-row: 4; }
-#activities-section {
-    grid-column: 2;
-    grid-row: 1 / span 4;
-    position: sticky;
-    top: 1.5rem;
-    height: calc(100vh - 3rem);
-    max-height: calc(100vh - 3rem);
-    overflow-y: auto;
-    scrollbar-width: thin;
-    scrollbar-color: rgba(156, 163, 175, 0.5) transparent;
-    padding: 1rem !important;
-    box-sizing: border-box !important;
+/* Layout Grid - Mobile/tablet padding */
+@media (max-width: 768px) {
+    #main-layout-container { 
+        padding: 1.5rem; 
+    }
 }
+
+#dashboard-page.active {
+    display: grid; 
+    grid-template-columns: 1fr; 
+    grid-template-rows: auto auto auto; 
+    gap: 1.5rem; 
+}
+
+/* Hide desktop navigation when main layout is hidden (during auth) */
+#main-layout-container.hidden ~ .desktop-nav,
+#main-layout-container.hidden + * .desktop-nav,
+.desktop-nav:has(~ #main-layout-container.hidden) {
+    display: none !important;
+}
+
+/* Alternative approach - hide desktop nav when main container is hidden */
+body:has(#main-layout-container.hidden) .desktop-nav {
+    display: none !important;
+}
+
+/* Fix container spacing - remove margins that interfere with grid gap */
+#header-section,
+#progress-summary-section, 
+#map-section,
+#status-log-section-container {
+    margin: 0 !important;
+}
+
+#dashboard-page #header-section { grid-column: 1; grid-row: 1; }
+#dashboard-page #progress-summary-section { grid-column: 1; grid-row: 2; }
+#dashboard-page #map-section { grid-column: 1; grid-row: 3; align-self: start; }
+/* Activities section - now on separate page, removed desktop grid positioning */
 
 #activities-section::-webkit-scrollbar {
     width: 6px;
@@ -338,29 +354,21 @@ body.dark-mode .filter-btn:hover {
 }
 
 /* Mobile Responsive */
-@media (max-width: 1024px) {
+@media (max-width: 768px) {
     #main-layout-container { 
         grid-template-columns: 1fr; 
-        grid-template-rows: auto auto auto auto auto; 
+        grid-template-rows: auto auto auto; 
         gap: 0.75rem;
         padding: 1rem;
     }
     
-    #header-section, #progress-summary-section, #map-section, #status-log-section-container, #activities-section { 
+    #header-section, #progress-summary-section, #map-section { 
         grid-column: 1; 
     }
     
     #header-section { grid-row: 1; }
     #progress-summary-section { grid-row: 2; }
     #map-section { grid-row: 3; }
-    #activities-section { 
-        grid-row: 4; 
-        position: static; 
-        height: auto; 
-        overflow-y: visible; 
-        top: auto; 
-    }
-    #status-log-section-container { grid-row: 5; }
     
     #map {
         height: 400px;
@@ -460,8 +468,6 @@ body.dark-mode .filter-btn:hover {
     transform: translateY(-5px);
     box-shadow: 0 8px 32px 0 rgba(0,0,0,0.4), 0 4px 16px 0 rgba(0,0,0,0.3);
 }
-
-
 
 /* Input Enhancements */
 input[type="text"], input[type="password"] {
@@ -990,6 +996,7 @@ button:focus, input:focus, select:focus, textarea:focus {
     padding-left: 0.5rem !important;
     padding-right: 0.5rem !important;
   }
+
   /* Restore border-radius for cards/tiles */
   #progress-summary-section,
   #activities-section,
@@ -1074,7 +1081,7 @@ button:focus, input:focus, select:focus, textarea:focus {
     max-width: 120px !important;
     font-size: 0.9rem !important;
     margin: 0.25rem 0 !important;
-    padding: 0.5rem !important;
+    padding: 0 !important;
   }
   h1, h2, h3 {
     font-size: 1.2rem !important;
@@ -1267,4 +1274,580 @@ button:focus, input:focus, select:focus, textarea:focus {
 
 .hover\:text-orange-700:hover {
     color: #E04700 !important;
+}
+
+/* 
+=================================
+🚀 RESPONSIVE NAVIGATION SYSTEM
+=================================
+Added for mobile/desktop navigation without modifying existing styles
+*/
+
+/* Page Container System - handled by comprehensive rules later in the file */
+
+/* Mobile Navigation (Bottom Tabs) - 768px and below */
+@media (max-width: 768px) {
+    /* Hide desktop nav on mobile */
+    .desktop-nav {
+        display: none !important;
+    }
+
+    /* Mobile bottom navigation bar */
+    .mobile-nav {
+        position: fixed !important;
+        bottom: 0 !important;
+        left: 0;
+        right: 0;
+        background: rgba(245, 241, 232, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-top: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 0.75rem 0 calc(0.75rem + env(safe-area-inset-bottom));
+        z-index: 1001 !important;
+        box-shadow: 0 -4px 20px rgba(0, 0, 0, 0.1);
+    }
+
+    .mobile-nav-tabs {
+        display: flex;
+        justify-content: space-around;
+        align-items: center;
+    }
+
+    .mobile-nav-tab {
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        padding: 0.5rem;
+        border-radius: 0.75rem;
+        text-decoration: none;
+        color: #6b7280;
+        font-size: 0.75rem;
+        font-weight: 500;
+        transition: all 0.2s ease;
+        min-width: 60px;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+    }
+
+    .mobile-nav-tab:hover {
+        color: #49614b;
+        background: rgba(255, 255, 255, 0.3);
+    }
+
+    .mobile-nav-tab.active {
+        color: #49614b;
+        background: rgba(117, 137, 102, 0.2);
+    }
+
+    .mobile-nav-tab svg {
+        width: 1.5rem;
+        height: 1.5rem;
+        margin-bottom: 0.25rem;
+        flex-shrink: 0;
+    }
+
+    /* Mobile page content padding to account for bottom nav */
+    .mobile-page-content {
+        padding-bottom: calc(80px + env(safe-area-inset-bottom));
+    }
+
+    /* Dark mode mobile navigation */
+    body.dark-mode .mobile-nav {
+        background: rgba(55, 65, 81, 0.95);
+        border-top-color: rgba(75, 85, 99, 0.3);
+    }
+
+    body.dark-mode .mobile-nav-tab {
+        color: #9ca3af;
+    }
+
+    body.dark-mode .mobile-nav-tab:hover {
+        color: #d1d5db;
+        background: rgba(75, 85, 99, 0.3);
+    }
+
+    body.dark-mode .mobile-nav-tab.active {
+        color: #f9fafb;
+        background: rgba(117, 137, 102, 0.3);
+    }
+}
+
+/* Desktop Navigation (Side Panel) - 769px and above */
+@media (min-width: 769px) {
+    /* Desktop side navigation */
+    .desktop-nav {
+        position: fixed !important;
+        top: 0 !important;
+        left: 0 !important;
+        width: 280px !important;
+        height: 100vh !important;
+        background: rgba(245, 241, 232, 0.95);
+        backdrop-filter: blur(20px);
+        -webkit-backdrop-filter: blur(20px);
+        border-right: 1px solid rgba(255, 255, 255, 0.2);
+        padding: 2rem 1.5rem;
+        z-index: 1000;
+        overflow-y: auto;
+        box-shadow: 4px 0 20px rgba(0, 0, 0, 0.1);
+        transition: transform 0.3s ease, width 0.3s ease;
+        transform: translateX(0);
+    }
+
+    /* Desktop navigation toggle button - styled as navigation tile */
+    .desktop-nav-toggle {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-radius: 1rem;
+        text-decoration: none;
+        color: #6b7280;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        width: 100%;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+        margin-bottom: 1rem;
+    }
+
+    /* Collapsed state for desktop nav */
+    .desktop-nav.collapsed {
+        width: 80px !important;
+        padding: 1rem 0.5rem !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-header {
+        display:none !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-logo {
+        width: 100%;
+        min-height: 3rem;            /* same content height as tabs */
+        padding: 0;
+        display:flex;
+        align-items:center;
+        justify-content:center;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-logo img {
+        width: 100%;
+        height: 100%;
+        border-radius: 1rem;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-tabs {
+        gap: 0.75rem !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-tab {
+        justify-content: center !important;
+        aspect-ratio: 1 / 1;          /* square tile */
+        padding: 0 !important;
+        display: flex !important;
+        align-items: center !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-tab:hover {
+        transform: none !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-tab span {
+        display: none;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-tab svg {
+        margin-right: 0;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-powered-by-strava {
+        display: none !important;
+    }
+
+    .desktop-nav-toggle:hover {
+        color: #49614b;
+        background: rgba(255, 255, 255, 0.4);
+        transform: translateX(4px);
+    }
+
+    .desktop-nav-toggle svg {
+        width: 1.5rem;
+        height: 1.5rem;
+        margin-right: 0.75rem;
+        flex-shrink: 0;
+        transition: all 0.3s ease;
+    }
+
+    .desktop-nav-toggle span {
+        transition: opacity 0.3s ease;
+        white-space: nowrap;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-toggle {
+        aspect-ratio:1/1;
+        padding:0 !important;
+        margin-bottom:0 !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-toggle:hover {
+        transform: none !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-toggle span {
+        display: none !important;
+    }
+
+    .desktop-nav.collapsed .desktop-nav-toggle svg {
+        margin-right: 0 !important;
+        transform: rotate(180deg);
+    }
+
+    /* Desktop navigation logo section */
+    .desktop-nav-header {
+        margin-bottom: 2rem;
+        text-align: center;
+        padding-bottom: 1.5rem;
+        border-bottom: 1px solid rgba(255, 255, 255, 0.2);
+        transition: all 0.3s ease;
+    }
+
+    .desktop-nav-logo {
+        width: 100%;
+        aspect-ratio: 1 / 1;
+        margin: 0;
+        border-radius: 1rem;
+        background: transparent;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        transition: all 0.3s ease;
+    }
+
+    .desktop-nav-logo img {
+        width: 100%;
+        height: 100%;
+        object-fit: cover;
+        border-radius: 1rem;
+        transition: all 0.3s ease;
+    }
+
+    .desktop-nav-title {
+        font-size: 1.25rem;
+        font-weight: 700;
+        color: #374151;
+        margin: 0;
+        font-family: 'Inter', sans-serif;
+        transition: opacity 0.3s ease;
+    }
+
+    /* Desktop navigation tabs */
+    .desktop-nav-tabs {
+        display: flex;
+        flex-direction: column;
+        gap: 0.5rem;
+        height: 100%;
+    }
+
+    .desktop-nav-tab {
+        display: flex;
+        align-items: center;
+        padding: 1rem;
+        border-radius: 1rem;
+        text-decoration: none;
+        color: #6b7280;
+        font-size: 0.95rem;
+        font-weight: 600;
+        transition: all 0.3s ease;
+        cursor: pointer;
+        background: transparent;
+        border: none;
+        width: 100%;
+        text-align: left;
+        position: relative;
+        overflow: hidden;
+    }
+
+    .desktop-nav-tab:hover {
+        color: #49614b;
+        background: rgba(255, 255, 255, 0.4);
+        transform: translateX(4px);
+    }
+
+    .desktop-nav-tab.active {
+        color: #49614b;
+        background: rgba(117, 137, 102, 0.2);
+        box-shadow: 0 2px 8px rgba(117, 137, 102, 0.2);
+    }
+
+    .desktop-nav-tab svg {
+        width: 1.5rem;
+        height: 1.5rem;
+        margin-right: 0.75rem;
+        flex-shrink: 0;
+        transition: margin 0.3s ease;
+    }
+
+    .desktop-nav-tab span {
+        transition: opacity 0.3s ease;
+        white-space: nowrap;
+    }
+
+    /* Desktop page content - remove padding conflicts */
+    .desktop-page-content {
+        min-height: 100vh !important;
+        padding: 0 !important;
+        box-sizing: border-box !important;
+    }
+    
+    /* Remove old conflicting rules - now handled by #dashboard-page */
+
+    .desktop-nav.collapsed ~ .desktop-page-content {
+        /* Content stays centered regardless of sidebar state */
+    }
+
+    /* Dark mode desktop navigation */
+    body.dark-mode .desktop-nav {
+        background: rgba(55, 65, 81, 0.95);
+        border-right-color: rgba(75, 85, 99, 0.3);
+    }
+
+    body.dark-mode .desktop-nav-header {
+        border-bottom-color: rgba(75, 85, 99, 0.3);
+    }
+
+    body.dark-mode .desktop-nav-title {
+        color: #f9fafb;
+    }
+
+    body.dark-mode .desktop-nav-tab {
+        color: #9ca3af;
+    }
+
+    body.dark-mode .desktop-nav-tab:hover {
+        color: #d1d5db;
+        background: rgba(75, 85, 99, 0.4);
+    }
+
+    body.dark-mode .desktop-nav-tab.active {
+        color: #f9fafb;
+        background: rgba(117, 137, 102, 0.3);
+    }
+
+    body.dark-mode .desktop-nav-toggle {
+        color: #9ca3af;
+    }
+
+    body.dark-mode .desktop-nav-toggle:hover {
+        color: #d1d5db;
+        background: rgba(75, 85, 99, 0.4);
+    }
+}
+
+/* Navigation System Utilities */
+.nav-hidden {
+    display: none !important;
+}
+
+.nav-visible {
+    display: block !important;
+}
+
+/* Page container system - ensure all pages can display properly */
+.page-container {
+    display: none;
+    transition: opacity 0.3s ease;
+}
+
+.page-container.active {
+    display: block;
+    opacity: 1;
+    pointer-events: auto;
+}
+
+/* Specific styling for different page types */
+#dashboard-page.active {
+    display: grid !important;
+}
+
+#activities-page.active,
+#status-page.active,
+#settings-page.active {
+    display: block !important;
+}
+
+/* Status page specific height styling */
+#status-page.active {
+    height: calc(100vh - 4rem) !important; /* Account for padding */
+    display: flex !important;
+    flex-direction: column !important;
+}
+
+@media (max-width: 768px) {
+    #status-page.active {
+        height: calc(100vh - 160px) !important; /* Account for mobile nav + padding */
+    }
+}
+
+#status-page #status-log-section-container {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    min-height: 0 !important; /* Allow flexbox to shrink */
+}
+
+#status-log-details {
+    flex: 1 !important;
+    min-height: 0 !important;
+}
+
+#status-log {
+    min-height: 400px !important; /* Minimum height for usability */
+}
+
+/* Ensure existing FAB doesn't conflict with mobile nav */
+@media (max-width: 768px) {
+    #fab-container {
+        bottom: calc(80px + env(safe-area-inset-bottom) + 1rem) !important;
+    }
+}
+
+/* Ensure responsive breakpoints work properly */
+@media (min-width: 769px) {
+    .mobile-nav {
+        display: none;
+    }
+}
+
+@media (max-width: 768px) {
+    .desktop-nav {
+        display: none;
+    }
+}
+
+/* Center dashboard content on desktop and fix grid gap spacing */
+@media (min-width: 769px) {
+    /* Center the main container on full viewport width - ignore sidebar */
+    #main-layout-container {
+        margin: 0 auto !important;
+        width: min(1200px, 90vw) !important;
+        padding: 2rem !important;
+        box-sizing: border-box !important;
+    }
+    
+    #dashboard-page.active {
+        /* Single column layout for dashboard content */
+        display: grid !important;
+        gap: 1.5rem !important;
+        grid-template-columns: 1fr !important;
+        grid-template-rows: auto auto auto !important;
+        width: 100% !important;
+        box-sizing: border-box !important;
+    }
+    
+    #dashboard-page > * {
+        margin: 0 !important;
+    }
+    
+    /* Ensure sections don't override grid positioning - single column layout */
+    #dashboard-page #header-section,
+    #dashboard-page #progress-summary-section,
+    #dashboard-page #map-section {
+        margin: 0 !important;
+        grid-column: 1 !important;
+    }
+}
+
+/* Avatar tile fills entire button */
+.mobile-nav-avatar{
+    display:flex;
+    align-items:center;
+    justify-content:center;
+    padding:0;                /* remove inner gap */
+    border-radius:0.75rem;
+    width:60px;
+    height:60px;              /* ensure square tile */
+    flex:0 0 60px;            /* prevent stretching */
+    background:transparent;
+}
+
+.mobile-nav-avatar img{
+    width:100%;
+    height:100%;
+    border-radius:0.75rem;    /* match tile rounding */
+    object-fit:cover;
+}
+
+/* Profile avatar tile styles */
+.profile-tile{padding:0 !important;overflow:hidden;}
+.profile-tile:hover,.profile-tile.active{background:transparent !important;transform:none !important;box-shadow:none !important;}
+.profile-tile img{width:100%;height:100%;object-fit:cover;border-radius:1rem;}
+
+/* Collapsed sidebar specific */
+.desktop-nav.collapsed .profile-tile{aspect-ratio:1/1;}
+
+/* Larger icons in collapsed sidebar */
+.desktop-nav.collapsed .desktop-nav-tab:not(.profile-tile) svg{
+    width:2rem;
+    height:2rem;
+}
+
+/* ------------------------------------------------------------------ */
+/* Heat-map calendar tile (inside progress-summary-section)           */
+#heatmap-tile.floating-tile {
+    width: 100% !important;
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box !important; /* include padding/border in width calc */
+}
+/* ------------------------------------------------------------------ */
+
+/* Prevent card from expanding beyond viewport */
+#progress-summary-section {
+    max-width: 100% !important;
+    min-width: 0 !important;
+    box-sizing: border-box;
+}
+
+/* ------------------------------------------------------------------ */
+/* Shared width cap for dashboard tiles                               */
+@media (min-width: 1024px) {
+  #dashboard-page .blurred-tile-background {
+      max-width: 1200px !important; /* adjust as desired */
+      margin-left: auto !important;
+      margin-right: auto !important;
+  }
+}
+/* ------------------------------------------------------------------ */
+
+/* Disable floating-tile hover effects for the calendar heat-map */
+#heatmap-tile.floating-tile:hover {
+    background: #f5f1e8 !important; /* same as normal */
+    transform: none !important;
+    box-shadow: 0 4px 16px 0 rgba(0,0,0,0.1), 0 2px 8px 0 rgba(0,0,0,0.05) !important;
+    border: 1px solid #e5e1d8 !important;
+    cursor: default !important;
+}
+
+/* Allow touch panning on heatmap scroll area */
+#heatmap-scroll-area {
+    touch-action: pan-x !important;
+}
+
+/* Re-enable clipping on the heat-map tile */
+#heatmap-tile {
+    overflow: hidden !important;
+}
+
+/* Keep each week column fixed width so horizontal overflow exists */
+#heatmap-grid-row > div {
+    flex: 0 0 auto !important; /* no shrink */
+}
+
+/* === TEMPORARY: Hide calendar heat-map tile on request === */
+#heatmap-tile {
+    display: none !important;
 }

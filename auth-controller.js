@@ -65,6 +65,11 @@ class AuthController {
                 fullUser: user
             });
             this.handleAuthStateChange(user);
+            
+            // Notify Firebase Progress Service of auth state changes
+            if (window.firebaseProgressService) {
+                window.firebaseProgressService.onAuthStateChange(user);
+            }
         });
         
         this.isInitialized = true;
@@ -82,15 +87,11 @@ class AuthController {
         this.authElements.signinFormElement = document.getElementById('signin-form-element');
         this.authElements.signupFormElement = document.getElementById('signup-form-element');
         
-        // User menu elements
-        this.authElements.userMenuTrigger = document.getElementById('user-menu-trigger');
-        this.authElements.userMenu = document.getElementById('user-menu');
-        this.authElements.currentUserName = document.getElementById('current-user-name');
-        this.authElements.userDisplayName = document.getElementById('user-display-name');
-        this.authElements.userEmailDisplay = document.getElementById('user-email-display');
-        this.authElements.userAvatarInitial = document.getElementById('user-avatar-initial');
-        this.authElements.userSignoutBtn = document.getElementById('user-signout-btn');
-        this.authElements.quickLogoutBtn = document.getElementById('quick-logout-btn');
+        // User menu elements (now in settings page)
+        this.authElements.settingsUserName = document.getElementById('settings-user-name');
+        this.authElements.settingsUserEmail = document.getElementById('settings-user-email');
+        this.authElements.settingsAvatarInitial = document.getElementById('settings-avatar-initial');
+        this.authElements.settingsLogoutBtn = document.getElementById('settings-logout-btn');
         
         // Strava connection elements
         this.authElements.stravaConnectionBtn = document.getElementById('strava-connection-btn');
@@ -118,19 +119,9 @@ class AuthController {
         this.authElements.signinFormElement?.addEventListener('submit', (e) => this.handleSignin(e));
         this.authElements.signupFormElement?.addEventListener('submit', (e) => this.handleSignup(e));
 
-        // User menu
-        this.authElements.userMenuTrigger?.addEventListener('click', (e) => {
-            e.preventDefault();
-            e.stopPropagation();
-            this.toggleUserMenu();
-        });
-        this.authElements.userSignoutBtn?.addEventListener('click', (e) => {
-            console.log('🚪 Sign out button clicked!');
-            e.preventDefault();
-            e.stopPropagation();
-            this.handleSignout(e);
-        });
-        this.authElements.quickLogoutBtn?.addEventListener('click', (e) => {
+        // Settings logout button
+        this.authElements.settingsLogoutBtn?.addEventListener('click', (e) => {
+            console.log('🚪 Settings logout button clicked!');
             e.preventDefault();
             e.stopPropagation();
             this.handleSignout(e);
@@ -140,9 +131,6 @@ class AuthController {
         if (this.authElements.stravaConnectionBtn) {
             console.log('✅ Strava connection button found and event listener added');
             this.authElements.stravaConnectionBtn.addEventListener('click', async () => {
-                // Hide user menu
-                this.hideUserMenu();
-                
                 // If user is already connected, ask if they want to disconnect
                 if (this.currentUserProfile?.stravaConnected) {
                     const disconnect = confirm('You are currently connected to Strava. Do you want to disconnect?');
@@ -160,19 +148,10 @@ class AuthController {
         this.authElements.modalConnectBtn?.addEventListener('click', () => this.handleStravaConnect());
         this.authElements.modalCancelBtn?.addEventListener('click', () => this.hideStravaModal());
 
-        // Close menu when clicking outside
-        document.addEventListener('click', (e) => {
-            if (!this.authElements.userMenuTrigger?.contains(e.target) && 
-                !this.authElements.userMenu?.contains(e.target)) {
-                this.hideUserMenu();
-            }
-        });
-
         // Close modals on escape
         document.addEventListener('keydown', (e) => {
             if (e.key === 'Escape') {
                 this.hideStravaModal();
-                this.hideUserMenu();
             }
         });
 
@@ -216,6 +195,32 @@ class AuthController {
                 location.reload();
             }
         });
+
+        // Profile photo upload
+        const avatarWrapper = document.getElementById('settings-avatar-wrapper');
+        const fileInput = document.getElementById('profile-photo-input');
+        if (avatarWrapper && fileInput) {
+            avatarWrapper.addEventListener('click', () => fileInput.click());
+            fileInput.addEventListener('change', async (e) => {
+                const file = e.target.files && e.target.files[0];
+                if (!file) return;
+
+                // Compress image to max 300x300 JPEG 0.8 quality
+                const compressedBlob = await this.compressImage(file, 300, 0.8);
+                if (!compressedBlob) return;
+
+                // Maintain original file name but ensure .jpg extension to match compressed format
+                let uploadName = file.name.replace(/\.[^/.]+$/, '.jpg');
+                const res = await userManager.uploadProfilePhoto(compressedBlob, uploadName);
+                if (res.success) {
+                    this.currentUserProfile.profilePhotoUrl = res.url;
+                    this.updateUserDisplay();
+                    alert('Profile photo updated');
+                } else {
+                    alert('Photo upload failed: ' + res.error);
+                }
+            });
+        }
     }
 
     // Modify existing localStorage functions to be user-specific
@@ -275,6 +280,7 @@ class AuthController {
             'swcp_completed_points',
             'swcp_cached_activities',
             'swcp_cached_activities_timestamp',
+            'swcp_unified_progress',  // CRITICAL: New unified progress system
             'stravaAccessToken',
             'stravaRefreshToken',
             'stravaExpiresAt',
@@ -284,7 +290,7 @@ class AuthController {
             'swcp_dark_mode'
         ];
         
-        const isUserSpecific = userSpecificKeys.includes(key) || key.startsWith('swcp_activity_stream_');
+        const isUserSpecific = userSpecificKeys.includes(key) || key.startsWith('swcp_activity_stream_') || key.startsWith('swcp_activity_stats_');
         console.log(`🔍 isUserSpecificKey("${key}"):`, isUserSpecific);
         return isUserSpecific;
     }
@@ -560,6 +566,11 @@ class AuthController {
                 // Update UI
                 this.updateUserDisplay();
                 
+                // Ensure settings page reflects new state immediately
+                if (window.Navigation && typeof window.Navigation.updateSettingsPage === 'function') {
+                    window.Navigation.updateSettingsPage();
+                }
+                
                 console.log('✅ Successfully disconnected from Strava');
                 alert('Successfully disconnected from Strava.');
             } else {
@@ -621,7 +632,7 @@ class AuthController {
         console.log('🌐 Starting OAuth flow with redirect URI:', redirectUri);
         
         // Official Strava OAuth URL as required by brand guidelines
-        const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=read,activity:read_all`;
+        const oauthUrl = `https://www.strava.com/oauth/authorize?client_id=${clientId}&redirect_uri=${encodeURIComponent(redirectUri)}&response_type=code&scope=read,activity:read_all,activity:write,profile:read_all`;
         console.log('🔗 Full OAuth URL:', oauthUrl);
         
         // Debug: Check individual components
@@ -629,7 +640,7 @@ class AuthController {
             clientId: clientId,
             redirectUri: redirectUri,
             encodedRedirectUri: encodeURIComponent(redirectUri),
-            scope: 'read,activity:read_all,activity:write'
+            scope: 'read,activity:read_all,activity:write,profile:read_all'
         });
         
         // Validate URL before redirecting
@@ -680,27 +691,6 @@ class AuthController {
         }
     }
 
-    toggleUserMenu() {
-        const menu = this.authElements.userMenu;
-        const trigger = this.authElements.userMenuTrigger;
-        
-        if (menu.classList.contains('hidden')) {
-            // Position the menu below the trigger button, aligned to the right edge
-            const rect = trigger.getBoundingClientRect();
-            menu.style.top = (rect.bottom + 8) + 'px';
-            menu.style.left = rect.left + 'px';
-            menu.style.zIndex = '2147483647'; // Maximum z-index value
-            menu.style.position = 'fixed';
-            menu.classList.remove('hidden');
-        } else {
-            menu.classList.add('hidden');
-        }
-    }
-
-    hideUserMenu() {
-        this.authElements.userMenu.classList.add('hidden');
-    }
-
     updateUserDisplay() {
         if (!this.currentUserProfile) return;
 
@@ -708,10 +698,39 @@ class AuthController {
         const email = this.currentUserProfile.email || '';
         const initial = displayName.charAt(0).toUpperCase();
 
-        this.authElements.currentUserName.textContent = displayName;
-        this.authElements.userDisplayName.textContent = displayName;
-        this.authElements.userEmailDisplay.textContent = email;
-        this.authElements.userAvatarInitial.textContent = initial;
+        // Update settings page user info
+        if (this.authElements.settingsUserName) {
+            this.authElements.settingsUserName.textContent = displayName;
+        }
+        if (this.authElements.settingsUserEmail) {
+            this.authElements.settingsUserEmail.textContent = email;
+        }
+        if (this.authElements.settingsAvatarInitial) {
+            this.authElements.settingsAvatarInitial.textContent = initial;
+        }
+
+        // Profile photo display
+        const avatarPhoto = document.getElementById('settings-avatar-photo');
+        const avatarPlaceholder = document.getElementById('settings-avatar-placeholder');
+        if (this.currentUserProfile && this.currentUserProfile.profilePhotoUrl) {
+            if (avatarPhoto) {
+                avatarPhoto.src = this.currentUserProfile.profilePhotoUrl;
+                avatarPhoto.classList.remove('hidden');
+            }
+            if (avatarPlaceholder) avatarPlaceholder.classList.add('hidden');
+        } else {
+            if (avatarPhoto) avatarPhoto.classList.add('hidden');
+            if (avatarPlaceholder) avatarPlaceholder.classList.remove('hidden');
+        }
+
+        // Update navigation profile photos (desktop sidebar and mobile nav)
+        const navDesk = document.getElementById('nav-profile-photo-desktop');
+        const navMob = document.getElementById('nav-profile-photo-mobile');
+        if (navDesk || navMob) {
+            const photoUrl = this.currentUserProfile?.profilePhotoUrl || 'swcp-logo.png';
+            if (navDesk) navDesk.src = photoUrl;
+            if (navMob) navMob.src = photoUrl;
+        }
 
         // Update Strava connection button appearance
         if (this.authElements.stravaConnectionBtn) {
@@ -721,6 +740,16 @@ class AuthController {
                 // In a real implementation, you might have separate "Connect" and "Disconnect" button images
                 stravaImg.alt = this.currentUserProfile.stravaConnected ? 'Disconnect from Strava' : 'Connect with Strava';
                 stravaImg.title = this.currentUserProfile.stravaConnected ? 'Disconnect from Strava' : 'Connect with Strava';
+            }
+        }
+
+        // Apply dark mode preference from profile
+        if (this.currentUserProfile && this.currentUserProfile.preferences && typeof this.currentUserProfile.preferences.darkMode === 'boolean') {
+            const preferDark = this.currentUserProfile.preferences.darkMode;
+            document.body.classList.toggle('dark-mode', preferDark);
+            localStorage.setItem('darkMode', preferDark.toString());
+            if (typeof updateDarkModeToggle === 'function') {
+                updateDarkModeToggle();
             }
         }
     }
@@ -961,7 +990,7 @@ class AuthController {
                 computedVisibility: window.getComputedStyle(stravaScreen).visibility
             });
         } else {
-            console.error('❌ Strava screen element not found!');
+            console.log('📱 Strava screen element not found (may not have been created yet) - this is normal');
         }
         
         const mainContainer = document.getElementById('main-layout-container');
@@ -1228,6 +1257,24 @@ class AuthController {
             alert(`Authentication failed: ${error.message}`);
         }
     }
+
+    // Compress image using canvas
+    async compressImage(file, maxSize = 300, quality = 0.8) {
+        return new Promise((resolve) => {
+            const img = new Image();
+            img.onload = () => {
+                const canvas = document.createElement('canvas');
+                const scale = Math.min(maxSize / img.width, maxSize / img.height, 1);
+                canvas.width = img.width * scale;
+                canvas.height = img.height * scale;
+                const ctx = canvas.getContext('2d');
+                ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+                canvas.toBlob((blob) => resolve(blob), 'image/jpeg', quality);
+            };
+            img.onerror = () => resolve(null);
+            img.src = URL.createObjectURL(file);
+        });
+    }
 }
 
 // Create and export singleton
@@ -1235,6 +1282,11 @@ export const authController = new AuthController();
 
 // Expose globally for script coordination
 window.authController = authController;
+window.userManager = userManager;
+
+// Provide a simple global helper for non-module scripts
+window.disconnectStrava = () => authController.handleStravaDisconnect();
+window.authorizeStrava = () => authController.showStravaModal();
 
 // Auto-initialize when DOM is ready
 if (document.readyState === 'loading') {

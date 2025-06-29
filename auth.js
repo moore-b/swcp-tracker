@@ -2,6 +2,7 @@
 // Using Firebase Authentication for multi-user support
 
 import { initializeApp } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js';
+import { initializeAppCheck, ReCaptchaV3Provider } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-app-check.js';
 import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, signOut, onAuthStateChanged, updateProfile, setPersistence, browserSessionPersistence, browserLocalPersistence } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js';
 import { getFirestore, doc, setDoc, getDoc, updateDoc, collection, query, where, getDocs } from 'https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js';
 
@@ -18,6 +19,13 @@ const firebaseConfig = {
 
 // Initialize Firebase
 const app = initializeApp(firebaseConfig);
+
+// Initialize Firebase App Check with reCAPTCHA v3
+initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider('6LdY-nErAAAAAP3c4ExBQlR8X_WwYqms09sxMxZK'), // User-provided site key
+    isTokenAutoRefreshEnabled: true // Automatically refresh App Check tokens
+});
+
 const auth = getAuth(app);
 const db = getFirestore(app);
 
@@ -196,6 +204,36 @@ class UserManager {
         });
 
         return result;
+    }
+
+    // Upload profile photo to Firebase Storage and update user profile
+    // Accepts the compressed image blob and the desired file name (jpg or png)
+    async uploadProfilePhoto(blob, fileName = 'avatar.jpg') {
+        if (!this.currentUser) return { success: false, error: 'No user logged in' };
+
+        try {
+            const { getStorage, ref, uploadBytes, getDownloadURL } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js');
+            const { getAuth } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js');
+            const storage = getStorage(getAuth().app);
+
+            // Ensure filename has .jpg or .png extension only (after compression we default to .jpg)
+            let safeName = fileName.toLowerCase();
+            if (!safeName.endsWith('.jpg') && !safeName.endsWith('.png')) {
+                safeName = safeName.replace(/\.[^/.]+$/, '.jpg');
+            }
+
+            const photoRef = ref(storage, `profilePictures/${this.currentUser.uid}/${safeName}`);
+            await uploadBytes(photoRef, blob, { contentType: 'image/jpeg' });
+            const downloadUrl = await getDownloadURL(photoRef);
+
+            // Save URL to profile
+            await this.updateUserProfile(this.currentUser.uid, { profilePhotoUrl: downloadUrl });
+
+            return { success: true, url: downloadUrl };
+        } catch (error) {
+            console.error('Profile photo upload error:', error);
+            return { success: false, error: error.message };
+        }
     }
 
     // Progress data methods
