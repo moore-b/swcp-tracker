@@ -4482,9 +4482,12 @@ const Navigation = {
                     console.log('🔧 Fixed activities section height');
                 }
                 
-                // First, display activities already in memory
+                // First, display activities already in memory (respect any active filters)
                 if (typeof allFetchedActivities !== 'undefined' && allFetchedActivities && allFetchedActivities.length > 0) {
-                    setTimeout(() => renderActivityList(allFetchedActivities), 50);
+                    setTimeout(() => {
+                        const listToShow = (typeof filterActivities === 'function') ? filterActivities() : allFetchedActivities;
+                        renderActivityList(listToShow);
+                    }, 50);
                 }
                 // Then auto-refresh if container is empty and user is connected
                 else if (typeof refreshActivities === 'function') {
@@ -4807,3 +4810,12 @@ window.testNavigation = function() {
 
 // Export for potential external use
 window.Navigation = Navigation;
+
+// ... insert near end of script (before init or after map init) ...
+window.addEventListener('visibilitychange', () => {
+    if (!document.hidden && typeof mainMap !== 'undefined' && mainMap) {
+        setTimeout(() => {
+            try { mainMap.invalidateSize(); } catch(e) { console.warn('Map invalidate failed', e); }
+        }, 100);
+    }
+});

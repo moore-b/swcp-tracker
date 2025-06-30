@@ -389,6 +389,28 @@ body:has(#main-layout-container.hidden) .desktop-nav {
         max-width: 100%;
         width: 100%;
     }
+
+    /* Add vertical gap between blurred background tiles */
+    .blurred-tile-background:not(:last-child) {
+        margin-bottom: 1.25rem !important; /* 20px = Tailwind mb-5 */
+    }
+
+    /* Strava Account tile: reduce top padding */
+    #settings-page .blurred-tile-background.mt-6 {
+        padding-top: 0.25rem !important; /* 4px top gap */
+    }
+
+    /* Ensure inner Strava wrappers have no extra top padding */
+    #settings-strava-connect,
+    #settings-strava-connected {
+        padding-top: 0 !important;
+    }
+
+    /* Make main map tile more compact on phones */
+    #map-section {
+        margin: 0 !important;
+        padding: 0 !important;
+    }
 }
 
 /* Status Log Enhancements */
@@ -1061,7 +1083,7 @@ button:focus, input:focus, select:focus, textarea:focus {
   }
   #map-section {
     margin-top: 0 !important;
-    padding: 1.5rem !important;
+    padding: 0.5rem !important;
   }
   /* Remove extra green background from around dashboard */
   #progress-summary-section > .p-6 {
@@ -1850,4 +1872,15 @@ Added for mobile/desktop navigation without modifying existing styles
 /* === TEMPORARY: Hide calendar heat-map tile on request === */
 #heatmap-tile {
     display: none !important;
+}
+
+#settings-strava-connect.hidden + #settings-strava-connected {
+    margin-top: 0 !important; /* eliminate unwanted gap at top when connect tile is hidden */
+}
+
+/* --- Mobile map padding override (keep small gap) --- */
+@media (max-width: 600px) {
+  #map-section {
+    padding: 0.5rem !important; /* 8px space around map tile */
+  }
 }
