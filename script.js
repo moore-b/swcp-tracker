@@ -549,9 +549,10 @@ function updateGridLayout() {
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
             if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
             if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '3';
-            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '4';
-            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '5';
+            if (UIElements.latestActivitySection) UIElements.latestActivitySection.style.gridColumn = '1'; UIElements.latestActivitySection.style.gridRow = '3';
+            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '4';
+            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '5';
+            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '6';
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.position = 'static';
                 UIElements.activitiesSection.style.height = 'auto';
@@ -571,13 +572,17 @@ function updateGridLayout() {
                 UIElements.progressSummarySection.style.gridColumn = '1'; 
                 UIElements.progressSummarySection.style.gridRow = '2';
             }
+            if (UIElements.latestActivitySection) {
+                UIElements.latestActivitySection.style.gridColumn = '1';
+                UIElements.latestActivitySection.style.gridRow = '3';
+            }
             if (UIElements.mapSection) {
                 UIElements.mapSection.style.gridColumn = '1'; 
-                UIElements.mapSection.style.gridRow = '3';
+                UIElements.mapSection.style.gridRow = '4';
             }
             if (UIElements.statusLogSectionContainer) {
                 UIElements.statusLogSectionContainer.style.gridColumn = '1'; 
-                UIElements.statusLogSectionContainer.style.gridRow = '4';
+                UIElements.statusLogSectionContainer.style.gridRow = '5';
             }
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.gridColumn = '2';
@@ -1818,9 +1823,32 @@ async function resetProgress() {
                 }
             }
             
-            // Step 4: Clear all local storage
-            log('💾 Clearing all local data...', 'warn');
-            localStorage.clear();
+            // Step 4: Clear progress-related local storage (keep Strava tokens)
+            log('💾 Clearing local progress data...', 'warn');
+            const keysToRemoveSuffixes = [
+                'swcp_completed_points',
+                'swcp_processed_activities',
+                'swcp_unified_progress',
+                'swcp_cached_activities',
+                'swcp_cached_activities_ts',
+                'swcp_cached_results'
+            ];
+            Object.keys(localStorage).forEach(k => {
+                if (keysToRemoveSuffixes.some(suffix => k.endsWith(suffix))) {
+                    localStorage.removeItem(k);
+                }
+            });
+            
+            // Reset UI immediately without waiting for reload
+            if (UIElements.progressPercentage) UIElements.progressPercentage.textContent = '0.00%';
+            if (UIElements.completedDistance) UIElements.completedDistance.textContent = '0 km';
+            if (UIElements.remainingDistance) UIElements.remainingDistance.textContent = `${swcpTotalDistance.toFixed(2)} km`;
+            if (UIElements.elevationGained) UIElements.elevationGained.textContent = '0 m';
+            if (UIElements.timeTaken) UIElements.timeTaken.textContent = '0h 0m';
+            if (completedSegmentsLayer) completedSegmentsLayer.clearLayers();
+            if (UIElements.latestActivityContainer) {
+                UIElements.latestActivityContainer.innerHTML = '<p class="text-gray-500 text-center">No activities analysed yet.</p>';
+            }
             
             // Step 5: Show completion message and reload
             log('🎯 Complete reset successful. Redirecting to login...', 'success');
@@ -2100,19 +2128,25 @@ function renderActivityList(activities) {
         // Populate activity data
         cardDiv.querySelector('[data-name]').textContent = activity.name;
         // Format date as DD/MM/YY
-        const dateObj = new Date(activity.start_date);
-        const day = String(dateObj.getDate()).padStart(2, '0');
-        const month = String(dateObj.getMonth() + 1).padStart(2, '0');
-        const year = String(dateObj.getFullYear()).slice(-2);
-        cardDiv.querySelector('[data-date]').textContent = `${day}/${month}/${year}`;
-        cardDiv.querySelector('[data-type]').textContent = activity.type;
+        let dateDisplay = 'N/A';
+        if (activity.start_date) {
+            const dateObj = new Date(activity.start_date);
+            if (!isNaN(dateObj)) {
+                const day = String(dateObj.getDate()).padStart(2, '0');
+                const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+                const year = String(dateObj.getFullYear()).slice(-2);
+                dateDisplay = `${day}/${month}/${year}`;
+            }
+        }
+        cardDiv.querySelector('[data-date]').textContent = dateDisplay;
+        cardDiv.querySelector('[data-type]').textContent = activity.type || '—';
         
         // Data display
-        const distance = (activity.distance / 1000).toFixed(2);
-        const time = new Date(activity.moving_time * 1000).toISOString().substr(11, 8);
-        const elevation = activity.total_elevation_gain.toFixed(0);
+        const distance = activity.distance ? (activity.distance / 1000).toFixed(2) : '0.00';
+        const timeDisplay = activity.moving_time ? new Date(activity.moving_time * 1000).toISOString().substr(11, 8) : '00:00:00';
+        const elevation = activity.total_elevation_gain ? activity.total_elevation_gain.toFixed(0) : '0';
         cardDiv.querySelector('[data-distance-display]').textContent = `${distance} km`;
-        cardDiv.querySelector('[data-time-display]').textContent = time;
+        cardDiv.querySelector('[data-time-display]').textContent = timeDisplay;
         cardDiv.querySelector('[data-elevation-display]').textContent = `${elevation}m`;
        
         const mapEl = card.querySelector('[data-map-id]');
@@ -2122,16 +2156,16 @@ function renderActivityList(activities) {
         analyzeBtn.dataset.activityId = activity.id;
         analyzeBtn.classList.remove('btn-primary', 'btn-secondary', 'bg-gray-300', 'text-gray-700');
         
-        // Check analyzed status - prefer activity.analyzed property, fallback to unified system
-        let isAnalyzed = activity.analyzed;
-        if (isAnalyzed === undefined) {
-            // Fallback for activities that don't have the analyzed property yet
+        // Check analyzed status – if the activity object says "true" keep it,
+        // otherwise look it up in the unified-progress payload (covers page reloads).
+        let isAnalyzed = !!activity.analyzed; // normalise to boolean
+        if (!isAnalyzed) {
             try {
-                const unifiedData = JSON.parse(localStorage.getItem('swcp_unified_progress') || '{}');
-                const analyzedIds = new Set((unifiedData.analyzedActivityIds || []).map(id => String(id)));
-                isAnalyzed = analyzedIds.has(String(activity.id));
+                const unifiedData   = JSON.parse(localStorage.getItem('swcp_unified_progress') || '{}');
+                const analyzedIds   = new Set((unifiedData.analyzedActivityIds || []).map(id => String(id)));
+                isAnalyzed          = analyzedIds.has(String(activity.id));
             } catch (error) {
-                isAnalyzed = false;
+                isAnalyzed = false; // safety fallback
             }
         }
         
@@ -2201,6 +2235,23 @@ function renderActivityList(activities) {
         } else {
             mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">No GPS data for this activity.</div>';
         }
+
+        // NEW: Un-process button logic
+        const unprocessBtn = cardDiv.querySelector('[data-unprocess-btn]');
+        if (unprocessBtn) {
+            // Ensure button has correct activity id for later queries
+            unprocessBtn.dataset.activityId = activity.id;
+            const processedSet = new Set(JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]'));
+            const isProcessed = processedSet.has(String(activity.id));
+            if (isAnalyzed || isProcessed) {
+                unprocessBtn.classList.remove('hidden');
+                unprocessBtn.style.display = '';
+                unprocessBtn.onclick = () => unprocessActivity(activity, unprocessBtn);
+            } else {
+                unprocessBtn.classList.add('hidden');
+                unprocessBtn.style.display = 'none';
+            }
+        }
     });
     
     // Use fallback DOM query for fab container too
@@ -2208,6 +2259,9 @@ function renderActivityList(activities) {
     if (window.innerWidth <= 1024 && fabContainer) {
         fabContainer.classList.remove('hidden');
     }
+
+    // After finishing rendering all cards, refresh latest activity tile
+    renderLatestProcessedActivity();
 }
    
 /**
@@ -2719,6 +2773,9 @@ const init = async () => {
     UIElements.elevationGained = document.getElementById('elevation-gained');
     UIElements.timeTaken = document.getElementById('time-taken');
     UIElements.remainingDistance = document.getElementById('remaining-distance');
+    // New: Latest activity elements
+    UIElements.latestActivitySection = document.getElementById('latest-activity-section');
+    UIElements.latestActivityContainer = document.getElementById('latest-activity-container');
 
     log('Application initialization started.');
 
@@ -2889,10 +2946,16 @@ const init = async () => {
                             
                             if (analyzeBtn) {
                                 // Update button to "Reanalyze" state
-                                analyzeBtn.innerHTML = 'Reanalyze';
-                                analyzeBtn.disabled = false;
+                                analyzeBtn.textContent = 'Reanalyze';
                                 analyzeBtn.classList.remove('btn-analyze');
                                 analyzeBtn.classList.add('btn-secondary');
+                                analyzeBtn.disabled = false;
+                                // NEW: reveal Un-process button on same card
+                                const unBtn = document.querySelector(`button[data-unprocess-btn][data-activity-id='${payload.activityId}']`);
+                                if (unBtn) {
+                                    unBtn.classList.remove('hidden');
+                                    unBtn.style.display = '';
+                                }
                             }
                             
                             log(`✅ Analysis complete for ${activity.name}. ${overlapsRoute ? 'Route progress updated.' : 'Activity tracked but does not overlap route.'}`, 'success');
@@ -3340,6 +3403,12 @@ async function updateProgressUIWithProgress(payload, analyzeBtn) {
             analyzeBtn.disabled = false;
             const loaderSpan = analyzeBtn.querySelector('.loader');
             if (loaderSpan) loaderSpan.remove();
+            // NEW: ensure Un-process button becomes visible
+            const unBtn = document.querySelector(`button[data-unprocess-btn][data-activity-id='${payload.activityId}']`);
+            if (unBtn) {
+                unBtn.classList.remove('hidden');
+                unBtn.style.display = '';
+            }
         }
         
         const renderTime = Date.now() - renderStartTime;
@@ -4021,6 +4090,14 @@ function updateDashboardFromUnified(unifiedData) {
         const overlappingActivities = Object.values(unifiedData.activityStats).filter(stats => stats.overlapsRoute);
         log(`✅ Progress loaded: ${unifiedData.completedDistance.toFixed(2)}km (${unifiedData.percentage.toFixed(2)}%), ${overlappingActivities.length} overlapping activities`, 'success');
         
+        // NEW: Update latest activity tile
+        renderLatestProcessedActivity();
+
+        // NEW: Re-render activity list now that processed/analyzed info is in place
+        if (Array.isArray(allFetchedActivities) && allFetchedActivities.length > 0) {
+            renderActivityList(allFetchedActivities);
+        }
+ 
     } catch (error) {
         console.error('❌ Error updating dashboard from unified data:', error);
     }
@@ -4465,6 +4542,12 @@ const Navigation = {
                             if (window.map) {
                                 window.map.updateSize();
                             }
+                            if (window.latestActivityMap) {
+                                window.latestActivityMap.invalidateSize();
+                                if (window.latestActivityMapBounds) {
+                                    window.latestActivityMap.fitBounds(window.latestActivityMapBounds, { padding: [10,10] });
+                                }
+                            }
                         } catch (e) {
                             console.log('Map update not needed or available');
                         }
@@ -4819,3 +4902,220 @@ window.addEventListener('visibilitychange', () => {
         }, 100);
     }
 });
+
+// NEW: Helper to render most recent processed activity on dashboard
+async function renderLatestProcessedActivity() {
+    try {
+        const container = UIElements.latestActivityContainer || document.getElementById('latest-activity-container');
+        if (!container) return;
+
+        // Clear previous content and show a small loader
+        container.innerHTML = '<div class="loader-large mx-auto"></div>';
+
+        const processedIds = JSON.parse(localStorage.getItem('swcp_processed_activities') || '[]');
+        if (processedIds.length === 0) {
+            container.innerHTML = '<p class="text-gray-500 text-center">No analyzed activities yet.</p>';
+            return;
+        }
+
+        // Determine the most recent activity by start_date among processed activities
+        let latestActivity = null;
+
+        // Helper to fetch activity if missing
+        const getActivityById = async (id) => {
+            // Try cached list first
+            if (Array.isArray(allFetchedActivities)) {
+                const cached = allFetchedActivities.find(a => String(a.id) === String(id));
+                if (cached) return cached;
+            }
+            // Fallback: fetch from Strava API
+            try {
+                const fetched = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${id}`);
+                if (Array.isArray(allFetchedActivities)) allFetchedActivities.push(fetched);
+                return fetched;
+            } catch (err) {
+                console.warn('Failed fetching activity', id, err);
+                return null;
+            }
+        };
+
+        for (const id of processedIds) {
+            const act = await getActivityById(id);
+            if (!act || !act.start_date) continue;
+            if (!latestActivity) {
+                latestActivity = act;
+            } else {
+                const tsCurrent = new Date(act.start_date).getTime();
+                const tsLatest = new Date(latestActivity.start_date).getTime();
+                if (tsCurrent > tsLatest) latestActivity = act;
+            }
+        }
+
+        const activity = latestActivity;
+
+        const renderCard = (act) => {
+            if (!act) {
+                container.innerHTML = '<p class="text-gray-500 text-center">Latest activity details not available.</p>';
+                return;
+            }
+            const template = UIElements.activityCardTemplate || document.getElementById('activity-card-template');
+            if (!template) {
+                container.innerHTML = '<p class="text-gray-500 text-center">Template missing.</p>';
+                return;
+            }
+            const card = template.content.cloneNode(true);
+            const cardDiv = card.querySelector('div');
+            // Remove analyze / description buttons for dashboard view
+            cardDiv.querySelector('[data-analyze-btn]')?.remove();
+            cardDiv.querySelector('[data-update-btn]')?.remove();
+
+            // Populate fields (same logic as renderActivityList)
+            const gradientHeader = cardDiv.querySelector('#gradient-header');
+            if (gradientHeader) {
+                gradientHeader.style.background = getActivityGradient(act.id);
+            }
+            cardDiv.querySelector('[data-name]').textContent = act.name;
+            const dateObj = new Date(act.start_date);
+            const day = String(dateObj.getDate()).padStart(2, '0');
+            const month = String(dateObj.getMonth() + 1).padStart(2, '0');
+            const year = String(dateObj.getFullYear()).slice(-2);
+            cardDiv.querySelector('[data-date]').textContent = `${day}/${month}/${year}`;
+            cardDiv.querySelector('[data-type]').textContent = act.type;
+            cardDiv.querySelector('[data-distance-display]').textContent = `${(act.distance / 1000).toFixed(2)} km`;
+            cardDiv.querySelector('[data-time-display]').textContent = new Date(act.moving_time * 1000).toISOString().substr(11, 8);
+            cardDiv.querySelector('[data-elevation-display]').textContent = `${act.total_elevation_gain.toFixed(0)}m`;
+
+            // Strava link
+            const stravaLink = cardDiv.querySelector('[data-strava-link]');
+            if (stravaLink) stravaLink.href = `https://www.strava.com/activities/${act.id}`;
+
+            // Map
+            const mapEl = cardDiv.querySelector('[data-map-id]');
+            if (mapEl) {
+                mapEl.id = `latest-map-${act.id}`;
+            }
+
+            // Append to container
+            container.innerHTML = '';
+            container.appendChild(card);
+
+            // Render mini map if polyline present
+            if (act.map && act.map.summary_polyline) {
+                try {
+                    const latlngs = polyline.decode(act.map.summary_polyline);
+                    if (latlngs.length > 0) {
+                        const activityMap = L.map(mapEl.id, {
+                            scrollWheelZoom: false,
+                            attributionControl: false,
+                            zoomControl: false,
+                            dragging: false,
+                            touchZoom: false,
+                            doubleClickZoom: false,
+                            boxZoom: false,
+                            keyboard: false
+                        });
+                        L.tileLayer('https://server.arcgisonline.com/ArcGIS/rest/services/World_Topo_Map/MapServer/tile/{z}/{y}/{x}', {
+                            attribution: 'Tiles © Esri'
+                        }).addTo(activityMap);
+                        L.polyline(latlngs, { color: '#fd8640', weight: 3 }).addTo(activityMap);
+                        const bounds = L.latLngBounds(latlngs);
+                        activityMap.fitBounds(bounds, { padding: [10, 10] });
+                        setTimeout(() => {
+                            activityMap.invalidateSize();
+                        }, 100);
+                        mapEl.style.filter = 'sepia(0.1) saturate(0.9) brightness(0.95)';
+                        // Store reference globally for resize fixes
+                        window.latestActivityMap = activityMap;
+                        // Save bounds globally so we can re-fit after tab switches
+                        window.latestActivityMapBounds = bounds;
+                    }
+                } catch (e) {
+                    console.warn('Failed to render latest activity map:', e);
+                    mapEl.innerHTML = '<div class="text-center text-gray-500 pt-8 text-sm">Map not available.</div>';
+                }
+            }
+        };
+
+        // If we already have the activity, render immediately
+        if (activity) {
+            renderCard(activity);
+        } else {
+            container.innerHTML = '<p class="text-gray-500 text-center">Failed to load latest activity.</p>';
+        }
+    } catch (error) {
+        console.error('Error in renderLatestProcessedActivity:', error);
+    }
+}
+
+async function unprocessActivity(activity, button) {
+    if (!activity) return;
+    if (!confirm(`Remove \"${activity.name}\" from processed activities?`)) return;
+    try {
+        button.disabled = true;
+        button.textContent = 'Removing...';
+        // Update processed IDs list
+        const processedIds = JSON.parse(localStorage.getItem(PROCESSED_ACTIVITIES_KEY) || '[]').filter(id => String(id) !== String(activity.id));
+        localStorage.setItem(PROCESSED_ACTIVITIES_KEY, JSON.stringify(processedIds));
+
+        // Update unified progress data – remove activity and clear points so we can rebuild from scratch
+        const unifiedRaw = localStorage.getItem('swcp_unified_progress');
+        if (unifiedRaw) {
+            const unified = JSON.parse(unifiedRaw);
+            unified.analyzedActivityIds = unified.analyzedActivityIds.filter(id => String(id) !== String(activity.id));
+            delete unified.activityStats[String(activity.id)];
+            unified.completedPoints       = [];
+            unified.completedDistance     = 0;
+            unified.percentage            = 0;
+            unified.totalElevation        = 0;
+            unified.totalTime             = 0;
+            localStorage.setItem('swcp_unified_progress', JSON.stringify(unified));
+        }
+
+        // Remove unified blob entirely so rebuild starts clean
+        localStorage.removeItem('swcp_unified_progress');
+ 
+        // Remove cached stats for activity
+        localStorage.removeItem(`swcp_activity_stats_${activity.id}`);
+
+        // Optionally sync Firebase
+        if (firebaseProgressService && firebaseProgressService.isEnabled) {
+            try {
+                await firebaseProgressService.saveProgressToFirebase({ removeActivityId: activity.id });
+            } catch (err) {
+                console.warn('Firebase sync failed', err);
+            }
+        }
+
+        // Refresh UI elements (latest tile will update after rebuild)
+ 
+        // Mark this activity as not analysed in the in-memory list and refresh the card
+        const idx = Array.isArray(allFetchedActivities) ? allFetchedActivities.findIndex(a => String(a.id) === String(activity.id)) : -1;
+        if (idx > -1) {
+            allFetchedActivities[idx].analyzed = false;
+        }
+
+        // Re-render list so Analyse / Un-process buttons update instantly
+        if (Array.isArray(allFetchedActivities) && allFetchedActivities.length > 0) {
+            renderActivityList(allFetchedActivities);
+        }
+
+        // --------------------------------------------
+        // Re-analyse every remaining processed activity
+        // --------------------------------------------
+        for (const id of processedIds) {
+            const act = allFetchedActivities?.find(a => String(a.id) === String(id));
+            const analyzeBtn = document.querySelector(`button[data-analyze-btn][data-activity-id='${id}']`);
+            if (act && analyzeBtn && !analyzeBtn.disabled) {
+                analyzeSingleActivity(act, analyzeBtn);
+            }
+        }
+
+        button.textContent = 'Removed';
+        button.classList.add('hidden');
+    } catch (err) {
+        console.error('Unprocess failed', err);
+        button.textContent = 'Error';
+    } finally {
+        setTimeout(() => { if (button) { button.disabled = false; button.textContent = 'Un-process'; } }, 3000);
+    }
+}

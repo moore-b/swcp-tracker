@@ -1884,3 +1884,20 @@ Added for mobile/desktop navigation without modifying existing styles
     padding: 0.5rem !important; /* 8px space around map tile */
   }
 }
+
+/* Un-process button */
+.btn-unprocess {
+    background: #fef2f2;
+    color: #b91c1c;
+    padding: 8px 16px;
+    border-radius: 8px;
+    font-size: 0.875rem;
+    font-weight: 600;
+    border: 1px solid #fca5a5;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    display: none !important; /* temporarily hide functionality */
+}
+.btn-unprocess:hover {
+    background: #fee2e2;
+}

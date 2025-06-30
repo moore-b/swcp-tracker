@@ -1,5 +1,5 @@
 // Service Worker for SWCP Tracker
-const CACHE_NAME = 'swcp-tracker-v1';
+const CACHE_NAME = 'swcp-tracker-v3';
 const urlsToCache = [
   '/',
   '/index.html',
@@ -21,6 +21,8 @@ self.addEventListener('install', function(event) {
         return cache.addAll(urlsToCache);
       })
   );
+  // NEW: Activate worker immediately
+  self.skipWaiting();
 });
 
 // Fetch event - serve from cache when offline
@@ -52,6 +54,8 @@ self.addEventListener('activate', event => {
       );
     })
   );
+  // NEW: Let this worker control open clients right away
+  self.clients.claim();
 });
 
 // Background sync for activity analysis
