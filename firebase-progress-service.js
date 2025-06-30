@@ -331,6 +331,29 @@ class FirebaseProgressService {
                 console.log('⚠️ Data protection bypassed for intentional reset');
             }
 
+            // === Preserve existing unifiedProgressData (fetch from Firestore) ===
+            let existingUnified = null;
+            try {
+                const { getFirestore, doc: fsDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                const existingSnap = await getDoc(fsDoc(getFirestore(), 'users', this.currentUser.uid));
+                if (existingSnap.exists()) {
+                    const pd = existingSnap.data().progressData;
+                    if (pd && pd.unifiedProgressData) existingUnified = pd.unifiedProgressData;
+                }
+            } catch (e) {
+                console.warn('⚠️ Could not fetch existing unifiedProgressData for merge:', e);
+            }
+
+            // Merge logic: prefer fresh data, else keep existing
+            const unifiedToSave = progressData.unifiedProgressData || existingUnified;
+
+            if (unifiedToSave) {
+                progressData.unifiedProgressData = unifiedToSave;
+                progressData.totalDistance      = unifiedToSave.completedDistance;
+                progressData.completedDistance  = unifiedToSave.completedDistance;
+                progressData.percentage         = unifiedToSave.percentage;
+            }
+
             // Convert nested arrays to Firestore-compatible format
             const dataToSave = {
                 ...progressData,
@@ -358,6 +381,17 @@ class FirebaseProgressService {
             if (result.success) {
                 this.lastSyncTime = new Date();
                 console.log('✅ Progress successfully saved to Firebase');
+
+                // Invalidate local cache so next getProgressData fetches fresh data
+                try {
+                    if (userManager?.userProfiles?.delete) {
+                        userManager.userProfiles.delete(this.currentUser.uid);
+                    }
+                } catch (cacheErr) {
+                    console.warn('⚠️ Could not invalidate local profile cache:', cacheErr);
+                }
+
+                return result;
             } else {
                 console.error('❌ Firebase save failed:', result.error);
             }
@@ -596,7 +630,7 @@ class FirebaseProgressService {
             const completedEl = document.getElementById('completed-distance');
             
             if (percentageEl) percentageEl.textContent = `${percentage.toFixed(2)}%`;
-            if (completedEl) completedEl.textContent = distance.toFixed(2);
+            if (completedEl) completedEl.textContent = `${distance.toFixed(2)} km`;
             
             console.log('✅ Displayed estimated progress from cache');
             
@@ -844,14 +878,20 @@ class FirebaseProgressService {
                 
                 // Save unified data to Firebase
                 const docRef = doc(this.db, 'users', this.currentUser.uid);
+                const { deleteField } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+
                 await updateDoc(docRef, {
-                    progressData: {
-                        unifiedProgressData: firebaseCompatibleData,
-                        lastUpdated: new Date(),
-                        source: 'swcp-tracker-unified'
-                    },
+                    'progressData.unifiedProgressData': firebaseCompatibleData,
+                    'progressData.lastUpdated'        : new Date(),
+                    'progressData.source'             : 'swcp-tracker-unified',
+
+                    // Remove legacy summary keys
+                    'progressData.completedDistance'  : deleteField(),
+                    'progressData.totalDistance'      : deleteField(),
+                    'progressData.percentage'         : deleteField(),
+
                     lastActive: new Date()
-                });
+                }, { merge: true });
                 
                 console.log('✅ Unified progress saved to Firebase successfully');
                 return { success: true, message: 'Unified data saved to Firebase' };
@@ -996,7 +1036,7 @@ class FirebaseProgressService {
             // Update completed distance display
             const completedEl = document.getElementById('completed-distance');
             if (completedEl) {
-                completedEl.textContent = cached.totalDistance.toFixed(2);
+                completedEl.textContent = `${cached.totalDistance.toFixed(2)} km`;
                 console.log('✅ Updated completed distance display');
             }
             

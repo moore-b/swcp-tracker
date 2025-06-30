@@ -1488,6 +1488,28 @@ async function loadDashboardFirst() {
         // Show success message
         log(`📊 Dashboard loaded in ${(loadTime/1000).toFixed(1)}s`, 'success');
         
+        // If unified progress was not found, fall back to instant-cache or zero values
+        const completedPlaceholder = UIElements.completedDistance?.textContent === '...';
+        if (!currentPercentage && completedPlaceholder) {
+            console.log('⚠️ No unified progress data found – attempting instant-cache fallback');
+            let usedCache = false;
+            if (firebaseProgressService && typeof firebaseProgressService.showInstantProgress === 'function') {
+                try {
+                    usedCache = await firebaseProgressService.showInstantProgress();
+                } catch (err) {
+                    console.warn('Instant-cache fallback failed:', err);
+                }
+            }
+            if (!usedCache) {
+                console.log('ℹ️ Falling back to zeroed stats');
+                if (UIElements.completedDistance) UIElements.completedDistance.textContent = '0 km';
+                if (UIElements.progressPercentage) UIElements.progressPercentage.textContent = '0%';
+                if (UIElements.totalDistance && UIElements.remainingDistance) {
+                    const total = parseFloat(UIElements.totalDistance.textContent) || 0;
+                    UIElements.remainingDistance.textContent = `${total.toFixed(2)} km`;
+                }
+            }
+        }
     } catch (error) {
         console.error('❌ Error loading dashboard:', error);
         log('❌ Dashboard loading failed: ' + error.message, 'error');
@@ -2536,7 +2558,7 @@ async function updateProgressUI(payload) {
     }
 
     // --- Updating text fields ---
-    UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
+    UIElements.completedDistance.textContent = `${parseFloat(totalDistance).toFixed(2)} km`;
     UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
     if (UIElements.totalDistance) {
         UIElements.totalDistance.textContent = `${swcpTotalDistance.toFixed(2)} km`;
@@ -3236,7 +3258,7 @@ async function updateProgressUIWithProgress(payload, analyzeBtn) {
         
         // 96%: Update text fields
         updateProgress(96, 'Updating stats');
-        UIElements.completedDistance.textContent = parseFloat(totalDistance).toFixed(2);
+        UIElements.completedDistance.textContent = `${parseFloat(totalDistance).toFixed(2)} km`;
         UIElements.progressPercentage.textContent = `${parseFloat(percentage).toFixed(2)}%`;
         if (UIElements.totalDistance) {
             UIElements.totalDistance.textContent = `${swcpTotalDistance.toFixed(2)} km`;
@@ -3957,7 +3979,7 @@ function updateDashboardFromUnified(unifiedData) {
     try {
         // Update progress fields
         if (UIElements.completedDistance) {
-            UIElements.completedDistance.textContent = unifiedData.completedDistance.toFixed(2);
+            UIElements.completedDistance.textContent = `${unifiedData.completedDistance.toFixed(2)} km`;
         }
         
         if (UIElements.progressPercentage) {
