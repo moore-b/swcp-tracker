@@ -2111,6 +2111,15 @@ function renderActivityList(activities) {
     
     // We'll check the analyzed status directly from each activity object
    
+    // Ensure newest activities appear first
+    if (Array.isArray(activities)) {
+        activities = [...activities].sort((a, b) => {
+            const dateA = new Date(a.start_date || a.startDate || 0);
+            const dateB = new Date(b.start_date || b.startDate || 0);
+            return dateB - dateA; // descending
+        });
+    }
+    
     activities.forEach((activity, index) => {
         
         const card = activityCardTemplate.content.cloneNode(true);
@@ -2748,6 +2757,7 @@ const init = async () => {
     UIElements.activitySearchBox = document.getElementById('activity-search-box');
     UIElements.mapLoadingOverlay = document.getElementById('map-loading-overlay');
     UIElements.refreshActivitiesBtn = document.getElementById('refresh-activities-btn');
+    UIElements.loadAllActivitiesBtn   = document.getElementById('load-all-activities-btn');
     UIElements.headerSection = document.getElementById('header-section');
     UIElements.progressSummarySection = document.getElementById('progress-summary-section');
     UIElements.appBackground = document.getElementById('app-background');
@@ -3019,6 +3029,10 @@ const init = async () => {
     }
     if (UIElements.refreshActivitiesBtn) {
         UIElements.refreshActivitiesBtn.addEventListener('click', refreshActivities);
+    }
+    // Bind Load All Activities button
+    if (UIElements.loadAllActivitiesBtn) {
+        UIElements.loadAllActivitiesBtn.addEventListener('click', loadAllActivities);
     }
     window.addEventListener('resize', updateGridLayout);
 
@@ -4529,30 +4543,31 @@ const Navigation = {
     handlePageSpecificLogic(pageId) {
         switch (pageId) {
             case 'dashboard':
+                console.log('🏠 Dashboard page logic triggered');
                 // Show main layout container if hidden
                 const mainLayout = document.getElementById('main-layout-container');
                 if (mainLayout && mainLayout.classList.contains('hidden')) {
                     mainLayout.classList.remove('hidden');
                 }
                 
-                // Re-initialize map if needed
-                if (typeof initializeMap === 'function') {
-                    setTimeout(() => {
-                        try {
-                            if (window.map) {
-                                window.map.updateSize();
-                            }
-                            if (window.latestActivityMap) {
-                                window.latestActivityMap.invalidateSize();
-                                if (window.latestActivityMapBounds) {
-                                    window.latestActivityMap.fitBounds(window.latestActivityMapBounds, { padding: [10,10] });
-                                }
-                            }
-                        } catch (e) {
-                            console.log('Map update not needed or available');
-                        }
-                    }, 100);
-                }
+                // Always try to re-center maps when switching to dashboard
+                console.log('🏠 Setting up map reinitialization timeout');
+                setTimeout(() => {
+                    try {
+                        console.log('🏠 About to call recenterMainMap');
+                        recenterMainMap();
+                    } catch (mainMapError) {
+                        console.warn('🏠 Main map recentering failed:', mainMapError);
+                    }
+                    
+                    try {
+                        // Center the recent activity map using dedicated function
+                        console.log('🏠 About to call recenterLatestActivityMap');
+                        recenterLatestActivityMap();
+                    } catch (recentMapError) {
+                        console.warn('🏠 Recent activity map recentering failed:', recentMapError);
+                    }
+                }, 100);
                 break;
                 
             case 'activities':
@@ -4904,8 +4919,9 @@ window.addEventListener('visibilitychange', () => {
 });
 
 // NEW: Helper to render most recent processed activity on dashboard
-async function renderLatestProcessedActivity() {
+async function renderLatestProcessedActivity(attempt = 0) {
     try {
+        const MAX_ATTEMPTS = 5;
         const container = UIElements.latestActivityContainer || document.getElementById('latest-activity-container');
         if (!container) return;
 
@@ -4918,28 +4934,20 @@ async function renderLatestProcessedActivity() {
             return;
         }
 
-        // Determine the most recent activity by start_date among processed activities
+        // Wait until activities are fetched (allFetchedActivities length) or give up after retries
+        if ((!Array.isArray(allFetchedActivities) || allFetchedActivities.length === 0) && attempt < MAX_ATTEMPTS) {
+            return setTimeout(() => renderLatestProcessedActivity(attempt + 1), 400);
+        }
+
+        // If no processed activities yet, fall back to most recent overall
+        const useFallbackLatest = processedIds.length === 0;
+
+        // Determine the most recent activity by date among the chosen ID list
+        const idList = useFallbackLatest ? (Array.isArray(allFetchedActivities) ? allFetchedActivities.map(a => a.id) : []) : processedIds;
+
         let latestActivity = null;
 
-        // Helper to fetch activity if missing
-        const getActivityById = async (id) => {
-            // Try cached list first
-            if (Array.isArray(allFetchedActivities)) {
-                const cached = allFetchedActivities.find(a => String(a.id) === String(id));
-                if (cached) return cached;
-            }
-            // Fallback: fetch from Strava API
-            try {
-                const fetched = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${id}`);
-                if (Array.isArray(allFetchedActivities)) allFetchedActivities.push(fetched);
-                return fetched;
-            } catch (err) {
-                console.warn('Failed fetching activity', id, err);
-                return null;
-            }
-        };
-
-        for (const id of processedIds) {
+        for (const id of idList) {
             const act = await getActivityById(id);
             if (!act || !act.start_date) continue;
             if (!latestActivity) {
@@ -5117,5 +5125,155 @@ async function unprocessActivity(activity, button) {
         button.textContent = 'Error';
     } finally {
         setTimeout(() => { if (button) { button.disabled = false; button.textContent = 'Un-process'; } }, 3000);
+    }
+}
+
+// Load All Activities button (full sync)
+async function loadAllActivities() {
+    const loadBtn = UIElements.loadAllActivitiesBtn;
+    if (!loadBtn) return;
+
+    console.log('🟢 Load All Activities button clicked');
+    const originalHTML = loadBtn.innerHTML;
+    loadBtn.innerHTML = 'Loading all activities...';
+    loadBtn.disabled = true;
+
+    try {
+        await fetchAndRenderActivities(true); // forceRefresh = true fetches full history
+        loadBtn.innerHTML = 'All activities loaded';
+    } catch (error) {
+        console.error('❌ Error loading all activities:', error);
+        loadBtn.innerHTML = 'Load failed – try again';
+    }
+
+    // Reset after 3 s
+    setTimeout(() => {
+        loadBtn.innerHTML = originalHTML;
+        loadBtn.disabled = false;
+    }, 3000);
+}
+
+function recenterLatestActivityMap() {
+    console.log('🗺️ recenterLatestActivityMap called');
+    if (!window.latestActivityMap) return;
+    console.log('🗺️ latestActivityMap exists, proceeding with recentering');
+    // Use two RAFs to wait for layout
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            try {
+                console.log('🗺️ Calling invalidateSize()');
+                window.latestActivityMap.invalidateSize();
+                let bounds = window.latestActivityMapBounds;
+                console.log('🗺️ Stored bounds:', bounds);
+                if (!bounds && window.latestActivityMap._layers) {
+                    const layer = Object.values(window.latestActivityMap._layers).find(l => l && typeof l.getBounds === 'function');
+                    console.log('🗺️ Found layer for bounds:', !!layer);
+                    if (layer) bounds = layer.getBounds();
+                    console.log('🗺️ Calculated bounds from layer:', bounds);
+                }
+                if (bounds) {
+                    console.log('🗺️ Fitting to bounds:', bounds);
+                    window.latestActivityMap.fitBounds(bounds, { padding: [10,10] });
+                } else {
+                    console.log('🗺️ No bounds available, trying to set default view');
+                    // Fallback: set a default view for UK southwest coast
+                    window.latestActivityMap.setView([50.5, -4.0], 10);
+                }
+            } catch(e) { 
+                console.error('🗺️ Error in recenterLatestActivityMap:', e);
+            }
+        });
+    });
+}
+
+function recenterMainMap() {
+    console.log('🗺️ recenterMainMap called');
+    if (!mainMap) {
+        console.log('🗺️ mainMap not available');
+        return;
+    }
+    console.log('🗺️ mainMap exists, proceeding with recentering');
+    
+    // Use two RAFs to wait for layout, same approach as latest activity map
+    requestAnimationFrame(() => {
+        requestAnimationFrame(() => {
+            try {
+                console.log('🗺️ Calling mainMap.invalidateSize()');
+                mainMap.invalidateSize();
+                
+                // Try to get bounds from existing layers
+                let bounds = null;
+                
+                // First priority: get bounds from completed segments layer
+                if (completedSegmentsLayer && completedSegmentsLayer.getLayers().length > 0) {
+                    try {
+                        bounds = completedSegmentsLayer.getBounds();
+                        console.log('🗺️ Using completed segments bounds:', bounds);
+                    } catch(e) {
+                        console.log('🗺️ Could not get completed segments bounds:', e);
+                    }
+                }
+                
+                // Second priority: get bounds from all layers on the map
+                if (!bounds && mainMap._layers) {
+                    const layers = Object.values(mainMap._layers);
+                    const layersWithBounds = layers.filter(l => l && typeof l.getBounds === 'function');
+                    console.log('🗺️ Found layers with bounds:', layersWithBounds.length);
+                    
+                    if (layersWithBounds.length > 0) {
+                        try {
+                            // Combine bounds from all layers
+                            bounds = layersWithBounds[0].getBounds();
+                            for (let i = 1; i < layersWithBounds.length; i++) {
+                                bounds.extend(layersWithBounds[i].getBounds());
+                            }
+                            console.log('🗺️ Using combined layer bounds:', bounds);
+                        } catch(e) {
+                            console.log('🗺️ Could not combine layer bounds:', e);
+                        }
+                    }
+                }
+                
+                // Apply bounds or fallback
+                if (bounds && bounds.isValid && bounds.isValid()) {
+                    console.log('🗺️ Fitting to calculated bounds');
+                    mainMap.fitBounds(bounds, { padding: [20, 20] });
+                } else {
+                    console.log('🗺️ No valid bounds available, using SWCP default view');
+                    // Fallback: SWCP area default view (same as initialization)
+                    mainMap.setView([50.55, -3.75], 9); // Center of SWCP area
+                }
+                
+                // Additional delay for final size adjustment
+                setTimeout(() => {
+                    try {
+                        mainMap.invalidateSize();
+                        console.log('🗺️ Final invalidateSize() completed');
+                    } catch(e) {
+                        console.log('🗺️ Final invalidateSize() failed:', e);
+                    }
+                }, 300);
+                
+            } catch(e) { 
+                console.error('🗺️ Error in recenterMainMap:', e);
+            }
+        });
+    });
+}
+
+async function getActivityById(id) {
+    // Try cached list first
+    if (Array.isArray(allFetchedActivities)) {
+        const cached = allFetchedActivities.find(a => String(a.id) === String(id));
+        if (cached) return cached;
+    }
+    // Fallback: fetch from Strava API
+    try {
+        const fetched = await makeStravaApiCall(`https://www.strava.com/api/v3/activities/${id}`);
+        if (Array.isArray(allFetchedActivities)) allFetchedActivities.push(fetched);
+        return fetched;
+    } catch (err) {
+        console.warn('Failed fetching activity', id, err);
+        return null;
     }
 }

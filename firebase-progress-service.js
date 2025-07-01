@@ -333,18 +333,22 @@ class FirebaseProgressService {
 
             // === Preserve existing unifiedProgressData (fetch from Firestore) ===
             let existingUnified = null;
-            try {
-                const { getFirestore, doc: fsDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
-                const existingSnap = await getDoc(fsDoc(getFirestore(), 'users', this.currentUser.uid));
-                if (existingSnap.exists()) {
-                    const pd = existingSnap.data().progressData;
-                    if (pd && pd.unifiedProgressData) existingUnified = pd.unifiedProgressData;
+            if (!bypassProtection) {
+                try {
+                    const { getFirestore, doc: fsDoc, getDoc } = await import('https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js');
+                    const existingSnap = await getDoc(fsDoc(getFirestore(), 'users', this.currentUser.uid));
+                    if (existingSnap.exists()) {
+                        const pd = existingSnap.data().progressData;
+                        if (pd && pd.unifiedProgressData) existingUnified = pd.unifiedProgressData;
+                    }
+                } catch (e) {
+                    console.warn('⚠️ Could not fetch existing unifiedProgressData for merge:', e);
                 }
-            } catch (e) {
-                console.warn('⚠️ Could not fetch existing unifiedProgressData for merge:', e);
+            } else {
+                console.log('🗑️  Hard reset detected – skipping unifiedProgressData merge');
             }
 
-            // Merge logic: prefer fresh data, else keep existing
+            // Merge logic: prefer fresh data, else keep existing (only when not resetting)
             const unifiedToSave = progressData.unifiedProgressData || existingUnified;
 
             if (unifiedToSave) {
@@ -1109,14 +1113,30 @@ class FirebaseProgressService {
             
             // Clear all progress data by saving empty data
             const emptyProgressData = {
+                // Legacy flat fields
                 completedPoints: [],
                 processedActivities: [],
                 totalDistance: 0,
                 completedDistance: 0,
                 percentage: 0,
+                totalElevation: 0,
+                totalTime: 0,
                 cachedResults: null,
                 completedPointsCount: 0,
                 completedPointsData: [],
+                // Unified structure cleared as well
+                unifiedProgressData: {
+                    completedPoints: [],
+                    completedDistance: 0,
+                    percentage: 0,
+                    analyzedActivityIds: [],
+                    activityStats: {},
+                    totalElevation: 0,
+                    totalTime: 0,
+                    totalRouteDistance: 0,
+                    version: 1,
+                    lastUpdated: new Date().toISOString()
+                },
                 lastUpdated: new Date(),
                 source: 'swcp-tracker-reset'
             };
@@ -1155,30 +1175,52 @@ class FirebaseProgressService {
                 return false;
             }
 
-            // Create activities document structure
-            const activitiesData = {
-                activities: activities.map(activity => ({
-                    id: activity.id,
-                    name: activity.name,
-                    start_date: activity.start_date,
-                    type: activity.type,
-                    distance: activity.distance,
-                    moving_time: activity.moving_time,
-                    total_elevation_gain: activity.total_elevation_gain,
-                    map: activity.map,
-                    analyzed: false, // Default to not analyzed
-                    // Add any other fields needed for display
-                    sport_type: activity.sport_type,
-                    start_latlng: activity.start_latlng,
-                    end_latlng: activity.end_latlng,
-                    average_speed: activity.average_speed,
-                    max_speed: activity.max_speed
-                })),
-                lastUpdated: new Date().toISOString(),
-                totalCount: activities.length
-            };
+            // Merge with existing activities in Firestore to prevent accidental data loss
 
             const userDocRef = doc(this.db, 'users', user.uid);
+
+            let existingActivities = [];
+            try {
+                const snap = await getDoc(userDocRef);
+                if (snap.exists() && snap.data().activities && Array.isArray(snap.data().activities.activities)) {
+                    existingActivities = snap.data().activities.activities;
+                }
+            } catch (mergeErr) {
+                console.warn('⚠️ Could not read existing activities for merge:', mergeErr);
+            }
+
+            // Build a map by id so we can deduplicate and preserve analysed status
+            const byId = {};
+            existingActivities.forEach(a => {
+                if (a && a.id !== undefined) {
+                    byId[String(a.id)] = a;
+                }
+            });
+
+            activities.forEach(a => {
+                if (!a || a.id === undefined) return;
+                const idKey = String(a.id);
+                const existing = byId[idKey] || {};
+                // Preserve analysed flag if it was ever true
+                const analysed = (a.analyzed || existing.analyzed) ? true : false;
+                byId[idKey] = { ...existing, ...a, analyzed: analysed };
+            });
+
+            const mergedActivities = Object.values(byId);
+
+            // --- SAFETY CHECK ----------------------------------------------------
+            if (existingActivities.length > 20 && mergedActivities.length < existingActivities.length * 0.9) {
+                console.error(`🚨 FIREBASE PROTECTION: Refusing to overwrite ${existingActivities.length} activities with only ${mergedActivities.length}`);
+                return false;
+            }
+
+            // Create activities document structure with merged list
+            const activitiesData = {
+                activities: mergedActivities,
+                lastUpdated: new Date().toISOString(),
+                totalCount: mergedActivities.length
+            };
+
             await setDoc(userDocRef, {
                 activities: activitiesData
             }, { merge: true });

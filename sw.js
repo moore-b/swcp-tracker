@@ -1,5 +1,5 @@
 // Service Worker for SWCP Tracker
-const CACHE_NAME = 'swcp-tracker-v3';
+const CACHE_NAME = 'swcp-tracker-v4';
 const urlsToCache = [
   '/',
   '/index.html',
