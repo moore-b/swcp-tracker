@@ -1885,6 +1885,16 @@ Added for mobile/desktop navigation without modifying existing styles
   }
 }
 
+/* Allow page scrolling on mobile while preventing accidental map panning */
+#map {
+    touch-action: pan-y manipulation !important;
+}
+
+/* Also apply to any leaflet container for consistency */
+.leaflet-container {
+    touch-action: pan-y manipulation !important;
+}
+
 /* Un-process button */
 .btn-unprocess {
     background: #fef2f2;

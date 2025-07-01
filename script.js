@@ -837,11 +837,18 @@ function initializeMapAndData() {
         mainMap = L.map(UIElements.mainMap.id, { 
             maxBounds: bounds, 
             minZoom: 8,
-            maxZoom: 14
+            maxZoom: 14,
+            // Enable all zoom methods
+            touchZoom: true,         // Enable pinch-to-zoom
+            scrollWheelZoom: true,   // Enable scroll wheel zoom
+            doubleClickZoom: true    // Enable double-tap zoom
         });
         
         // Apply subtle vintage CSS filter to the map container
         UIElements.mainMap.style.filter = 'sepia(0.1) saturate(0.9) brightness(0.95)';
+        
+        // Allow page scrolling on mobile while preventing accidental map panning
+        UIElements.mainMap.style.touchAction = 'pan-y manipulation';
     } else if (!UIElements.mainMap) {
         log('Error: Main map container (id="map") not found. Cannot initialize map.', 'error');
         return;
