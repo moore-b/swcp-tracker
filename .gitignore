@@ -15,3 +15,7 @@ node_modules/
 # OS files
 .DS_Store
 Thumbs.db 
+
+# Backup folders
+preview_backups/
+*.bak 
