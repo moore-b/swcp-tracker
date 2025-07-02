@@ -587,9 +587,10 @@ button:focus, input:focus, select:focus, textarea:focus {
     color: #fff;
     border-top-left-radius: 1rem;
     border-top-right-radius: 1rem;
-    padding: 0 !important;
+    padding: 3rem !important;
     box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);
     margin-bottom: 0 !important;
+    padding-top: 3rem !important;
 }
 
 .activity-type-corner-tile, .activity-date-corner-tile {
@@ -1047,6 +1048,10 @@ button:focus, input:focus, select:focus, textarea:focus {
   #app-background {
     background-size: cover !important;
   }
+  /* Mobile override for activity card header top spacing */
+  .activity-card-header {
+    padding-top: 2.75rem !important; /* increase space so h3 sits below tiles */
+  }
 }
 
 /* Ensure activities column content matches width and is flush with blurred border */
@@ -1093,8 +1098,7 @@ button:focus, input:focus, select:focus, textarea:focus {
 }
 
 .activity-card-header h3[data-name] {
-    margin-top: 2rem !important;
-    margin-bottom: 1.2rem !important;
+    margin-top: 0 !important;
 }
 
 .activity-card .p-4 {
