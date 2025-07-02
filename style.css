@@ -286,7 +286,7 @@ body.dark-mode .filter-btn:hover {
         display: flex !important;
         flex-direction: column !important;
         gap: 1rem !important;
-        margin-bottom: 1rem;
+        margin-bottom: 0 !important; /* remove extra margin to keep consistent spacing */
     }
     
     /* Keep tiles centered with fixed width */
@@ -357,6 +357,7 @@ body.dark-mode .filter-btn:hover {
     /* Restore proper padding for map section on mobile */
     #map-section {
         padding: 1rem !important;
+        margin-top: 1rem !important;
     }
 
     /* Allow blurred tile (stats or recent-activity card) to shrink within phone viewport */
@@ -623,6 +624,9 @@ button:focus, input:focus, select:focus, textarea:focus {
     box-shadow: 0 4px 16px 0 rgba(0,0,0,0.3), 0 2px 8px 0 rgba(0,0,0,0.2);
     margin-bottom: 0 !important;
     padding-top: 3rem !important;
+    padding-bottom: 1rem !important;
+    padding-left: 1rem !important;
+    padding-right: 1rem !important;
 }
 
 .activity-type-corner-tile, .activity-date-corner-tile {
@@ -728,14 +732,22 @@ button:focus, input:focus, select:focus, textarea:focus {
 }
 
 @media (max-width: 480px) {
-    /* Even smaller screens - 2 columns */
-    #progress-summary-section .flex.gap-4 {
-        grid-template-columns: repeat(2, 1fr) !important;
-        gap: 0.5rem !important;
+    /* Ensure full Most Recent Activity card is visible */
+    #latest-activity-section {
+        min-height: 495px !important;
     }
-    
-    #progress-summary-section .floating-tile {
-        font-size: 0.875rem !important;
+
+    /* Shrink stat tiles in the Most Recent Activity card */
+    .activity-card-header .floating-tile {
+        min-width: 80px !important;
+        max-width: 80px !important;
+        width: 80px !important;
+        font-size: 0.75rem !important; /* slightly smaller text */
+    }
+
+    /* Reduce extra bottom padding in activity card header */
+    .activity-card-header {
+        padding-bottom: 1rem !important;
     }
 }
 
@@ -1819,3 +1831,6 @@ Added for mobile/desktop navigation without modifying existing styles
 #heatmap-grid-row > div {
     flex: 0 0 auto !important;
 }
+
+/* Permanently hide the Un-process button */
+button[data-unprocess-btn] { display:none !important; }
