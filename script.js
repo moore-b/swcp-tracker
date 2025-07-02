@@ -547,12 +547,31 @@ function updateGridLayout() {
         if (UIElements.mainLayoutContainer.dataset.layout !== 'mobile') {
             UIElements.mainLayoutContainer.style.gridTemplateColumns = '1fr';
             UIElements.mainLayoutContainer.style.gridTemplateRows = 'auto auto auto auto auto';
-            if (UIElements.headerSection) UIElements.headerSection.style.gridColumn = '1'; UIElements.headerSection.style.gridRow = '1';
-            if (UIElements.progressSummarySection) UIElements.progressSummarySection.style.gridColumn = '1'; UIElements.progressSummarySection.style.gridRow = '2';
-            if (UIElements.latestActivitySection) UIElements.latestActivitySection.style.gridColumn = '1'; UIElements.latestActivitySection.style.gridRow = '3';
-            if (UIElements.mapSection) UIElements.mapSection.style.gridColumn = '1'; UIElements.mapSection.style.gridRow = '4';
-            if (UIElements.activitiesSection) UIElements.activitiesSection.style.gridColumn = '1'; UIElements.activitiesSection.style.gridRow = '5';
-            if (UIElements.statusLogSectionContainer) UIElements.statusLogSectionContainer.style.gridColumn = '1'; UIElements.statusLogSectionContainer.style.gridRow = '6';
+            // Wrap assignments in braces so nothing executes if the element is missing
+            if (UIElements.headerSection) {
+                UIElements.headerSection.style.gridColumn = '1';
+                UIElements.headerSection.style.gridRow = '1';
+            }
+            if (UIElements.progressSummarySection) {
+                UIElements.progressSummarySection.style.gridColumn = '1';
+                UIElements.progressSummarySection.style.gridRow = '2';
+            }
+            if (UIElements.latestActivitySection) {
+                UIElements.latestActivitySection.style.gridColumn = '1';
+                UIElements.latestActivitySection.style.gridRow = '3';
+            }
+            if (UIElements.mapSection) {
+                UIElements.mapSection.style.gridColumn = '1';
+                UIElements.mapSection.style.gridRow = '4';
+            }
+            if (UIElements.activitiesSection) {
+                UIElements.activitiesSection.style.gridColumn = '1';
+                UIElements.activitiesSection.style.gridRow = '5';
+            }
+            if (UIElements.statusLogSectionContainer) {
+                UIElements.statusLogSectionContainer.style.gridColumn = '1';
+                UIElements.statusLogSectionContainer.style.gridRow = '6';
+            }
             if (UIElements.activitiesSection) {
                 UIElements.activitiesSection.style.position = 'static';
                 UIElements.activitiesSection.style.height = 'auto';
