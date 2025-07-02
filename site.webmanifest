@@ -1,12 +1,12 @@
 {
-  "name": "waythru",
-  "short_name": "waythru",
+  "name": "Waythru",
+  "short_name": "Waythru",
   "description": "Track your South West Coast Path progress with Strava integration",
   "start_url": "/",
-  "display": "fullscreen",
-  "display_override": ["fullscreen", "standalone"],
+  "display": "standalone",
+  "display_override": ["standalone", "fullscreen"],
   "orientation": "portrait-primary",
-  "theme_color": "#49614b",
+  "theme_color": "#cfdfd2",
   "background_color": "#f5f1e8",
   "categories": ["sports", "fitness", "navigation"],
   "icons": [
